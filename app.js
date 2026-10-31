@@ -701,7 +701,8 @@ async function kontaktDialog(){
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>Mina uppgifter</h2>
     <p class="hint">${m?`Det här står om dig i medlemsregistret${m.fastighet?` för <strong>${E(m.fastighet)}</strong>`:""}. Grannar och styrelsen ser uppgifterna.`:"Du finns inte i medlemsregistret än. Välj din fastighet och fyll i dina uppgifter."}</p>
-    ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>{ const bt=((site.medlemmar||[]).find(x=>x.fastighet===f&&x.beteckning)||{}).beteckning; return `<option value="${E(f)}">${E(f)}${bt&&bt!==f?" ("+E(bt)+")":""}</option>`; }).join("")}</select></label>`}
+    ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>{ const bt=((site.medlemmar||[]).find(x=>x.fastighet===f&&x.beteckning)||{}).beteckning; return `<option value="${E(f)}">${E(f)}${bt&&bt!==f?" ("+E(bt)+")":""}</option>`; }).join("")}</select></label>
+      <label id="kuVemL" hidden>Vem är du?<select id="kuVem"></select></label>`}
     <label>Namn<input id="kuN" required autocomplete="name" value="${m?E(m.namn||""):""}"></label>
     <label>Telefon<input id="kuT" type="tel" inputmode="tel" autocomplete="tel" value="${m?E(m.telefon||""):""}"></label>
     <label>Adress<input id="kuA" autocomplete="street-address" value="${m?E(m.adress||""):""}"></label>
@@ -711,6 +712,14 @@ async function kontaktDialog(){
     <div class="bdlg-btns"><button value="ok" id="kuOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
   const g=x=>d.querySelector(x);
+  /* Står personen redan i registret utan mejl? Välj sig själv så kopplas raden till inloggningen. */
+  if(g("#kuF")) g("#kuF").onchange=()=>{
+    const f=g("#kuF").value, utan=(site.medlemmar||[]).filter(x=>x.fastighet===f&&x.namn&&!String(x.epost||"").trim());
+    g("#kuVemL").hidden=!utan.length;
+    g("#kuVem").innerHTML=utan.map(x=>`<option value="${E(x.id)}">${E(x.namn)}</option>`).join("")+`<option value="">Jag står inte med, lägg till mig</option>`;
+    const sync=()=>{ const r=utan.find(x=>x.id===g("#kuVem").value); g("#kuN").value=r?r.namn:""; g("#kuN").readOnly=!!r; if(r){ if(!g("#kuT").value) g("#kuT").value=r.telefon||""; if(!g("#kuA").value) g("#kuA").value=r.adress||""; } };
+    g("#kuVem").onchange=sync; if(utan.length) sync(); else { g("#kuN").readOnly=false; }
+  };
   g("#kuOk").onclick=async ev=>{ ev.preventDefault();
     const namn=g("#kuN").value.trim(), tel=g("#kuT").value.trim(), adr=g("#kuA").value.trim(), msg=g("#kuMsg");
     if(!namn){ msg.textContent="Skriv ditt namn."; return; }

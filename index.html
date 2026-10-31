@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.33"></script>
+<script src="sb.js?v=2.35"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -948,9 +948,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.34</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.35</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.35</b><time>31 okt 2026</time></div><ul>
+          <li>Säkerhet: bilder och bilagor i Aktuellt och Möten samt startbilden ligger nu i en låst lagringsplats. Bara inloggade medlemmar kan öppna dem, med tillfälliga adresser som slutar gälla efter ett dygn.</li></ul></li>
         <li><div><b>2.34</b><time>31 okt 2026</time></div><ul>
           <li>Underflikarna under Styrelsen och Dokument stannar kvar under sidhuvudet när man scrollar.</li></ul></li>
         <li><div><b>2.33</b><time>31 okt 2026</time></div><ul>
@@ -1578,17 +1580,36 @@ function itemCard(kind,it,fields,view){
   return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row">${kind==="nyheter"?`${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}<button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis"}</button>`:""}<button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
 }
 const ATT_KINDS=["nyheter","moten"];
-const blobUrl=id=>(window.BLOB_BASE||"/_blob/")+encodeURIComponent(id);
+/* Bilagor och startbild ligger i en låst lagringsplats ("filer"). Appen hämtar tillfälliga,
+   signerade adresser (giltiga ett dygn) och sparar dem lokalt så att bilderna kan cachas. */
+const SIGN=(()=>{ try{ return JSON.parse(localStorage.getItem("vag_sign")||"{}"); }catch(e){ return {}; } })();
+let signQ=new Set(), signT=null;
+function blobUrl(id){ if(!id) return ""; const c=SIGN[id]; if(c&&c.exp>Date.now()) return c.url; signQ.add(id); if(!signT) signT=setTimeout(signFlush,0); return ""; }
+const dlUrl=(u,n)=>u?u+(u.includes("?")?"&":"?")+"download="+encodeURIComponent(n):"";
+async function signFlush(){
+  signT=null; const ids=[...signQ]; signQ.clear(); if(!ids.length||!window.SB) return;
+  try{
+    const {data,error}=await window.SB.storage.from("filer").createSignedUrls(ids,86400); if(error) throw error;
+    const t=Date.now(); (data||[]).forEach((d,i)=>{ const id=d.path||ids[i]; SIGN[id]= d.signedUrl ? {url:d.signedUrl,exp:t+20*3600e3} : {url:"",exp:t+60e3}; });
+    for(const k in SIGN) if(SIGN[k].exp<t) delete SIGN[k];
+    try{ localStorage.setItem("vag_sign",JSON.stringify(SIGN)); }catch(e){}
+  }catch(e){ return; }
+  applySigned(); renderHero();
+}
+function applySigned(){
+  document.querySelectorAll("[data-sign]").forEach(el=>{ const u=blobUrl(el.dataset.sign); if(!u) return; const a=el.dataset.sattr;
+    if(a==="src") el.src=u; else if(a==="href") el.href=u; else if(a==="dl") el.href=dlUrl(u,el.dataset.sname||"fil"); else if(a==="pdf") el.dataset.pdfopen=u; });
+}
 function attView(it){
   const imgs=(it.bilder||[]), docs=(it.filer||[]);
-  return (imgs.length?`<div class="gallery">${imgs.map(b=>`<a href="${blobUrl(b.id)}" target="_blank" rel="noopener"><img src="${blobUrl(b.id)}" alt="${E(b.namn||"Bild")}" loading="lazy"></a>`).join("")}</div>`:"")
+  return (imgs.length?`<div class="gallery">${imgs.map(b=>{ const u=blobUrl(b.id); return `<a data-sign="${E(b.id)}" data-sattr="href" ${u?`href="${E(u)}"`:""} target="_blank" rel="noopener"><img data-sign="${E(b.id)}" data-sattr="src" ${u?`src="${E(u)}"`:""} alt="${E(b.namn||"Bild")}" loading="lazy"></a>`; }).join("")}</div>`:"")
    + (docs.length?`<div class="docs">${docs.map(f=>{ const u=blobUrl(f.id), n=f.namn||"Dokument";
-       return `<div class="docrow"><span class="docname">${ico("file")}<span>${E(n)}</span></span><span class="docbtns"><button type="button" class="small" data-pdfopen="${E(u)}" data-pdfname="${E(n)}">Öppna</button><a class="btnlink" href="${E(u)}?download=${encodeURIComponent(n)}" download="${E(n)}">Ladda ner</a></span></div>`; }).join("")}</div>`:"");
+       return `<div class="docrow"><span class="docname">${ico("file")}<span>${E(n)}</span></span><span class="docbtns"><button type="button" class="small" data-sign="${E(f.id)}" data-sattr="pdf" data-pdfopen="${E(u)}" data-pdfname="${E(n)}">Öppna</button><a class="btnlink" data-sign="${E(f.id)}" data-sattr="dl" data-sname="${E(n)}" ${u?`href="${E(dlUrl(u,n))}"`:""} download="${E(n)}">Ladda ner</a></span></div>`; }).join("")}</div>`:"");
 }
 function attEdit(it){
   const imgs=(it.bilder||[]), docs=(it.filer||[]);
   return `<div class="attedit">
-    ${imgs.length||docs.length?`<div class="attlist">${imgs.map(b=>`<div class="att"><img src="${blobUrl(b.id)}" alt=""><button type="button" class="danger" data-attdel="bilder:${E(b.id)}" aria-label="Ta bort bild">✕</button></div>`).join("")}${docs.map(f=>`<div class="att doc"><span>📄 ${E(f.namn)}</span><button type="button" class="danger" data-attdel="filer:${E(f.id)}" aria-label="Ta bort fil">✕</button></div>`).join("")}</div>`:""}
+    ${imgs.length||docs.length?`<div class="attlist">${imgs.map(b=>`<div class="att"><img data-sign="${E(b.id)}" data-sattr="src" ${blobUrl(b.id)?`src="${E(blobUrl(b.id))}"`:""} alt=""><button type="button" class="danger" data-attdel="bilder:${E(b.id)}" aria-label="Ta bort bild">✕</button></div>`).join("")}${docs.map(f=>`<div class="att doc"><span>📄 ${E(f.namn)}</span><button type="button" class="danger" data-attdel="filer:${E(f.id)}" aria-label="Ta bort fil">✕</button></div>`).join("")}</div>`:""}
     <div class="row">
       <label class="filebtn">📷 Lägg till bild<input type="file" accept="image/*" multiple data-upload="bilder"></label>
       <label class="filebtn">📄 Bifoga PDF<input type="file" accept="application/pdf" multiple data-upload="filer"></label>
@@ -1719,7 +1740,7 @@ function renderLists(){
   refreshMemDlg();
 }
 function renderHero(){
-  const w=q("#welcome"); if(!w) return; const id=site.startbild&&site.startbild.id;
+  const w=q("#welcome"); if(!w) return; const id=site.startbild&&site.startbild.id&&blobUrl(site.startbild.id)?site.startbild.id:"";
   w.classList.toggle("has-img",!!id); w.style.setProperty("--hero-img", id?`url("${blobUrl(id)}")`:"none");
   const del=q("#heroDel"); if(del) del.hidden=!id;
   const pv=q("#heroPrev"); if(pv){ pv.classList.toggle("has-img",!!id); pv.style.backgroundImage=id?`url("${blobUrl(id)}")`:""; pv.querySelector("span").hidden=!!id; }
@@ -1846,7 +1867,7 @@ async function openPdf(url,name,dlUrl){
     }
   }catch(err){ box.innerHTML=`<p class="pdfmsg">Det gick inte att visa filen här. Använd Ladda ner i stället.</p>`; }
 }
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"); if(b) openPdf(b.dataset.pdfopen,b.dataset.pdfname||"Dokument"); });
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"); if(!b) return; if(!b.dataset.pdfopen){ setMsg("Filen hämtas, försök igen om en sekund."); blobUrl(b.dataset.sign); return; } openPdf(b.dataset.pdfopen,b.dataset.pdfname||"Dokument",dlUrl(b.dataset.pdfopen,b.dataset.pdfname||"fil")); });
 
 /* ---------- dokument: medlemmarnas (site.dokument, låst lagring "dokument", alla medlemmar läser)
    och styrelsens (styrelse/protokoll, låst lagring "styrelse", bara styrelse och admin) ---------- */
@@ -1875,7 +1896,7 @@ function renderDok(){
   renderLankar();
 }
 async function protUrl(kind,p,dl){
-  if(p.fil.id&&!p.fil.path){ const u=blobUrl(p.fil.id); return dl? u+"?download="+encodeURIComponent(p.fil.namn) : u; }
+  if(p.fil.id&&!p.fil.path){ const u=blobUrl(p.fil.id); if(!u) throw new Error("ej signerad"); return dl? dlUrl(u,p.fil.namn) : u; }
   const {data,error}=await window.SB.storage.from(kind==="medlem"?"dokument":"styrelse").createSignedUrl(p.fil.path,600,dl?{download:p.fil.namn}:undefined);
   if(error) throw error; return data.signedUrl;
 }

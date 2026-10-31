@@ -5,7 +5,7 @@ const SB_URL="https://xhoexctuopvragyqwofs.supabase.co";
 const SB_KEY="sb_publishable_BqABNxP7VA8mG-_-K6voQw_JsTR2yQv";
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,detectSessionInUrl:true,flowType:"implicit"}});
 window.SB=sb;
-window.BLOB_BASE=SB_URL+"/storage/v1/object/public/filer/";
+/* filer-lagringen är låst: appen använder signerade adresser (se blobUrl i index.html) */
 
 let session=null, roll=null, readyRes; const ready=new Promise(r=>readyRes=r);
 const cache=new Map(); const docSubs=new Map(); const colSubs=new Map();
@@ -51,7 +51,7 @@ const user={
 const assets={
   upload:async(blob)=>{ const ext=(blob.type==="application/pdf")?"pdf":(blob.type||"").includes("png")?"png":(blob.type||"").includes("webp")?"webp":"jpg";
     const id=crypto.randomUUID()+"."+ext; const {error}=await sb.storage.from("filer").upload(id,blob,{contentType:blob.type||undefined,upsert:false});
-    if(error) throw error; return {id,url:window.BLOB_BASE+id,sizeBytes:blob.size,contentType:blob.type}; },
+    if(error) throw error; return {id,sizeBytes:blob.size,contentType:blob.type}; },
   delete:async(id)=>{ await sb.storage.from("filer").remove([id]); },
   list:async()=>({assets:[],usage:{}})
 };
@@ -216,7 +216,7 @@ function kontoDialog(s,fraga){
     g("#kPwBox").previousElementSibling.querySelector("small").textContent="Lösenordet är sparat. Du loggar in med mejl och lösenord.";
   };
   if(g("#kNotHjalp")) g("#kNotHjalp").onclick=()=>VagPush.hjalp();
-  if(g("#kOut")) g("#kOut").onclick=()=>sb.auth.signOut().then(()=>location.reload());
+  if(g("#kOut")) g("#kOut").onclick=()=>(LS.set("vag_sign","{}"),sb.auth.signOut()).then(()=>location.reload());
   const notis=async()=>{ const t=g("#kNotTxt"), bx=g("#kNotBtns"); if(!t) return; const st=await VagPush.status();
     const txt={pa:"Påslagna på den här enheten. Du får en notis när det kommer nyheter.",av:"Avstängda på den här enheten.",nekad:"Blockerade i webbläsarens inställningar.",ios:"Lägg appen på hemskärmen för att kunna få notiser.",ej:"Den här webbläsaren kan inte ta emot notiser."}[st];
     t.textContent=txt;
@@ -236,7 +236,7 @@ async function start(s){
   if(!roll){ requestAccess(s); return; }
   try{ await loadAll(); }catch(e){}
   realtime(); ungate(); readyRes();
-  const out=document.getElementById("logout"); if(out){ out.hidden=false; out.onclick=()=>sb.auth.signOut().then(()=>location.reload()); }
+  const out=document.getElementById("logout"); if(out){ out.hidden=false; out.onclick=()=>(LS.set("vag_sign","{}"),sb.auth.signOut()).then(()=>location.reload()); }
   const kb=document.getElementById("kontoBtn"); if(kb){ kb.hidden=false; kb.onclick=()=>kontoDialog(session,false); }
   if(!(s.user.user_metadata&&s.user.user_metadata.har_losen) && LS.get("vag_losen_fraga")!=="nej") setTimeout(()=>kontoDialog(session,true),1200);
   const who=document.getElementById("who"); if(who) who.textContent=s.user.email;
@@ -250,7 +250,7 @@ sb.auth.onAuthStateChange((ev,s)=>{ if(!started && (ev==="INITIAL_SESSION"||ev==
 const H=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 async function requestAccess(s){
   const email=H(s.user.email);
-  const out=()=>{ const b=document.getElementById("gOut"); if(b) b.onclick=()=>sb.auth.signOut().then(()=>location.reload()); };
+  const out=()=>{ const b=document.getElementById("gOut"); if(b) b.onclick=()=>(LS.set("vag_sign","{}"),sb.auth.signOut()).then(()=>location.reload()); };
   const {data:status}=await sb.rpc("min_ansokan");
   if(status==="vantar"){
     gate(`<div class="gatebox"><p class="eyebrow">Väntar på godkännande</p><h1>Tack, din förfrågan är skickad</h1>

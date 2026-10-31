@@ -257,6 +257,17 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+dialog.sentdlg{border:none;border-radius:20px;padding:0;width:min(420px,calc(100vw - 24px));box-shadow:var(--shadow-lg);color:var(--ink);background:var(--surface)}
+dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
+.sentdlg form{display:flex;flex-direction:column;gap:12px;padding:26px 24px 22px;text-align:center}
+.sent-ico{width:64px;height:64px;margin:0 auto 2px;border-radius:50%;display:grid;place-items:center;font-size:2rem;background:var(--accent-soft);color:var(--accent)}
+.sentdlg h2{font-size:1.35rem}
+.sentdlg p{margin:0;color:var(--muted)}
+.sentdlg p strong{color:var(--ink);word-break:break-all}
+.sent-steps{text-align:left;margin:4px 0 0;padding:14px 16px 14px 34px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;gap:8px;font-size:.95rem}
+.sent-steps li::marker{font-weight:700;color:var(--accent)}
+.sent-tip{font-size:.85rem}
+.sentdlg button{min-height:48px;font-size:1rem;margin-top:4px}
 .mailatt{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .attpick{flex:0 0 auto;min-height:40px;padding:8px 14px}
 .attchips{display:flex;flex-wrap:wrap;gap:6px}
@@ -795,9 +806,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.23</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.24</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.24</b><time>31 okt 2026</time></div><ul>
+          <li>När inloggningslänken är skickad visas en ruta som förklarar att mejlet kommer från bhvf@vagappen.se och kan ligga i skräpposten.</li></ul></li>
         <li><div><b>2.23</b><time>31 okt 2026</time></div><ul>
           <li>Inloggningen: knappen låses i 60 sekunder efter att länken skickats, och meddelandet säger tydligt att länken kommer från bhvf@vagappen.se och kan hamna i skräpposten.</li></ul></li>
         <li><div><b>2.22</b><time>31 okt 2026</time></div><ul>

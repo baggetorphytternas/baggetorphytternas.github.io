@@ -68,6 +68,19 @@ function loginForm(msg){
    <label for="gEmail">Din mejladress<input id="gEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se"></label>
    <button type="button" id="gSend">Skicka inloggningslänk</button><p class="gmsg" id="gMsg">${msg||""}</p></div>`);
   let busy=false, timer=null;
+  const popup=(email,igen)=>{ const old=document.getElementById("sentDlg"); if(old) old.remove();
+    const d=document.createElement("dialog"); d.id="sentDlg"; d.className="sentdlg";
+    d.innerHTML=`<form method="dialog"><div class="sent-ico" aria-hidden="true">✉</div>
+      <h2>${igen?"Länken är redan skickad":"Kolla din mejl"}</h2>
+      <p>Vi har skickat en inloggningslänk till<br><strong>${email.replace(/</g,"&lt;")}</strong></p>
+      <ol class="sent-steps">
+        <li>Öppna mejlet från <strong>bhvf@vagappen.se</strong>.</li>
+        <li><strong>Hittar du det inte? Titta i Skräppost</strong> (eller Reklam/Kampanjer). Markera det då som <em>Inte skräppost</em>.</li>
+        <li>Tryck på länken i mejlet, så loggas du in.</li>
+      </ol>
+      <p class="sent-tip">Det kan ta någon minut innan mejlet kommer fram.</p>
+      <button value="ok" autofocus>OK, jag förstår</button></form>`;
+    document.body.appendChild(d); d.addEventListener("close",()=>d.remove()); d.showModal(); };
   const lock=(sek)=>{ const b=document.getElementById("gSend"); clearInterval(timer); let n=sek;
     const tick=()=>{ if(n<=0){ clearInterval(timer); b.disabled=false; b.textContent="Skicka ny länk"; return; } b.disabled=true; b.textContent=`Skicka ny länk om ${n} s`; n--; };
     tick(); timer=setInterval(tick,1000); };
@@ -76,9 +89,9 @@ function loginForm(msg){
     busy=true; document.getElementById("gSend").disabled=true; m.textContent="Skickar…";
     const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
     busy=false;
-    if(!error){ m.innerHTML=`<strong>Länken är skickad till ${email.replace(/</g,"&lt;")}.</strong> Öppna mejlet från <strong>bhvf@vagappen.se</strong> och tryck på länken. Titta i skräpposten om det inte syns inom ett par minuter.`; lock(60); return; }
+    if(!error){ m.innerHTML=`<strong>Länken är skickad till ${email.replace(/</g,"&lt;")}.</strong> Öppna mejlet från <strong>bhvf@vagappen.se</strong> och tryck på länken. Titta i skräpposten om det inte syns inom ett par minuter.`; lock(60); popup(email,false); return; }
     const sek=Number((String(error.message||"").match(/after (\d+) seconds/)||[])[1]);
-    if(error.status===429 && sek>=0 && String(error.message).includes("seconds")){ m.innerHTML=`<strong>Länken är redan skickad.</strong> Titta i inkorgen och i skräpposten efter ett mejl från bhvf@vagappen.se.`; lock(Math.max(sek,5)); return; }
+    if(error.status===429 && sek>=0 && String(error.message).includes("seconds")){ m.innerHTML=`<strong>Länken är redan skickad.</strong> Titta i inkorgen och i skräpposten efter ett mejl från bhvf@vagappen.se.`; lock(Math.max(sek,5)); popup(email,true); return; }
     if(error.status===429){ m.textContent="Många försöker logga in just nu. Vänta några minuter och försök igen."; document.getElementById("gSend").disabled=false; return; }
     m.textContent="Det gick inte att skicka länken. Kontrollera adressen och försök igen om en stund."; document.getElementById("gSend").disabled=false; };
   document.getElementById("gSend").onclick=send;

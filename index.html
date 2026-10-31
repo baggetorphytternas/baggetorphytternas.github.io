@@ -257,6 +257,11 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.tonews{align-self:flex-start}
+.item.prot .docrow{margin-top:4px}
+.item.prot>.row:last-child{justify-content:flex-end}
+.item.prot>.row button{flex:0 0 auto;min-height:34px}
+[data-protdel].armed{color:var(--danger);background:var(--danger-soft)}
 /* Sidhuvud med bild, samma på alla flikar */
 .masthead{position:relative;overflow:hidden;color:#fff;background:linear-gradient(135deg,#1f5c41 0%,#2d7552 55%,#3c8a5f 100%)}
 .masthead::after{content:"";position:absolute;right:0;bottom:-40px;width:420px;height:280px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 340 240' fill='none'%3E%3Cpath d='M20 240 C120 180 140 120 200 90 S320 40 340 10' stroke='white' stroke-opacity='.14' stroke-width='38' stroke-linecap='round'/%3E%3Cpath d='M20 240 C120 180 140 120 200 90 S320 40 340 10' stroke='white' stroke-opacity='.35' stroke-width='3' stroke-dasharray='14 14' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center/contain;pointer-events:none}
@@ -271,7 +276,8 @@ body:not(.is-admin) #accessMgr{display:none}
 .masthead .iconbtn,.masthead button.logout{background:rgba(0,0,0,.32);color:#fff;border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(4px)}
 .masthead .iconbtn:hover,.masthead button.logout:hover,.masthead .iconbtn.on{background:rgba(0,0,0,.5);color:#fff;border-color:rgba(255,255,255,.7)}
 .masthead .role{background:rgba(255,255,255,.18);color:#fff}
-.navbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.topbar{position:sticky;top:0;z-index:20}
+.navbar{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-sm)}
 @media (max-width:760px){
   .mh-in{min-height:150px;padding:10px 14px 16px;gap:10px}
   .mh-title{font-size:1.45rem}
@@ -461,7 +467,7 @@ tfoot td{font-weight:700;border-bottom:none;background:var(--surface-2)}
 .share-row.total{background:var(--accent-soft)}
 
 /* ============ Login gate ============ */
-body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.gated #status{display:none}
+body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display:none}
 #gate{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(1200px 600px at 10% -10%,#2d7552 0%,transparent 60%),linear-gradient(160deg,#1a4f38,#123826)}
 .gatebox{max-width:440px;width:100%;background:var(--surface);border-radius:20px;padding:32px 28px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow-lg)}
 .gatebox::before{content:"";width:56px;height:56px;border-radius:14px;background:url(icon.png) center/cover;margin-bottom:4px;box-shadow:var(--shadow)}
@@ -479,7 +485,6 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
 @media (min-width:1000px){
   #page-arenden:not([hidden]){display:grid;grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:24px;align-items:start}
   #page-arenden>.pghead{grid-column:1/-1}
-  #page-arenden>#caseForm{position:sticky;top:calc(var(--bar-h) + 64px)}
   #st-utskick{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:24px;row-gap:12px;align-items:start}
   #st-utskick>.panel{grid-row:1/span 2}
   #st-utskick>.ph{grid-column:2;grid-row:1}
@@ -575,7 +580,7 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
 @media (max-width:520px){ .ubtns{grid-template-columns:1fr} }
 @media (max-width:420px){ .grid2{grid-template-columns:1fr} }
 @media (prefers-reduced-motion: reduce){ *{transition:none!important} }
-@media print{ .appbar,.masthead,.navbar,.nav,#status{display:none!important} main{padding:0} .panel,.item{box-shadow:none} }
+@media print{ .appbar,.topbar,.nav,#status{display:none!important} main{padding:0} .panel,.item{box-shadow:none} }
 </style>
 </head>
 <body>
@@ -593,6 +598,7 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
   <symbol id="i-chart" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
 </svg>
+<div class="topbar">
 <header class="masthead" id="welcome">
   <div class="mh-in">
     <div class="mh-bar">
@@ -618,6 +624,7 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
     <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span></button>
     <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span></button>
   </nav>
+</div>
 </div>
 <span class="status" id="status" role="status" aria-live="polite">Laddar…</span>
 <main>
@@ -670,6 +677,7 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick">Skapa utskick</button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
+      <button type="button" class="chipbtn" data-st="prot">Protokoll</button>
     </div>
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
@@ -707,15 +715,29 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
       <p class="hint" id="inHint">Mejl till föreningens adress hamnar här, till exempel svar på utskick. Bara styrelsen ser inkorgen. Tryck på ett mejl för att läsa och svara.</p>
       <div id="inList" class="list"></div>
     </section>
+    <section id="st-prot" class="board" hidden>
+      <div class="ph"><h2>Styrelseprotokoll</h2><button type="button" class="ghost small" data-protadd="styrelse">+ <span class="lg">Ladda upp protokoll</span><span class="sm">Ladda upp</span></button></div>
+      <p class="hint">Bara styrelsen och admin kan se de här protokollen. Filerna ligger i en låst lagringsplats.</p>
+      <div id="sprotList" class="list"></div>
+    </section>
   </div>
 
   <div class="page" id="page-moten" hidden>
     <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Möten</h1></div><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
+      <div class="ph"><div class="pagehead"><h1>Möten</h1></div></div>
       <p class="hint">Kallelser, årsstämmor och protokoll.</p>
     </header>
-    <section>
+    <div class="filters subnav" role="tablist" aria-label="Möten">
+      <button type="button" class="chipbtn on" data-mo="list">Möten</button>
+      <button type="button" class="chipbtn" data-mo="prot">Protokoll</button>
+    </div>
+    <section id="mo-list">
+      <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
       <div id="meetList" class="list"></div>
+    </section>
+    <section id="mo-prot" hidden>
+      <div class="ph"><h2>Protokoll</h2><button type="button" class="ghost small board" data-protadd="medlem">+ <span class="lg">Ladda upp protokoll</span><span class="sm">Ladda upp</span></button></div>
+      <div id="protList" class="list"></div>
     </section>
   </div>
 
@@ -767,9 +789,14 @@ body.gated main,body.gated .appbar,body.gated .masthead,body.gated .navbar,body.
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.20</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.21</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.21</b><time>31 okt 2026</time></div><ul>
+          <li>Möten har fått fliken Protokoll där styrelsen laddar upp protokoll som alla medlemmar kan läsa.</li>
+          <li>Styrelsen har fått fliken Protokoll för styrelsens egna protokoll. Bara styrelsen och admin kan se dem, och filerna ligger i en låst lagringsplats.</li>
+          <li>Knappen Lägg upp i Aktuellt när man redigerar ett möte.</li>
+          <li>Sidhuvudet med bild och flikar ligger alltid fast överst när man scrollar.</li></ul></li>
         <li><div><b>2.20</b><time>31 okt 2026</time></div><ul>
           <li>Startbilden ligger nu överst som sidhuvud på alla flikar, med föreningens namn på bilden. Flikarna ligger direkt under bilden.</li>
           <li>Den vita översta raden är borttagen. Kugghjul och Logga ut ligger i bildens övre hörn.</li></ul></li>
@@ -1347,6 +1374,7 @@ function itemCard(kind,it,fields,view){
   if (board && editing.has(it.id)){
     return `<div class="item" data-kind="${kind}" data-id="${it.id}">${fields.map(([k,l,t])=>`<label>${l}${t==="area"?`<textarea rows="4" data-f="${k}">${E(it[k])}</textarea>`:`<input ${t==="date"?'type="date"':t==="tel"?'type="tel" inputmode="tel"':t==="email"?'type="email" inputmode="email"':''} data-f="${k}" value="${E(it[k])}">`}</label>`).join("")}
       ${ATT_KINDS.includes(kind)?attEdit(it):""}
+      ${kind==="moten"?`<button type="button" class="ghost tonews" data-act="tonews">${(site.nyheter||[]).some(n=>n.mote===it.id)?"Uppdatera under Aktuellt":"Lägg upp i Aktuellt"}</button>`:""}
       <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
   }
   return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row"><button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
@@ -1486,7 +1514,7 @@ document.addEventListener("click",async e=>{
   const old=site.startbild&&site.startbild.id; site.startbild=null; saveSite(); renderHero();
   try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(old&&ASSETS) await ASSETS.delete(old); }catch(err){}
 });
-function renderSite(){ renderHero(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+function renderSite(){ renderHero(); renderProt(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
@@ -1566,11 +1594,11 @@ document.addEventListener("click",async e=>{
 
 /* PDF viewer inside the app (pdf.js), works regardless of the browser's PDF settings */
 let pdfjsLib=null;
-async function openPdf(url,name){
+async function openPdf(url,name,dlUrl){
   let d=q("#pdfDlg");
   if(!d){ d=document.createElement("dialog"); d.id="pdfDlg"; d.className="pdfdlg"; document.body.appendChild(d);
     d.addEventListener("click",e=>{ if(e.target.closest("[data-pdfclose]")) d.close(); }); d.addEventListener("close",()=>{ d.querySelector(".pdfpages").innerHTML=""; }); }
-  d.innerHTML=`<div class="pdfhead"><strong>${E(name)}</strong><span class="pdfacts"><a class="btnlink" href="${E(url)}?download=${encodeURIComponent(name)}" download="${E(name)}">Ladda ner</a><button type="button" class="iconbtn" data-pdfclose aria-label="Stäng">✕</button></span></div><div class="pdfpages"><p class="pdfmsg">Öppnar…</p></div>`;
+  d.innerHTML=`<div class="pdfhead"><strong>${E(name)}</strong><span class="pdfacts"><a class="btnlink" href="${E(dlUrl||url+"?download="+encodeURIComponent(name))}" download="${E(name)}">Ladda ner</a><button type="button" class="iconbtn" data-pdfclose aria-label="Stäng">✕</button></span></div><div class="pdfpages"><p class="pdfmsg">Öppnar…</p></div>`;
   d.showModal();
   const box=d.querySelector(".pdfpages");
   try{
@@ -1587,6 +1615,73 @@ async function openPdf(url,name){
 }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"); if(b) openPdf(b.dataset.pdfopen,b.dataset.pdfname||"Dokument"); });
 
+/* ---------- protokoll: medlemmarnas (site.protokoll, öppen fillagring) och styrelsens (styrelse/protokoll, låst fillagring) ---------- */
+let sprot=[], sprotRef=null;
+document.addEventListener("click",e=>{ const t=e.target.closest("[data-mo]"); if(!t) return; document.querySelectorAll("[data-mo]").forEach(x=>x.classList.toggle("on",x===t)); q("#mo-list").hidden=t.dataset.mo!=="list"; q("#mo-prot").hidden=t.dataset.mo!=="prot"; renderProt(); });
+function protRows(list,kind){
+  if(!list.length) return `<p class="empty">${kind==="styrelse"?"Inga styrelseprotokoll uppladdade ännu.":"Inga protokoll uppladdade ännu."}</p>`;
+  return [...list].sort((a,b)=>String(b.datum).localeCompare(String(a.datum))).map(p=>`<div class="item prot" data-pid="${E(p.id)}" data-pkind="${kind}">
+    <span class="meta">${dfmt(p.datum)}</span><h3>${E(p.rubrik||"Protokoll")}</h3>
+    <div class="docrow"><span class="docname">${ico("file")}<span>${E(p.fil.namn)}</span></span><span class="docbtns">
+      <button type="button" class="small" data-protopen>Öppna</button><button type="button" class="ghost small" data-protdl>Ladda ner</button></span></div>
+    ${board?`<div class="row"><button type="button" class="danger" data-protdel>Ta bort</button></div>`:""}</div>`).join("");
+}
+function renderProt(){ const a=q("#protList"); if(a) a.innerHTML=protRows(site.protokoll||[],"medlem"); const b=q("#sprotList"); if(b&&board) b.innerHTML=protRows(sprot,"styrelse"); }
+async function protUrl(kind,p,dl){
+  if(kind==="medlem"){ const u=blobUrl(p.fil.id); return dl? u+"?download="+encodeURIComponent(p.fil.namn) : u; }
+  const {data,error}=await window.SB.storage.from("styrelse").createSignedUrl(p.fil.path,600,dl?{download:p.fil.namn}:undefined);
+  if(error) throw error; return data.signedUrl;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-protopen],[data-protdl],[data-protdel]"); if(!b) return;
+  const card=b.closest("[data-pid]"), kind=card.dataset.pkind, list=kind==="medlem"?(site.protokoll||[]):sprot, p=list.find(x=>x.id===card.dataset.pid); if(!p) return;
+  try{
+    if(b.dataset.protopen!==undefined){ openPdf(await protUrl(kind,p,false),p.fil.namn,await protUrl(kind,p,true)); return; }
+    if(b.dataset.protdl!==undefined){ const a=document.createElement("a"); a.href=await protUrl(kind,p,true); a.download=p.fil.namn; document.body.appendChild(a); a.click(); a.remove(); return; }
+  }catch(err){ setMsg("Kunde inte öppna filen."); return; }
+  if(!board) return;
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort"; },4000); return; }
+  if(kind==="medlem"){ site.protokoll=(site.protokoll||[]).filter(x=>x.id!==p.id); saveSite(); try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(ASSETS) await ASSETS.delete(p.fil.id); }catch(err){} }
+  else { sprot=sprot.filter(x=>x.id!==p.id); try{ await sprotRef.set({items:sprot}); await window.SB.storage.from("styrelse").remove([p.fil.path]); }catch(err){ setMsg("Kunde inte ta bort."); } }
+  renderProt(); setMsg("Protokollet är borttaget.");
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-protadd]"); if(!b||!board) return; const kind=b.dataset.protadd;
+  const moten=sorted(site.moten,true).filter(m=>m.rubrik);
+  const dlg=document.createElement("dialog"); dlg.className="bdlg";
+  dlg.innerHTML=`<form method="dialog"><h2>${kind==="styrelse"?"Ladda upp styrelseprotokoll":"Ladda upp protokoll"}</h2>
+    ${kind==="styrelse"?'<p class="hint">Bara styrelsen och admin kommer att kunna se protokollet.</p>':'<p class="hint">Alla medlemmar kommer att kunna läsa protokollet under Möten.</p>'}
+    ${moten.length&&kind==="medlem"?`<label>Hör till möte<select id="prMote"><option value="">Inget särskilt möte</option>${moten.map(m=>`<option value="${E(m.id)}">${E(m.rubrik)}${m.datum?" ("+E(m.datum)+")":""}</option>`).join("")}</select></label>`:""}
+    <label>Rubrik<input id="prRubrik" required placeholder="${kind==="styrelse"?"t.ex. Styrelsemöte 12 november":"t.ex. Protokoll årsstämma 2026"}"></label>
+    <label>Datum<input id="prDatum" type="date" value="${today()}" required></label>
+    <label class="filebtn" id="prFilL">${ico("file")}<span id="prFilN">Välj PDF</span><input type="file" accept="application/pdf" id="prFil"></label>
+    <p class="status" id="prMsg"></p>
+    <div class="bdlg-btns"><button value="ok" id="prOk">Ladda upp</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+  document.body.appendChild(dlg);
+  const g=id=>dlg.querySelector(id);
+  if(g("#prMote")) g("#prMote").onchange=()=>{ const m=moten.find(x=>x.id===g("#prMote").value); if(m){ g("#prRubrik").value="Protokoll "+m.rubrik.charAt(0).toLowerCase()+m.rubrik.slice(1); if(m.datum) g("#prDatum").value=m.datum; } };
+  g("#prFil").onchange=()=>{ const f=g("#prFil").files[0]; g("#prFilN").textContent=f?f.name:"Välj PDF"; };
+  g("#prOk").onclick=async ev=>{
+    ev.preventDefault(); const f=g("#prFil").files[0], rubrik=g("#prRubrik").value.trim(), datum=g("#prDatum").value, msg=g("#prMsg");
+    if(!rubrik){ msg.textContent="Skriv en rubrik."; return; } if(!f){ msg.textContent="Välj en PDF-fil."; return; }
+    if(f.type&&f.type!=="application/pdf"){ msg.textContent="Filen måste vara en PDF."; return; }
+    g("#prOk").disabled=true; msg.textContent="Laddar upp…";
+    try{
+      if(kind==="medlem"){
+        if(!ASSETS) ASSETS=await claude.use("assets"); if(!ASSETS) throw new Error("assets");
+        const r=await ASSETS.upload(f); const mote=g("#prMote")?g("#prMote").value:"";
+        site.protokoll=[...(site.protokoll||[]),{id:nid(),datum,rubrik,mote,fil:{id:r.id,namn:f.name}}]; saveSite();
+      } else {
+        const path=crypto.randomUUID()+".pdf";
+        const {error}=await window.SB.storage.from("styrelse").upload(path,f,{contentType:"application/pdf",upsert:false}); if(error) throw error;
+        sprot=[...sprot,{id:nid(),datum,rubrik,fil:{path,namn:f.name}}]; await sprotRef.set({items:sprot});
+      }
+      dlg.close(); renderProt(); setMsg("Protokollet är uppladdat.");
+    }catch(err){ g("#prOk").disabled=false; msg.textContent="Det gick inte att ladda upp. Max 20 MB."; }
+  };
+  dlg.addEventListener("close",()=>dlg.remove()); dlg.showModal();
+});
+
 /* board edits on lists */
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b||!board) return;
@@ -1601,6 +1696,16 @@ document.addEventListener("click",e=>{
   const kind=card.dataset.kind, id=card.dataset.id;
   if (b.dataset.act==="edit"){ editing.add(id); renderLists(); }
   else if (b.dataset.act==="done"){ editing.delete(id); renderLists(); }
+  else if (b.dataset.act==="tonews"){
+    const m=(site.moten||[]).find(x=>x.id===id); if(!m) return;
+    if(!m.rubrik){ setMsg("Skriv en rubrik för mötet först."); return; }
+    const rad=[m.datum?dfmt(m.datum).replace(/<[^>]+>/g,""):"", m.plats||""].filter(Boolean).join(" · ");
+    const text=[rad, m.text||"", /^https?:\/\//.test(m.lank||"")?m.lank:""].filter(Boolean).join("\n\n");
+    const nyhet={rubrik:m.rubrik,text,filer:m.filer||[],bilder:m.bilder||[],mote:m.id};
+    const fanns=(site.nyheter||[]).find(n=>n.mote===m.id);
+    if(fanns) Object.assign(fanns,nyhet); else site.nyheter=[...(site.nyheter||[]),{id:nid(),datum:today(),...nyhet}];
+    saveSite(); renderLists(); setMsg(fanns?"Nyheten under Aktuellt är uppdaterad.":"Mötet ligger nu under Aktuellt.");
+  }
   else if (b.dataset.act==="del"){ if(!confirmDel()) return; site[kind]=site[kind].filter(x=>x.id!==id); editing.delete(id); renderLists(); saveSite(); }
 });
 let delArmed=0; function confirmDel(){ const n=Date.now(); if(n-delArmed<4000){ delArmed=0; return true; } delArmed=n; setMsg("Tryck på ta bort en gång till för att bekräfta."); return false; }
@@ -1678,7 +1783,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="prot") renderProt(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
@@ -1880,6 +1985,7 @@ renderSite(); renderCases();
     if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
+    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderProt(); },()=>{}); }
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{
       if (snap.metadata&&snap.metadata.hasPendingWrites) return;

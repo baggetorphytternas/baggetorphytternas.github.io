@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.29"></script>
+<script src="sb.js?v=2.30"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -345,6 +345,9 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .mh-in{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:14px 20px 24px;min-height:220px;display:flex;flex-direction:column;justify-content:space-between;gap:16px}
 .mh-bar{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
 .mh-bar .heroedit{position:static;margin-right:auto}
+.heroprev{height:150px;border-radius:var(--radius-sm);border:1px dashed var(--line-strong);background:linear-gradient(135deg,#1f5c41,#3c8a5f) center/cover no-repeat;display:grid;place-items:center;color:#e6f2ea;font-size:.88rem;text-align:center;padding:12px}
+.heroprev.has-img{border-style:solid}
+.herobtn2{flex:0 0 auto}
 .mh-text{display:flex;flex-direction:column;gap:6px;color:#fff;text-decoration:none;align-self:flex-start;text-shadow:0 1px 8px rgba(0,0,0,.45)}
 .mh-text .eyebrow{color:#e6f2ea}
 .mh-title{font-family:var(--display);font-weight:600;font-size:2.2rem;line-height:1.12;max-width:22ch;text-wrap:balance}
@@ -679,10 +682,6 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 <header class="masthead" id="welcome">
   <div class="mh-in">
     <div class="mh-bar">
-      <div class="heroedit board">
-        <label class="herobtn"><svg class="ico"><use href="#i-file"/></svg><span id="heroLbl">Byt startbild</span><input type="file" accept="image/*" id="heroFile"></label>
-        <button type="button" class="herobtn" id="heroDel" hidden>Ta bort bild</button>
-      </div>
       <span class="role" id="role"></span>
       <button type="button" class="iconbtn admin" id="adminBtn" data-goto="admin" aria-label="Admin" title="Admin"><svg class="ico"><use href="#i-gear"/></svg></button>
       <button type="button" class="iconbtn" id="kontoBtn" hidden aria-label="Mitt konto" title="Mitt konto"><svg class="ico"><use href="#i-user"/></svg></button>
@@ -871,6 +870,15 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
         <button type="button" class="biglink" id="pdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span><strong>Skapa PDF för medlemmar</strong><small>Förslaget med karta och alla fastigheter</small></span></button>
       </div>
     </section>
+    <section class="panel" id="heroSet">
+      <h2>Startbild</h2>
+      <p class="hint">Bilden som visas överst i appen på alla sidor. Välj en liggande bild, gärna av vägen eller bygden.</p>
+      <div class="heroprev" id="heroPrev"><span>Ingen bild vald. Den gröna standardbakgrunden visas.</span></div>
+      <div class="row">
+        <label class="filebtn herobtn2"><svg class="ico"><use href="#i-file"/></svg><span id="heroLbl">Byt startbild</span><input type="file" accept="image/*" id="heroFile"></label>
+        <button type="button" class="danger" id="heroDel" hidden>Ta bort bild</button>
+      </div>
+    </section>
     <section class="panel" id="mailSet">
       <h2>Föreningens mejl</h2>
       <p class="hint">Skriv in föreningens vanliga mejladress. Utskick från appen skickas i föreningens namn, och när medlemmar svarar hamnar svaren i den här brevlådan. Inga lösenord eller andra inställningar behövs.</p>
@@ -880,9 +888,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.29</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.30</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.30</b><time>31 okt 2026</time></div><ul>
+          <li>Startbilden byts och tas bort under Admin, med förhandsvisning. Knapparna ligger inte längre på bilden.</li></ul></li>
         <li><div><b>2.29</b><time>31 okt 2026</time></div><ul>
           <li>Notiser: medlemmar kan slå på notiser, och styrelsen skickar en notis om en nyhet med knappen Skicka notis.</li>
           <li>Mina uppgifter på startsidan: den som är ansvarig för en åtgärd ser den och kan bocka av den. Vägansvarig kan också lägga till nya åtgärder.</li>
@@ -1622,6 +1632,7 @@ function renderHero(){
   const w=q("#welcome"); if(!w) return; const id=site.startbild&&site.startbild.id;
   w.classList.toggle("has-img",!!id); w.style.setProperty("--hero-img", id?`url("${blobUrl(id)}")`:"none");
   const del=q("#heroDel"); if(del) del.hidden=!id;
+  const pv=q("#heroPrev"); if(pv){ pv.classList.toggle("has-img",!!id); pv.style.backgroundImage=id?`url("${blobUrl(id)}")`:""; pv.querySelector("span").hidden=!!id; }
 }
 document.addEventListener("change",async e=>{
   if(e.target.id!=="heroFile"||!board) return;

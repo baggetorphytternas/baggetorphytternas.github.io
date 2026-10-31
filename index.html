@@ -976,6 +976,7 @@ function applyReadOnly(){
 /* ---------- PDF ---------- */
 const NBSP=/ | /g;
 const pdfText=t=>String(t??"").replace(NBSP," ").replace(/−/g,"–");
+function pdfName(n){ return String(n||"").replace(/\s*\((?!tidigare)[^)]*\)/g,"").trim(); }
 function routeText(p){
   const ids=new Set([...(p.route||[]),...((num(p.skogHa)>0&&p.skogRoute)||[])]);
   return state.segments.map(g=>g.id).filter(id=>ids.has(id)).join(", ");
@@ -1015,38 +1016,37 @@ async function makePdf(){
     doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Utkast för diskussion, "+today),M,32);
     y=48;
     head("Sammanfattning");
-    para("Det här är ett förslag till nya andelstal för vägsamfälligheten, räknade på samma sätt som Lantmäteriet gör vid en förrättning. Gällande andelstal kommer från lantmäteriförrättningen 1958. Ett förslag till nya andelstal togs fram 2012 men antogs aldrig, och sedan dess har flera fastigheter tillkommit eller ändrats.");
-    para("Har du synpunkter på hur din fastighet beskrivs, till exempel om den används som fritidshus eller permanentbostad, hör av dig till styrelsen.");
+    para("Förslaget är räknat på samma sätt som Lantmäteriet gör vid en förrättning. Gällande andelstal kommer från förrättningen 1958. Ett förslag togs fram 2012 men antogs aldrig, och sedan dess har flera fastigheter tillkommit.");
+    para("Stämmer inte uppgifterna om din fastighet? Hör av dig till styrelsen.");
     head("Hur andelstalen räknas");
-    para("Varje fastighets andel bygger på två saker: hur mycket trafik fastigheten ger upphov till, och hur lång sträcka av vägen trafiken kör på ut till Stav. Trafiken gånger väglängden ger fastighetens belastning, och andelen är fastighetens belastning delat med summan för alla fastigheter. Den som ansluter närmare än "+fmt(num(S.minKm)*1000)+" meter från utfarten räknas som "+fmt(num(S.minKm)*1000)+" meter.");
+    para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till Stav. Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(num(S.minKm)*1000)+" meter.");
     table(["Fastighetstyp","Trafik per år enligt Lantmäteriets schablon"],[
       ["Permanentbostad",fmt(num(S.perm))+" ton"],
-      ["Fritidsbostad",fmt(num(S.fritNormal))+" ton vid normal användning ("+fmt(num(S.fritLag))+" låg, "+fmt(num(S.fritIntensiv))+" intensiv)"],
-      ["Skogsbruk",fmt(num(S.skog))+" ton per hektar produktiv skog"],
+      ["Fritidsbostad",fmt(num(S.fritNormal))+" ton"],
+      ["Skogsbruk",fmt(num(S.skog))+" ton per hektar skog"],
       ["Jordbruk",fmt(num(S.akerFast))+" ton plus "+fmt(num(S.akerPerHa))+" ton per hektar åker, eller "+fmt(num(S.akerSmallPerHa))+" ton per hektar vid mindre än "+fmt(num(S.akerGrans))+" ha åker"]]);
-    para("En jord och skogsbruksfastighet med bostad får både värdet för bostaden och för sin skog och åker.",9.5,muted);
+    para("En gård med bostad räknas med både bostaden och sin mark.",9.5,muted);
     // map
     doc.addPage(); y=M;
     head("Vägen och delsträckorna");
     try{ const img=await imgData("vagkarta.png"); const h=CW*1200/1474; doc.addImage(img,"PNG",M,y,CW,h); y+=h+5; }catch(e){ para("Kartan kunde inte läggas in.",9.5,muted); }
     const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
     table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,"cirka "+fmt(num(g.m))+" m"]).concat([["","Totalt","cirka "+fmt(segTot)+" m"]]),{columnStyles:{0:{cellWidth:24},2:{cellWidth:32,halign:"right"}}});
-    para("Längderna är uppmätta på fastighetskartan och stämmer på ungefär 5 % när.",9,muted);
+    para("Längderna är uppmätta på fastighetskartan.",9,muted);
     // properties
     doc.addPage(); y=M;
     head("Fastigheterna och föreslagna andelar");
     const h1=["Fastighet","Typ","Kör på delsträcka","Väglängd","Förslag 2012","Ny andel"].concat(showKr?["Kr per år"]:[]);
     const b1=sorted.map(r=>{
       const vl = r.fixed!==null ? "" : fmt(r.d,1)+" km";
-      return [r.p.namn,typeText(r.p),routeText(r.p),vl,r.p.andel2012?r.p.andel2012.replace(".",",")+" %":"ny",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
+      return [pdfName(r.p.namn),typeText(r.p),routeText(r.p),vl,r.p.andel2012?r.p.andel2012.replace(".",",")+" %":"ny",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
     });
     b1.push(["Totalt","","","","100 %",fmt(rows.reduce((s,r)=>s+r.disp,0),1)+" %"].concat(showKr?[fmt(Math.round(rows.reduce((s,r)=>s+r.kr,0)))]:[]));
     table(h1,b1,{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:30,fontStyle:"bold"},3:{halign:"right",cellWidth:24},4:{halign:"right",cellWidth:17},5:{halign:"right",fontStyle:"bold",cellWidth:17},6:{halign:"right"}},didParseCell:d=>{ if(d.section==="body"&&d.row.index===b1.length-1){ d.cell.styles.fontStyle="bold"; } }});
     if (showKr) para("Kronorna visar hur "+fmt(num(S.utdebitering))+" kr per år fördelas enligt de nya andelarna.",9,muted);
-    head("Underlag och antaganden");
-    ["Fastigheternas användning, areal och anslutning till vägen bygger på styrelsens uppgifter.",
-     "Schablonvärdena kommer från Lantmäteriets promemoria om tonkilometermetoden (2025, skog enligt 2010).",
-     "Den senaste lantmäteriförrättningen är från 1958 (akt 04-MEL-1291.1). Nya andelstal kan antas av medlemmarna genom en överenskommelse. Vill någon ha en ny förrättning kan Lantmäteriet göra den."].forEach(t=>para("•  "+t,9.5,ink,1.2));
+    head("Underlag");
+    ["Beräkningen följer Lantmäteriets tonkilometermetod och dess schablonvärden.",
+     "Gällande förrättning är från 1958 (akt 04-MEL-1291.1). Nya andelstal kan antas genom en överenskommelse mellan medlemmarna."].forEach(t=>para("•  "+t,9.5,ink,1.2));
     const pages=doc.getNumberOfPages();
     for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Baggetorp Hytternäs vägsamfällighet · Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
     const blob=doc.output("blob");

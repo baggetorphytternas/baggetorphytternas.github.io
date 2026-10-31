@@ -67,7 +67,8 @@ button.logout .ico{width:16px;height:16px}
 .nav::-webkit-scrollbar{display:none}
 .navtab{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:12px 12px 11px;white-space:nowrap;font-weight:600;font-size:.95rem}
 .navtab .ico{width:18px;height:18px}
-.navtab:hover{color:var(--ink)}
+.navtab:hover{color:var(--ink);background:transparent;border-color:transparent}
+.navtab[aria-selected="true"]:hover{color:var(--accent);border-bottom-color:var(--accent)}
 .navtab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
 .navtab .short{display:none}
 
@@ -256,6 +257,16 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.mgroup{gap:0;padding:0;overflow:hidden}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:14px 16px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.mhead h3{font-size:1.05rem}
+.item.sub{border:none;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;padding:12px 16px;gap:6px}
+.item.sub:last-of-type{border-bottom:none}
+.item.sub .person{align-items:center}
+.item.sub .person>div{flex:1}
+.item.sub .avatar{width:38px;height:38px;font-size:.85rem}
+.item.sub.edit{background:var(--accent-soft)}
+.addcontact{margin:10px 16px 14px;align-self:flex-start}
 dialog.bdlg{border:none;border-radius:var(--radius);padding:0;width:min(460px,calc(100vw - 24px));box-shadow:var(--shadow-lg);color:var(--ink);background:var(--surface)}
 dialog.bdlg::backdrop{background:rgba(15,25,20,.45)}
 dialog.bdlg form{display:flex;flex-direction:column;gap:12px;padding:22px}
@@ -619,9 +630,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.7</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.8</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.8</b><time>31 okt 2026</time></div><ul>
+          <li>Medlemmar visas med ett kort per fastighet, och varje fastighet kan ha flera kontaktpersoner med egen telefon och mejl.</li>
+          <li>När man lägger till en styrelseledamot väljer man bara bland personerna i medlemsregistret.</li></ul></li>
         <li><div><b>2.7</b><time>31 okt 2026</time></div><ul>
           <li>Utskick skickas direkt från appen via föreningens egen mejladress. Inget val av avsändare eller mejlprogram behövs, och svar hamnar i föreningens inkorg.</li>
           <li>Sms, kopiering och egen mejlapp finns kvar under Andra sätt att skicka.</li></ul></li>
@@ -1227,6 +1241,16 @@ const contact=it=>`${it.telefon?`<a class="cbtn" href="tel:${E(it.telefon.replac
 const initials=n=>{ const w=String(n||"").trim().split(/\s+/).filter(Boolean); return E(((w[0]||"?")[0]+(w.length>1?w[w.length-1][0]:"")).toUpperCase()); };
 const person=(top,name,sub,it)=>`<div class="person"><span class="avatar" aria-hidden="true">${initials(name)}</span><div><span class="meta">${top}</span><h3>${E(name||"Namn saknas")}</h3>${sub?`<span class="addr">${E(sub)}</span>`:""}</div></div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}`;
 const memView=it=>person(E(it.fastighet||"Fastighet saknas"),it.namn||"Namn ej ifyllt",it.adress,it);
+/* one card per fastighet with all its contact persons */
+function memGroup(ps){
+  const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress;
+  const rows=ps.map(it=>{
+    if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
+    return `<div class="item sub" data-kind="medlemmar" data-id="${it.id}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
+  }).join("");
+  return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${adr?`<span class="meta">${E(adr)}</span>`:""}</div><span class="badge typ">${ps.length} ${ps.length===1?"kontakt":"kontakter"}</span></div>${rows}
+    ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
+}
 const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;
 const MON=["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
 const dateblk=d=>{ const t=new Date((d||"")+"T12:00:00"); if(!d||isNaN(t)) return `<span class="dateblk"><span>Datum</span><b>?</b><small>&nbsp;</small></span>`; return `<span class="dateblk${d<today()?" past":""}"><span>${MON[t.getMonth()]}</span><b>${t.getDate()}</b><small>${t.getFullYear()}</small></span>`; };
@@ -1241,8 +1265,11 @@ function renderLists(){
   q("#nextMeet").innerHTML = up.length? up.slice(0,2).map(it=>`<div class="item">${meetView(it)}</div>`).join("") : `<p class="empty">Inget möte planerat just nu.</p>`;
   q("#boardList").innerHTML = (site.styrelse||[]).length? site.styrelse.map(it=>itemCard("styrelse",it,BOARD_F,boardView)).join("") : `<p class="empty">Styrelsen är inte inlagd ännu.</p>`;
   const qv=(q("#memSearch").value||"").toLowerCase();
-  const mem=[...(site.medlemmar||[])].sort((a,b)=>String(a.fastighet).localeCompare(String(b.fastighet),"sv")).filter(m=>!qv||(m.fastighet+" "+m.namn).toLowerCase().includes(qv)||editing.has(m.id));
-  q("#memberList").innerHTML = mem.length? mem.map(it=>itemCard("medlemmar",it,MEM_F,memView)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
+  const groups=new Map();
+  (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim().toLowerCase(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
+  const gl=[...groups.entries()].sort((a,b)=>a[0]===""?1:b[0]===""?-1:a[0].localeCompare(b[0],"sv",{numeric:true}))
+    .filter(([k,ps])=>!qv||ps.some(m=>(m.fastighet+" "+m.namn+" "+(m.adress||"")).toLowerCase().includes(qv)||editing.has(m.id)));
+  q("#memberList").innerHTML = gl.length? gl.map(([k,ps])=>memGroup(ps)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
 }
 function renderSite(){ renderIntro(); renderLists(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
@@ -1252,12 +1279,12 @@ async function pickBoardMember(){
   const lc=x=>String(x||"").trim().toLowerCase();
   const people=[]; const seen=new Set();
   (site.medlemmar||[]).forEach(m=>{ if(!m.namn&&!m.epost) return; const k=lc(m.epost)||("n:"+lc(m.namn)+lc(m.fastighet)); if(seen.has(k)) return; seen.add(k); people.push({namn:m.namn||m.epost,epost:m.epost||"",telefon:m.telefon||"",fastighet:m.fastighet||""}); });
-  try{ const {data}=await window.SB.from("roller").select("email,namn"); (data||[]).forEach(r=>{ if(seen.has(lc(r.email))) return; seen.add(lc(r.email)); people.push({namn:r.namn||r.email,epost:r.email,telefon:"",fastighet:""}); }); }catch(e){}
+  /* bara personer ur medlemsregistret, inte inloggningskonton */
   people.sort((a,b)=>a.namn.localeCompare(b.namn,"sv"));
   const isAdmin=document.body.classList.contains("is-admin");
   const dlg=document.createElement("dialog"); dlg.className="bdlg";
   dlg.innerHTML=`<form method="dialog"><h2>Lägg till i styrelsen</h2>
-    <label>Person<select id="pPers"><option value="">Välj person…</option>${people.map((p,i)=>`<option value="${i}">${E(p.namn)}${p.fastighet?" – "+E(p.fastighet):p.epost&&p.epost!==p.namn?" – "+E(p.epost):""}</option>`).join("")}<option value="ny">Någon som inte finns i listan…</option></select></label>
+    <label>Person<select id="pPers"><option value="">Välj person…</option>${people.map((p,i)=>`<option value="${i}">${E(p.namn)}${p.fastighet?" – "+E(p.fastighet):p.epost&&p.epost!==p.namn?" – "+E(p.epost):""}</option>`).join("")}<option value="ny">Någon som inte finns i medlemsregistret…</option></select></label>
     <label>Roll i styrelsen<select id="pRoll">${STYR_ROLLER.map(r=>`<option ${r==="Ledamot"?"selected":""}>${r}</option>`).join("")}<option value="">Annan roll…</option></select></label>
     <label id="pAnnanL" hidden>Annan roll<input id="pAnnan" placeholder="t.ex. Vägansvarig"></label>
     ${isAdmin?`<label class="check" id="pAccL"><input type="checkbox" id="pAcc" checked>Ge personen behörigheten Styrelse i appen</label>`:""}
@@ -1298,6 +1325,7 @@ document.addEventListener("click",e=>{
   if (b.id==="addBoard"){ pickBoardMember(); return; }
   const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+  if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   if (b.id==="addMember"){ const it={id:nid(),fastighet:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   const card=b.closest(".item[data-kind]"); if(!card) return;
   const kind=card.dataset.kind, id=card.dataset.id;

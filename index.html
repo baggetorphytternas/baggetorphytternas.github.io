@@ -233,7 +233,12 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 .rc.none{opacity:.5}
 .ubtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .ubtns button{min-height:46px}
-.ubtns #uMail{grid-column:1/-1}
+.ubtns{grid-template-columns:1fr 1fr!important;margin-top:8px}
+.sendbtn{min-height:52px;font-size:1.05rem;width:100%}
+.sendbtn.armed{background:var(--warn);border-color:var(--warn)}
+.sender{margin:0;padding:12px 14px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--line);font-size:.92rem;color:var(--muted)}
+.sender strong{color:var(--ink)}
+.sender.warn{background:var(--warn-soft);border-color:var(--warn-soft);color:var(--ink)}
 
 /* ============ Fel och synpunkter ============ */
 #caseForm{gap:14px}
@@ -546,25 +551,23 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     <section id="st-utskick" class="board" hidden>
       <div class="panel ufm">
         <h2>Skapa utskick</h2>
-        <p class="hint">Skriv meddelandet, välj mottagare ur medlemsregistret och skicka från din egen mejl eller sms app. Mottagarna läggs som dold kopia så att ingen ser de andras adresser.</p>
+        <p class="hint">Skriv meddelandet, välj mottagare och tryck Skicka. Mejlet går från föreningens egen mejladress, och svar hamnar i föreningens inkorg.</p>
         <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
         <label for="uAmne">Ämne<input id="uAmne"></label>
         <label for="uText">Meddelande<textarea id="uText" rows="9"></textarea></label>
         <div class="ph"><strong>Mottagare</strong><button type="button" class="ghost small" id="uAll">Markera alla</button></div>
         <div id="uRcpt" class="rcpt"></div>
         <label class="check"><input type="checkbox" id="uNews">Lägg också upp meddelandet under Aktuellt</label>
-        <fieldset class="fs"><legend>Avsändare</legend>
-          <label for="uFrom">Skicka från<select id="uFrom"></select></label>
-          <label for="uFromOwn" id="uFromOwnL" hidden>Din mejladress<input id="uFromOwn" type="email" inputmode="email" placeholder="namn@exempel.se"></label>
-          <label for="uVia">Öppna i<select id="uVia"><option value="app">Mejlappen i telefonen eller datorn</option><option value="gmail">Gmail</option><option value="outlook">Outlook</option></select></label>
-          <p class="hint" id="uViaHint"></p>
-        </fieldset>
-        <div class="ubtns">
-          <button type="button" id="uMail"><svg class="ico"><use href="#i-mail"/></svg>Skicka med mejl</button>
-          <button type="button" class="ghost" id="uSms"><svg class="ico"><use href="#i-chat"/></svg>Skicka som sms</button>
-          <button type="button" class="ghost" id="uCopyAddr">Kopiera mejladresser</button>
-          <button type="button" class="ghost" id="uCopyText">Kopiera texten</button>
-        </div>
+        <p class="sender" id="uFromInfo">Kontrollerar föreningens mejl…</p>
+        <button type="button" id="uSend" class="sendbtn" disabled><svg class="ico"><use href="#i-mail"/></svg><span>Skicka</span></button>
+        <details class="more"><summary>Andra sätt att skicka</summary>
+          <div class="ubtns">
+            <button type="button" class="ghost" id="uSms"><svg class="ico"><use href="#i-chat"/></svg>Skicka som sms</button>
+            <button type="button" class="ghost" id="uMail">Öppna i min egen mejlapp</button>
+            <button type="button" class="ghost" id="uCopyAddr">Kopiera mejladresser</button>
+            <button type="button" class="ghost" id="uCopyText">Kopiera texten</button>
+          </div>
+        </details>
         <span class="status" id="uMsg"></span>
         <p class="hint">Bilagor går inte att skicka härifrån. Lägg upp dem under Aktuellt eller Möten och hänvisa till appen i meddelandet.</p>
       </div>
@@ -616,9 +619,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.6</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.7</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.7</b><time>31 okt 2026</time></div><ul>
+          <li>Utskick skickas direkt från appen via föreningens egen mejladress. Inget val av avsändare eller mejlprogram behövs, och svar hamnar i föreningens inkorg.</li>
+          <li>Sms, kopiering och egen mejlapp finns kvar under Andra sätt att skicka.</li></ul></li>
         <li><div><b>2.6</b><time>31 okt 2026</time></div><ul>
           <li>På sidan Styrelsen väljer man ny ledamot ur en rullista med medlemmarna och anger roll. Admin kan samtidigt ge personen behörigheten Styrelse i appen.</li></ul></li>
         <li><div><b>2.5</b><time>31 okt 2026</time></div><ul>
@@ -1327,34 +1333,44 @@ function renderRcpt(){
     return `<label class="rc ${has?"":"none"}"><input type="checkbox" data-rc="${m.id}" ${uSel.has(m.id)&&has?"checked":""} ${has?"":"disabled"}><span><strong>${E(m.fastighet)}</strong> ${E(m.namn)}<small>${has?[m.epost,m.telefon].filter(Boolean).map(E).join(" · "):"Saknar mejl och telefon"}</small></span></label>`; }).join("")
     : `<p class="empty">Medlemsregistret är tomt.</p>`;
 }
-function senders(){ return (site.styrelse||[]).filter(x=>(x.epost||"").includes("@")); }
 function lsGet(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
-function renderFrom(){
-  const sel=q("#uFrom"); const cur=sel.value||lsGet("vag_from");
-  sel.innerHTML = senders().map(x=>`<option value="${E(x.epost)}">${E(x.namn||x.epost)}${x.roll?", "+E(x.roll):""} (${E(x.epost)})</option>`).join("") + `<option value="own">Min egen mejladress</option>`;
-  sel.value = [...sel.options].some(o=>o.value===cur) ? cur : sel.options[0].value;
-  q("#uFromOwn").value = q("#uFromOwn").value || lsGet("vag_own");
-  const v=lsGet("vag_via"); if(v) q("#uVia").value=v;
-  updFrom();
+/* Föreningens egen mejl: skickas av serverfunktionen skicka-utskick */
+let mailCfg=null;
+async function renderFrom(){
+  const info=q("#uFromInfo");
+  if(!mailCfg){ try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"status"}}); mailCfg = error? {konfigurerad:false,fel:true} : data; }catch(e){ mailCfg={konfigurerad:false,fel:true}; } }
+  if(mailCfg.konfigurerad){ info.className="sender"; info.innerHTML=`Skickas från <strong>${E(mailCfg.namn||"föreningen")}</strong> &lt;${E(mailCfg.fran)}&gt;. Svar hamnar i föreningens inkorg.`; }
+  else { info.className="sender warn"; info.innerHTML = mailCfg.fel ? "Kunde inte nå föreningens mejl just nu. Försök igen om en stund, eller använd Andra sätt att skicka." : "Föreningens mejl är inte inställd ännu, så det går inte att skicka härifrån. Använd Andra sätt att skicka tills vidare."; }
+  updSend();
 }
-function fromAddr(){ return q("#uFrom").value==="own" ? q("#uFromOwn").value.trim() : q("#uFrom").value; }
-function updFrom(){
-  q("#uFromOwnL").hidden = q("#uFrom").value!=="own";
-  const via=q("#uVia").value, a=fromAddr();
-  q("#uViaHint").textContent = via==="app" ? "Mejlet skickas från det konto som är standard i din mejlapp. Byt konto i mejlappen innan du skickar om det behövs."
-    : via==="gmail" ? `Gmail öppnas i webbläsaren${a?" med kontot "+a+", om du är inloggad på det":""}.`
-    : `Outlook öppnas i webbläsaren. Logga in med ${a||"rätt konto"} om du inte redan är inloggad.`;
+function updSend(){
+  const b=q("#uSend"); if(!b) return; const n=mailsPicked().length;
+  b.classList.remove("armed"); b.disabled = !(mailCfg&&mailCfg.konfigurerad) || !n;
+  b.querySelector("span").textContent = !(mailCfg&&mailCfg.konfigurerad) ? "Föreningens mejl är inte inställd" : n ? `Skicka till ${n} mottagare` : "Välj mottagare med mejladress";
 }
-["#uFrom","#uVia"].forEach(id=>q(id).addEventListener("change",()=>{ lsSet("vag_from",q("#uFrom").value); lsSet("vag_via",q("#uVia").value); updFrom(); }));
-q("#uFromOwn").addEventListener("input",()=>{ lsSet("vag_own",q("#uFromOwn").value); updFrom(); });
+function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().toLowerCase()).filter(x=>x.includes("@")))]; }
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
-document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); });
+document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
   const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); q("#st-led").hidden=st.dataset.st!=="led"; q("#st-utskick").hidden=st.dataset.st!=="utskick"; if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } return; }
-  const b=e.target.closest("#uAll,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
+  const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
-  if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); return; }
+  if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
+  if (b.id==="uSend"){
+    const till=mailsPicked();
+    if (!text.trim()){ msg.textContent="Skriv ett meddelande först."; return; }
+    if (!till.length){ msg.textContent="Ingen vald mottagare har mejladress."; return; }
+    if (!b.classList.contains("armed")){ b.classList.add("armed"); b.querySelector("span").textContent=`Tryck igen för att skicka till ${till.length}`; setTimeout(()=>{ if(b.classList.contains("armed")) updSend(); },6000); return; }
+    b.classList.remove("armed"); b.disabled=true; b.querySelector("span").textContent="Skickar…"; msg.textContent="";
+    let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{amne,text,till,lank:location.origin+location.pathname}}); res = error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
+    if (res.fel){ msg.textContent=res.fel; updSend(); return; }
+    site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:res.fran,kanal:"mejl",antal:res.skickade},...(site.utskick||[])].slice(0,100);
+    if (q("#uNews").checked && !(site.nyheter||[]).some(x=>x.text===text)) site.nyheter=[...(site.nyheter||[]),{id:nid(),datum:today(),rubrik:amne||"Information",text}];
+    saveSite(); renderLists(); renderULog(); updSend();
+    msg.textContent = `Klart! ${res.skickade} mejl skickade.` + (res.misslyckade&&res.misslyckade.length ? ` Det gick inte att skicka till: ${res.misslyckade.join(", ")}.` : "");
+    return;
+  }
   const mails=[...new Set(picked().map(m=>(m.epost||"").trim()).filter(Boolean))];
   const tels=[...new Set(picked().map(m=>(m.telefon||"").replace(/[^\d+]/g,"")).filter(Boolean))];
   if (b.id==="uCopyAddr"){ try{ await navigator.clipboard.writeText(mails.join(", ")); msg.textContent=mails.length+" adresser kopierade."; }catch(err){ msg.textContent="Kunde inte kopiera."; } return; }
@@ -1363,10 +1379,7 @@ document.addEventListener("click",async e=>{
   let href;
   if (b.id==="uMail"){
     if(!mails.length){ msg.textContent="Ingen vald mottagare har mejladress."; return; }
-    const via=q("#uVia").value, from=fromAddr(), bcc=mails.join(",");
-    if (via==="gmail") href="https://mail.google.com/mail/?view=cm&fs=1"+(from?"&authuser="+encodeURIComponent(from):"")+"&bcc="+encodeURIComponent(bcc)+"&su="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text);
-    else if (via==="outlook"){ const live=/@(outlook|hotmail|live|msn)\./i.test(from); href=(live?"https://outlook.live.com":"https://outlook.office.com")+"/mail/deeplink/compose?bcc="+encodeURIComponent(bcc)+"&subject="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text)+(from&&!live?"&login_hint="+encodeURIComponent(from):""); }
-    else href="mailto:?bcc="+mails.map(encodeURIComponent).join(",")+"&subject="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text);
+    href="mailto:?bcc="+mails.map(encodeURIComponent).join(",")+"&subject="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text);
   } else {
     if(!tels.length){ msg.textContent="Ingen vald mottagare har telefonnummer."; return; }
     const sep=/iPhone|iPad|iPod/.test(navigator.userAgent)?"&":"?";
@@ -1374,10 +1387,10 @@ document.addEventListener("click",async e=>{
   }
   const link=document.createElement("a"); link.href=href; link.target=/^https:/.test(href)?"_blank":"_top"; link.rel="noopener"; document.body.appendChild(link); link.click(); link.remove();
   const n = b.id==="uMail"?mails.length:tels.length;
-  site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:fromAddr(),kanal:b.id==="uMail"?"mejl":"sms",antal:n},...(site.utskick||[])].slice(0,100);
+  site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:b.id==="uMail"?"egen mejlapp":"",kanal:b.id==="uMail"?"mejl":"sms",antal:n},...(site.utskick||[])].slice(0,100);
   if (q("#uNews").checked && !(site.nyheter||[]).some(x=>x.text===text)) site.nyheter=[...(site.nyheter||[]),{id:nid(),datum:today(),rubrik:amne||"Information",text}];
   saveSite(); renderLists(); renderULog();
-  const app = b.id!=="uMail"?"Smsappen" : ({gmail:"Gmail",outlook:"Outlook"}[q("#uVia").value]||"Mejlappen");
+  const app = b.id!=="uMail"?"Smsappen":"Mejlappen";
   msg.innerHTML=`${app} öppnas med ${n} mottagare. Kontrollera avsändaren och tryck skicka där. Öppnades den inte? <a href="${E(href)}" target="${/^https:/.test(href)?"_blank":"_top"}" rel="noopener">Tryck här</a>.`;
 });
 const UTYP={info:"Information",kallelse:"Kallelse",ovrigt:"Övrigt"};

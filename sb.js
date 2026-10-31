@@ -182,7 +182,7 @@ window.VagPush=VagPush;
 function kontoDialog(s,fraga){
   const har=!!(s.user.user_metadata&&s.user.user_metadata.har_losen);
   const d=document.createElement("dialog"); d.className="bdlg kontodlg";
-  const R={admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"}[roll]||"";
+  const R=window.VAG_SUPER?"Superadmin":({admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"}[roll]||"");
   const H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const pwForm=`<div class="kpw" id="kPwBox" ${fraga?"":"hidden"}>
       <input type="email" autocomplete="username" value="${H(s.user.email)}" hidden>
@@ -234,6 +234,8 @@ async function start(s){
   session=s;
   if(!s){ loginForm(); return; }
   const {data}=await sb.rpc("min_roll"); roll=data||null;
+  if(roll==="admin"){ try{ const r=await sb.rpc("ar_superadmin"); window.VAG_SUPER=r.data===true; }catch(e){} }
+  document.body.classList.toggle("is-super",!!window.VAG_SUPER);
   if(!roll){ requestAccess(s); return; }
   try{ await loadAll(); }catch(e){}
   realtime(); ungate(); readyRes();
@@ -348,17 +350,19 @@ async function accessMgr(){
     const st={}; try{ const r=await sb.rpc("inloggningsstatus"); (r.data||[]).forEach(x=>st[x.email]=x.senast_inloggad); }catch(e){}
     const when=t=>{ if(!t) return `<em class="never">Har inte loggat in ännu</em>`; const d=new Date(t); return `<em class="seen">Senast inloggad ${d.toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"})} ${d.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})}</em>`; };
     const aktiva=(data||[]).filter(r=>st[r.email]).length;
+    const SUP=!!window.VAG_SUPER;
+    const kan=r=>SUP ? !r.superadmin : r.roll!=="admin";
     box.innerHTML=`<h2>Inloggning och behörighet</h2>
-     <p class="hint">Bara adresser i listan kan logga in. Medlemmen går till sidans adress, skriver sin mejladress och får en inloggningslänk.</p>
+     <p class="hint">Bara adresser i listan kan logga in. Medlemmen går till sidans adress, skriver sin mejladress och får en inloggningslänk.${SUP?" Som superadmin kan du utse och ta bort admins.":" Bara superadmin kan utse eller ändra admins."}</p>
      <div class="acc-add"><input id="aEmail" type="email" inputmode="email" placeholder="mejladress"><input id="aNamn" placeholder="namn (valfritt)">
-      <select id="aRoll"><option value="medlem">Medlem</option><option value="styrelse">Styrelse</option><option value="admin">Admin</option></select>
+      <select id="aRoll"><option value="medlem">Medlem</option><option value="styrelse">Styrelse</option>${SUP?'<option value="admin">Admin</option>':""}</select>
       <button type="button" id="aAdd">Lägg till</button></div>
      <button type="button" class="ghost small" id="aSync">Lägg till alla mejladresser från medlemsregistret som medlemmar</button>
      <p class="status" id="aMsg">${msg||""}</p>
      <p class="acc-sum"><strong>${aktiva} av ${(data||[]).length}</strong> har loggat in minst en gång.</p>
      <div class="acc-list">${(data||[]).map(r=>`<div class="acc-row"><span><strong>${E(r.namn||r.email)}</strong><small>${E(r.email)}</small>${when(st[r.email])}</span>
-      <select data-aroll="${E(r.email)}">${Object.entries(ROLL).map(([k,v])=>`<option value="${k}" ${k===r.roll?"selected":""}>${v}</option>`).join("")}</select>
-      <button type="button" class="danger" data-adel="${E(r.email)}" aria-label="Ta bort">✕</button></div>`).join("")}</div>`;
+      ${kan(r)?`<select data-aroll="${E(r.email)}">${Object.entries(ROLL).filter(([k])=>SUP||k!=="admin").map(([k,v])=>`<option value="${k}" ${k===r.roll?"selected":""}>${v}</option>`).join("")}</select>
+      <button type="button" class="danger" data-adel="${E(r.email)}" aria-label="Ta bort">✕</button>`:`<span class="acc-fast">${r.superadmin?"Superadmin":ROLL[r.roll]||r.roll}</span>`}</div>`).join("")}</div>`;
     box.querySelector("#aAdd").onclick=async()=>{ const email=box.querySelector("#aEmail").value.trim().toLowerCase(); if(!/^\S+@\S+\.\S+$/.test(email)) return render("Skriv en giltig mejladress.");
       const roll=box.querySelector("#aRoll").value, namn=box.querySelector("#aNamn").value.trim();
       const {error}=await sb.from("roller").upsert({email,roll,namn}); if(error) return render("Kunde inte spara.");

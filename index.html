@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.36"></script>
+<script src="sb.js?v=2.42"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -513,6 +513,7 @@ details.mail[open]{gap:10px}
 .adminrad>div,.adminrad{min-width:0}
 .adminrad strong{display:block}
 .adminrad small{display:block;color:var(--muted);font-size:.85rem}
+.acc-fast{font-size:.85rem;font-weight:700;color:var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:999px;white-space:nowrap}
 .adminrad button.armed{background:var(--warn);border-color:var(--warn);color:#fff}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
 .mcard{height:72px;display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
@@ -1007,9 +1008,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.41</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.42</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.42</b><time>31 okt 2026</time></div><ul>
+          <li>Ny nivå Superadmin med full tillgång. Superadmin kan inte ändras eller tas bort av någon annan, och bara superadmin kan utse eller ta bort admins. Vanliga admins hanterar medlemmar och styrelse.</li></ul></li>
         <li><div><b>2.41</b><time>31 okt 2026</time></div><ul>
           <li>Admin kan ge en styrelseledamot adminbehörighet direkt från ledamotens kort under Styrelsen (Gör till admin / Ta bort admin). Det måste alltid finnas minst en admin.</li></ul></li>
         <li><div><b>2.40</b><time>31 okt 2026</time></div><ul>
@@ -1800,13 +1803,14 @@ async function adminRad(d,it){
   const ep=String(it.epost||"").trim().toLowerCase(), form=d.querySelector("form"), btns=d.querySelector(".bdlg-btns");
   const box=document.createElement("div"); box.className="adminrad"; btns.before(box);
   if(!ep){ box.innerHTML=`<strong>Adminbehörighet</strong><small>Lägg in en mejladress för ledamoten (Ändra) för att kunna ge adminbehörighet.</small>`; return; }
-  const {data:rad,error}=await window.SB.from("roller").select("email,roll").eq("email",ep).maybeSingle();
+  const {data:rad,error}=await window.SB.from("roller").select("email,roll,superadmin").eq("email",ep).maybeSingle();
   let cur=rad;
   if(error){ box.innerHTML=`<strong>Adminbehörighet</strong><small>Kunde inte läsa behörigheten.</small>`; return; }
   const jag=String(minEpost||(await minEpostH())||"").toLowerCase()===ep;
   const visa=()=>{ const r=(cur&&cur.roll)||"";
-    box.innerHTML=`<div><strong>Adminbehörighet</strong><small>${r==="admin"?"Har admin: full tillgång till allt, även inloggningar och behörigheter.":r?"Har behörigheten "+(r==="styrelse"?"Styrelse":"Medlem")+".":"Kan inte logga in än. Mejladressen saknas i inloggningslistan."}</small></div>
-      <button type="button" class="${r==="admin"?"ghost":""} small" id="bpAdm">${r==="admin"?"Ta bort admin":"Gör till admin"}</button>`;
+    box.innerHTML=`<div><strong>Adminbehörighet</strong><small>${cur&&cur.superadmin?"Superadmin: full tillgång till allt. Kan inte ändras av andra.":r==="admin"?"Har admin: full tillgång till allt, även inloggningar och behörigheter.":r?"Har behörigheten "+(r==="styrelse"?"Styrelse":"Medlem")+".":"Kan inte logga in än. Mejladressen saknas i inloggningslistan."}</small></div>
+      ${cur&&cur.superadmin?`<span class="badge typ">Superadmin</span>`:window.VAG_SUPER?`<button type="button" class="${r==="admin"?"ghost":""} small" id="bpAdm">${r==="admin"?"Ta bort admin":"Gör till admin"}</button>`:`<small>Bara superadmin kan ändra adminbehörighet.</small>`}`;
+    if(!box.querySelector("#bpAdm")) return;
     box.querySelector("#bpAdm").onclick=async ev=>{ const b=ev.currentTarget, ny=r==="admin"?"styrelse":"admin";
       if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent=ny==="admin"?"Tryck igen för att bekräfta":"Tryck igen för att ta bort"; return; }
       if(ny!=="admin"){ const {count}=await window.SB.from("roller").select("email",{count:"exact",head:true}).eq("roll","admin"); if((count||0)<=1){ setMsg("Det måste finnas minst en admin."); visa(); return; } }

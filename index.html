@@ -618,9 +618,9 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
         <p class="sender" id="uFromInfo">Kontrollerar föreningens mejl…</p>
         <button type="button" id="uSend" class="sendbtn" disabled><svg class="ico"><use href="#i-mail"/></svg><span>Skicka</span></button>
         <details class="more"><summary>Andra sätt att skicka</summary>
+          <p class="hint">Skicka som sms öppnar sms-appen i din telefon med mottagarnas nummer ifyllda. Meddelandet skickas från ditt eget nummer.</p>
           <div class="ubtns">
             <button type="button" class="ghost" id="uSms"><svg class="ico"><use href="#i-chat"/></svg>Skicka som sms</button>
-            <button type="button" class="ghost" id="uMail">Öppna i min egen mejlapp</button>
             <button type="button" class="ghost" id="uCopyAddr">Kopiera mejladresser</button>
             <button type="button" class="ghost" id="uCopyText">Kopiera texten</button>
           </div>
@@ -688,9 +688,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.14</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.15</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.15</b><time>31 okt 2026</time></div><ul>
+          <li>Valet Öppna i min egen mejlapp är borttaget från Skapa utskick.</li></ul></li>
         <li><div><b>2.14</b><time>31 okt 2026</time></div><ul>
           <li>Admin nås med kugghjulet uppe till höger bredvid Logga ut, i stället för en egen flik i menyn.</li>
           <li>Knappen Rensa i Skapa utskick tömmer ämne och meddelande.</li></ul></li>

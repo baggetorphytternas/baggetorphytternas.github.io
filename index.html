@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.35"></script>
+<script src="sb.js?v=2.36"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -158,6 +158,21 @@ button.danger:hover{background:var(--danger-soft);border-color:var(--danger-soft
 .tile.warn .tico{background:var(--warn-soft);color:var(--warn)}
 .tile span:last-child{display:flex;flex-direction:column;gap:2px}
 .tile small{font-weight:400;color:var(--muted);font-size:.85rem}
+.tile .sm{display:none}
+@media (max-width:760px){
+  .quick{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+  .tile{flex-direction:column;justify-content:center;text-align:center;gap:6px;padding:10px 6px;min-height:0;font-size:.85rem}
+  .tile .tico{width:38px;height:38px;border-radius:10px}
+  .tile .tico .ico{width:20px;height:20px}
+  .tile small,.tile .lg{display:none}
+  .tile .sm{display:inline}
+}
+#kontoBtn{position:relative}
+.kbadge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--warn);color:#fff;font-size:.7rem;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--surface)}
+.kbadge[hidden]{display:none}
+body.is-board #memMine{display:none}
+.kmina{display:flex;flex-direction:column;gap:2px}
+.minadlg .minarow:first-of-type{border-top:none}
 .startgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
 .startgrid>.col{display:flex;flex-direction:column;gap:24px;min-width:0}
 
@@ -471,9 +486,9 @@ details.mail[open]{gap:10px}
 .bdlg-person .avatar{width:56px;height:56px}
 .bdlg-person .contacts{flex-direction:column;align-items:stretch;margin-top:12px}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
-.mcard{height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
+.mcard{height:72px;display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
-.mc-top{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mc-top{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .mc-top strong{font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mc-top small{color:var(--muted);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mc-bot{display:flex;align-items:center;gap:10px;min-width:0}
@@ -727,7 +742,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     <div class="mh-bar">
       <span class="role" id="role"></span>
       <button type="button" class="iconbtn admin" id="adminBtn" data-goto="admin" aria-label="Admin" title="Admin"><svg class="ico"><use href="#i-gear"/></svg></button>
-      <button type="button" class="iconbtn" id="kontoBtn" hidden aria-label="Mitt konto" title="Mitt konto"><svg class="ico"><use href="#i-user"/></svg></button>
+      <button type="button" class="iconbtn" id="kontoBtn" hidden aria-label="Mitt konto" title="Mitt konto"><svg class="ico"><use href="#i-user"/></svg><span class="kbadge" id="kontoBadge" hidden></span></button>
     </div>
     <a class="mh-text" href="#start" data-goto="start">
       <span class="eyebrow">Väg 13986 · Mellösa, Flens kommun</span>
@@ -752,11 +767,10 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <div class="page" id="page-start">
     <div class="pushbanner" id="pushBanner" hidden></div>
     <section class="panel board" id="reqMgr"></section>
-    <section class="panel minaatg" id="minaAtg" hidden></section>
     <div class="quick">
-      <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span>Anmäl fel på vägen<small>Hål, trummor, träd, snö</small></span></button>
-      <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span>Lämna en synpunkt<small>Fråga eller förslag till styrelsen</small></span></button>
-      <button type="button" class="tile" data-goto="styrelse"><span class="tico"><svg class="ico"><use href="#i-phone"/></svg></span><span>Kontakta styrelsen<small>Telefon och mejl</small></span></button>
+      <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span><small>Hål, trummor, träd, snö</small></span></button>
+      <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span><small>Fråga eller förslag till styrelsen</small></span></button>
+      <button type="button" class="tile" data-goto="styrelse"><span class="tico"><svg class="ico"><use href="#i-phone"/></svg></span><span><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakta</span><small>Telefon och mejl</small></span></button>
     </div>
     <div class="startgrid">
       <div class="col">
@@ -781,8 +795,8 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 
   <div class="page" id="page-medlemmar" hidden>
     <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg><span class="lg">Adresslista (PDF)</span><span class="sm">PDF</span></button><button type="button" class="ghost small board" id="addMember">+ <span class="lg">Lägg till medlem</span><span class="sm">Ny medlem</span></button></div></div>
-      <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Ändrade uppgifter? Meddela styrelsen under Fel och synpunkter.</p>
+      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg><span class="lg">Adresslista (PDF)</span><span class="sm">PDF</span></button><button type="button" class="ghost small board" id="addMember">+ <span class="lg">Lägg till medlem</span><span class="sm">Ny medlem</span></button></div></div>
+      <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Du ansvarar själv för att dina uppgifter stämmer. Tryck på Mina uppgifter för att ändra dem.</p>
     </header>
     <section>
       <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn eller fastighet"></label>
@@ -948,9 +962,14 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.35</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.36</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.36</b><time>31 okt 2026</time></div><ul>
+          <li>Varje medlem kan själv ändra sina uppgifter (namn, telefon och adress) via Mitt konto eller knappen Mina uppgifter under Medlemmar. Den som inte finns i registret kan lägga till sig på sin fastighet. Man kan bara ändra sina egna uppgifter.</li>
+          <li>Mina åtgärder har flyttat från startsidan till Mitt konto. En siffra på personikonen visar hur många som är öppna.</li>
+          <li>Startsidan är luftigare: snabbknapparna ligger på en rad på mobilen.</li>
+          <li>Medlemskorten är mindre och visar fastighet och namn. Tryck för alla uppgifter.</li></ul></li>
         <li><div><b>2.35</b><time>31 okt 2026</time></div><ul>
           <li>Säkerhet: bilder och bilagor i Aktuellt och Möten samt startbilden ligger nu i en låst lagringsplats. Bara inloggade medlemmar kan öppna dem, med tillfälliga adresser som slutar gälla efter ett dygn.</li></ul></li>
         <li><div><b>2.34</b><time>31 okt 2026</time></div><ul>
@@ -1666,8 +1685,9 @@ function memCard(k,ps){
   const adr=(ps.find(m=>m.adress)||{}).adress, named=ps.filter(m=>m.namn);
   const av=named.slice(0,3).map(m=>`<span class="avatar">${initials(m.namn)}</span>`).join("")+(named.length>3?`<span class="avatar more">+${named.length-3}</span>`:"");
   return `<button type="button" class="mcard" data-mopen="${E(k)}">
-    <span class="mc-top"><strong>${E(ps[0].fastighet||"Fastighet saknas")}</strong><small>${adr?E(adr):"&nbsp;"}</small></span>
-    <span class="mc-bot"><span class="avs">${av||'<span class="avatar">?</span>'}</span><span class="mc-n">${named.length?E(named.map(m=>m.namn).join(", ")):"Ingen kontakt ifylld"}</span></span></button>`;
+    <span class="avs">${av||'<span class="avatar">?</span>'}</span>
+    <span class="mc-top"><strong>${E(ps[0].fastighet||"Fastighet saknas")}</strong><small>${named.length?E(named.map(m=>m.namn).join(", ")):"Ingen kontakt ifylld"}</small></span>
+    <svg class="ico bc-pil" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`;
 }
 function memDlg(){ let d=q("#memDlg"); if(!d){ d=document.createElement("dialog"); d.id="memDlg"; d.className="bdlg mdlg"; q("#page-medlemmar").appendChild(d);
   d.addEventListener("click",e=>{ if(e.target===d||e.target.closest("[data-mclose]")) d.close(); }); } return d; }
@@ -2095,18 +2115,73 @@ async function loadMina(){
   try{ const [m,v]=await Promise.all([window.SB.rpc("mina_atgarder"),window.SB.rpc("ar_vagansvarig")]); mina=(m.data||[]); arVag=v.data===true; }catch(e){ return; }
   renderMina();
 }
-function renderMina(){
-  const box=q("#minaAtg"); if(!box) return;
-  const öppna=mina.filter(a=>!a.klar).sort((a,b)=>String(a.datum||"9999").localeCompare(String(b.datum||"9999")));
-  const kanLagga=arVag&&!board;
-  box.hidden=!öppna.length&&!kanLagga;
-  if(box.hidden){ box.innerHTML=""; return; }
-  box.innerHTML=`<div class="ph"><h2>Mina uppgifter</h2>${kanLagga?`<button type="button" class="ghost small" id="addMinaAtg">+ <span class="lg">Ny åtgärd</span><span class="sm">Ny</span></button>`:""}</div>
-    ${öppna.length?öppna.map(a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
+const minaOppna=()=>mina.filter(a=>!a.klar).sort((a,b)=>String(a.datum||"9999").localeCompare(String(b.datum||"9999")));
+function minaRader(){
+  const öppna=minaOppna();
+  return öppna.length?öppna.map(a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
       const dag=!a.datum?"":st==="sen"?`<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`:`<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
       return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${a.ansvarig?`<span class="atg-who${a.ansvarigGrupp?" grp":""}">${ico(a.ansvarigGrupp?"users":"user")}${E(a.ansvarig)}</span>`:""}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
-      :`<p class="hint">Inga öppna uppgifter just nu.</p>`}`;
+    :`<p class="hint">Inga öppna åtgärder just nu.</p>`;
 }
+/* Räknare på Mitt konto-knappen; listan visas under Mitt konto → Mina åtgärder */
+function renderMina(){
+  const n=minaOppna().length, bd=q("#kontoBadge"); if(bd){ bd.hidden=!n; bd.textContent=n; }
+  const kb=q("#kontoBtn"); if(kb) kb.setAttribute("aria-label",n?`Mitt konto, ${n} öppna åtgärder`:"Mitt konto");
+  const l=q("#minaDlgList"); if(l) l.innerHTML=minaRader();
+  const t=q("#kMinaTxt"); if(t) t.textContent=n?`${n} öppna åtgärder där du är ansvarig.`:"Inga öppna åtgärder just nu.";
+}
+function minaDialog(){
+  const kanLagga=arVag&&!board;
+  const d=document.createElement("dialog"); d.className="bdlg minadlg";
+  d.innerHTML=`<form method="dialog"><div class="ph"><h2>Mina åtgärder</h2>${kanLagga?`<button type="button" class="ghost small" id="addMinaAtg">+ Ny åtgärd</button>`:""}</div>
+    <p class="hint">Åtgärder där du, eller en grupp du tillhör, är ansvarig. Bocka i när den är klar.</p>
+    <div id="minaDlgList">${minaRader()}</div><div class="bdlg-btns"><button value="close">Stäng</button></div></form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>d.remove()); d.showModal();
+}
+/* Egna kontaktuppgifter i medlemsregistret */
+let minEpost="";
+async function minEpostH(){ if(minEpost) return minEpost; try{ const {data}=await window.SB.auth.getUser(); minEpost=String((data&&data.user&&data.user.email)||"").toLowerCase(); }catch(e){} return minEpost; }
+const minaKontakter=()=>(site.medlemmar||[]).filter(m=>minEpost&&String(m.epost||"").trim().toLowerCase()===minEpost);
+async function kontaktDialog(){
+  await minEpostH(); const mk=minaKontakter(), m=mk[0], fast=[...new Set((site.medlemmar||[]).map(x=>x.fastighet).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"sv"));
+  const d=document.createElement("dialog"); d.className="bdlg";
+  d.innerHTML=`<form method="dialog"><h2>Mina uppgifter</h2>
+    <p class="hint">${m?`Det här står om dig i medlemsregistret${m.fastighet?` för <strong>${E(m.fastighet)}</strong>`:""}. Grannar och styrelsen ser uppgifterna.`:"Du finns inte i medlemsregistret än. Välj din fastighet och fyll i dina uppgifter."}</p>
+    ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>`<option>${E(f)}</option>`).join("")}</select></label>`}
+    <label>Namn<input id="kuN" required autocomplete="name" value="${m?E(m.namn||""):""}"></label>
+    <label>Telefon<input id="kuT" type="tel" inputmode="tel" autocomplete="tel" value="${m?E(m.telefon||""):""}"></label>
+    <label>Adress<input id="kuA" autocomplete="street-address" value="${m?E(m.adress||""):""}"></label>
+    <label>Mejl<input value="${E(minEpost)}" disabled></label>
+    <p class="hint">Mejladressen är den du loggar in med. Vill du byta den, kontakta styrelsen.${m?"":" Finns inte din fastighet i listan? Kontakta styrelsen."}</p>
+    <p class="status" id="kuMsg"></p>
+    <div class="bdlg-btns"><button value="ok" id="kuOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
+  const g=x=>d.querySelector(x);
+  g("#kuOk").onclick=async ev=>{ ev.preventDefault();
+    const namn=g("#kuN").value.trim(), tel=g("#kuT").value.trim(), adr=g("#kuA").value.trim(), msg=g("#kuMsg");
+    if(!namn){ msg.textContent="Skriv ditt namn."; return; }
+    if(!m&&!g("#kuF").value){ msg.textContent="Välj din fastighet."; return; }
+    g("#kuOk").disabled=true; msg.textContent="Sparar…";
+    const r= m ? await window.SB.rpc("uppdatera_min_kontakt",{p_id:m.id,p_namn:namn,p_telefon:tel,p_adress:adr})
+               : await window.SB.rpc("lagg_till_min_kontakt",{p_fastighet:g("#kuF").value,p_namn:namn,p_telefon:tel,p_adress:adr});
+    if(r.error){ g("#kuOk").disabled=false; msg.textContent="Det gick inte att spara. Försök igen."; return; }
+    if(m) Object.assign(m,{namn,telefon:tel,adress:adr}); else site.medlemmar=[...(site.medlemmar||[]),{id:"ny",fastighet:g("#kuF").value,namn,telefon:tel,adress:adr,epost:minEpost}];
+    renderLists(); d.close(); setMsg("Dina uppgifter är sparade.");
+    const kt=q("#kKontTxt"); if(kt) kt.textContent=[namn,tel].filter(Boolean).join(" · ");
+  };
+  d.showModal();
+}
+document.addEventListener("click",e=>{ if(e.target.closest("#memMine")) kontaktDialog(); });
+/* Rader i Mitt konto (dialogen byggs i sb.js) */
+window.kontoBind=async d=>{
+  const box=d.querySelector(".krows"); if(!box) return; await minEpostH(); const m=minaKontakter()[0];
+  const kanMina=minaOppna().length||(arVag&&!board)||mina.length;
+  box.insertAdjacentHTML("afterbegin",`<div class="krow"><div class="ktxt"><strong>Mina uppgifter</strong><small id="kKontTxt">${m?E([m.namn,m.telefon].filter(Boolean).join(" · ")||"Uppgifter saknas"):"Du finns inte i medlemsregistret än."}</small></div><div class="kbtns"><button type="button" class="ghost small" id="kKont">${m?"Ändra":"Lägg till"}</button></div></div>
+    ${kanMina?`<div class="krow"><div class="ktxt"><strong>Mina åtgärder</strong><small id="kMinaTxt"></small></div><div class="kbtns"><button type="button" class="ghost small" id="kMina">Visa</button></div></div>`:""}`);
+  d.querySelector("#kKont").onclick=()=>kontaktDialog();
+  if(d.querySelector("#kMina")) d.querySelector("#kMina").onclick=()=>minaDialog();
+  renderMina();
+};
 document.addEventListener("change",async e=>{
   if(e.target.dataset.minadone===undefined) return; const id=e.target.closest("[data-mid]").dataset.mid; e.target.disabled=true;
   const {error}=await window.SB.rpc("markera_min_atgard",{p_id:id,p_klar:true});

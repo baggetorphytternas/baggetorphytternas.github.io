@@ -226,6 +226,7 @@ function kontoDialog(s,fraga){
     if(g("#kNotTest")) g("#kNotTest").onclick=async()=>{ t.textContent="Skickar testnotis…"; try{ const r=await VagPush.test(); t.textContent = r&&r.skickade ? "Testnotisen är skickad. Den bör dyka upp inom några sekunder. Kommer den inte, tryck på frågetecknet." : "Testnotisen kunde inte levereras. Tryck Stäng av och sedan Slå på igen."; }catch(e){ t.textContent="Det gick inte att skicka testnotisen. Tryck Stäng av och sedan Slå på igen."; } };
   };
   notis();
+  if(!fraga&&window.kontoBind) window.kontoBind(d);
   d.showModal();
 }
 async function start(s){

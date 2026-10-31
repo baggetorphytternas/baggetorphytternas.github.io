@@ -257,6 +257,15 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+details.mail summary h3{font-size:1.02rem}
+details.mail.unread{border-left:4px solid var(--warn)}
+details.mail.unread summary h3{font-weight:800}
+details.mail[open]{gap:10px}
+.mailtext{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;font-size:.95rem;max-height:420px;overflow:auto}
+.navtab{position:relative}
+.navcount{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--warn);color:#fff;font-size:.68rem;font-weight:700;line-height:1}
+@media (max-width:760px){ .navcount{position:absolute;top:4px;left:calc(50% + 6px)} }
+.chipbtn .count{min-width:20px;height:20px;font-size:.72rem;margin-left:4px}
 #boardList{grid-auto-rows:1fr;align-items:stretch}
 #boardList>.item{height:100%}
 #boardList:has(.item input){grid-auto-rows:auto;align-items:start}
@@ -527,7 +536,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
   <nav class="nav" role="tablist" aria-label="Sidor">
     <button type="button" role="tab" class="navtab" data-page="start" aria-selected="true"><svg class="ico"><use href="#i-home"/></svg><span>Start</span></button>
     <button type="button" role="tab" class="navtab" data-page="medlemmar"><svg class="ico"><use href="#i-users"/></svg><span>Medlemmar</span></button>
-    <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span></button>
+    <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span><span class="navcount" id="navInCount" hidden></span></button>
     <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span></button>
     <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span></button>
     <button type="button" role="tab" class="navtab admin" data-page="admin"><svg class="ico"><use href="#i-gear"/></svg><span>Admin</span></button>
@@ -582,6 +591,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     <div class="filters board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick">Skapa utskick</button>
+      <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
     </div>
     <section id="st-led">
       <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div><button type="button" class="ghost small board" id="addBoard">+ Lägg till ledamot</button></div>
@@ -613,6 +623,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
       </div>
       <div class="ph"><h2>Tidigare utskick</h2></div>
       <div id="uLog" class="list"></div>
+    </section>
+    <section id="st-inkorg" class="board" hidden>
+      <div class="ph"><div class="pagehead"><h1>Inkorg</h1></div><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
+      <p class="hint" id="inHint">Mejl till föreningens adress hamnar här, till exempel svar på utskick. Bara styrelsen ser inkorgen. Tryck på ett mejl för att läsa och svara.</p>
+      <div id="inList" class="list"></div>
     </section>
   </div>
 
@@ -666,9 +681,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.11</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.12</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.12</b><time>31 okt 2026</time></div><ul>
+          <li>Inkorg för styrelsen under Styrelsen: mejl till föreningens adress på vagappen.se hamnar här och kan besvaras direkt i appen.</li>
+          <li>Antal olästa mejl visas på fliken Styrelsen.</li></ul></li>
         <li><div><b>2.11</b><time>31 okt 2026</time></div><ul>
           <li>Ny ruta Föreningens mejl på adminsidan: admin skriver bara in föreningens adress. Utskick skickas i föreningens namn och svar går till den adressen.</li></ul></li>
         <li><div><b>2.10</b><time>31 okt 2026</time></div><ul>
@@ -1461,7 +1479,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); q("#st-led").hidden=st.dataset.st!=="led"; q("#st-utskick").hidden=st.dataset.st!=="utskick"; if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
@@ -1500,6 +1518,47 @@ document.addEventListener("click",async e=>{
   saveSite(); renderLists(); renderULog();
   const app = b.id!=="uMail"?"Smsappen":"Mejlappen";
   msg.innerHTML=`${app} öppnas med ${n} mottagare. Kontrollera avsändaren och tryck skicka där. Öppnades den inte? <a href="${E(href)}" target="${/^https:/.test(href)?"_blank":"_top"}" rel="noopener">Tryck här</a>.`;
+});
+/* ---------- inkorg (mejl till föreningens adress) ---------- */
+let inMail=[], inArch=false;
+async function loadInbox(){
+  if(!board||!window.SB) return;
+  const {data,error}=await window.SB.from("inkorg").select("id,mottagen,fran,fran_namn,amne,text,html,last,arkiv,svar").order("mottagen",{ascending:false}).limit(300);
+  if(error) return; inMail=data||[]; updInCount();
+  if(!q("#st-inkorg").hidden && !q("#inList").contains(document.activeElement)) renderInbox();
+}
+function updInCount(){ const n=inMail.filter(m=>!m.last&&!m.arkiv).length;
+  [q("#inCount"),q("#navInCount")].forEach(el=>{ if(!el) return; el.textContent=n; el.hidden=!n; }); }
+function mailText(m){ if(m.text) return m.text; if(!m.html) return ""; try{ const doc=new DOMParser().parseFromString(m.html.replace(/<(script|style|head)[\s\S]*?<\/\1>/gi,"").replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|tr|h[1-6]|li)>/gi,"\n"),"text/html"); return (doc.body.textContent||"").replace(/\n{3,}/g,"\n\n").trim(); }catch(e){ return ""; } }
+const dtfmt=d=>new Date(d).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+function renderInbox(){
+  const list=inMail.filter(m=>!!m.arkiv===inArch);
+  q("#inArchBtn").textContent=inArch?"Visa inkorgen":"Visa arkiv";
+  q("#inList").innerHTML = list.length ? list.map(m=>`<details class="item mail${m.last?"":" unread"}" data-mid="${E(m.id)}">
+    <summary><span class="meta">${!m.last?'<span class="badge ny">Ny</span>':""}${(m.svar||[]).length?'<span class="badge klar">Besvarad</span>':""} ${E(dtfmt(m.mottagen))} · ${E(m.fran_namn||m.fran)}</span><h3>${E(m.amne||"(utan ämne)")}</h3></summary>
+    <p class="meta">Från ${E(m.fran_namn?m.fran_namn+" <"+m.fran+">":m.fran)}</p>
+    <div class="mailtext">${E(mailText(m))||'<em>Mejlet saknar text.</em>'}</div>
+    ${(m.svar||[]).map(s=>`<div class="reply"><strong>Svar ${E(dtfmt(s.datum))}${s.av?" av "+E(s.av):""}:</strong><br>${E(s.text)}</div>`).join("")}
+    <label>Svara ${E(m.fran)}<textarea rows="4" data-replytext></textarea></label>
+    <div class="row acts"><button type="button" data-inreply>Skicka svar</button><button type="button" class="ghost small" data-inarch>${m.arkiv?"Flytta till inkorgen":"Arkivera"}</button><button type="button" class="ghost small" data-inunread>Markera som oläst</button></div>
+    <span class="status" data-inmsg></span></details>`).join("") : `<p class="empty">${inArch?"Arkivet är tomt.":"Inga mejl i inkorgen."}</p>`;
+}
+async function setMail(id,patch){ const m=inMail.find(x=>x.id===id); if(m) Object.assign(m,patch); updInCount(); try{ await window.SB.from("inkorg").update(patch).eq("id",id); }catch(e){} }
+document.addEventListener("toggle",e=>{ const d=e.target; if(!d.matches||!d.matches("details.mail")||!d.open) return; const m=inMail.find(x=>x.id===d.dataset.mid); if(m&&!m.last){ d.classList.remove("unread"); const b=d.querySelector(".badge.ny"); if(b) b.remove(); setMail(m.id,{last:true}); } },true);
+document.addEventListener("click",async e=>{
+  if(e.target.closest("#inArchBtn")){ inArch=!inArch; renderInbox(); return; }
+  const b=e.target.closest("[data-inreply],[data-inarch],[data-inunread]"); if(!b||!board) return;
+  const d=b.closest("details.mail"), id=d.dataset.mid, msg=d.querySelector("[data-inmsg]"), m=inMail.find(x=>x.id===id); if(!m) return;
+  if(b.dataset.inarch!==undefined){ await setMail(id,{arkiv:!m.arkiv}); renderInbox(); return; }
+  if(b.dataset.inunread!==undefined){ await setMail(id,{last:false}); renderInbox(); return; }
+  const text=d.querySelector("[data-replytext]").value;
+  if(!text.trim()){ msg.textContent="Skriv ett svar först."; return; }
+  b.disabled=true; msg.textContent="Skickar…";
+  let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"svara",inkorg_id:id,text}}); res= error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
+  b.disabled=false;
+  if(res.fel){ msg.textContent=res.fel; return; }
+  m.svar=[...(m.svar||[]),{datum:new Date().toISOString(),av:"",text}]; m.last=true; renderInbox();
+  setMsg("Svaret är skickat till "+res.till+".");
 });
 const UTYP={info:"Information",kallelse:"Kallelse",ovrigt:"Övrigt"};
 function renderULog(){
@@ -1612,6 +1671,7 @@ renderSite(); renderCases();
     let owner=false;
     if (U){ owner=(await U.isOwner())===true; board=owner||(await U.canEdit())===true; const cw=await U.can("data.write"); canWrite = cw!==false; me=await U.id(); }
     document.body.classList.toggle("is-board",board);
+    if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "Admin" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
     siteRef=DB.doc("site/main");

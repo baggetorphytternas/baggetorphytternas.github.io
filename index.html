@@ -257,6 +257,8 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.avatar.rollikon{background:var(--rb);color:var(--rf);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rf) 18%,transparent)}
+.avatar.rollikon svg{width:64%;height:64%}
 dialog.sentdlg{border:none;border-radius:20px;padding:0;width:min(420px,calc(100vw - 24px));box-shadow:var(--shadow-lg);color:var(--ink);background:var(--surface)}
 dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .sentdlg form{display:flex;flex-direction:column;gap:12px;padding:26px 24px 22px;text-align:center}
@@ -806,9 +808,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.24</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.25</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.25</b><time>31 okt 2026</time></div><ul>
+          <li>Styrelsens kort har fått symboler för rollerna: klubba för ordförande, penningsäck för kassör, fjäderpenna för sekreterare, valurna för ledamot med flera.</li></ul></li>
         <li><div><b>2.24</b><time>31 okt 2026</time></div><ul>
           <li>När inloggningslänken är skickad visas en ruta som förklarar att mejlet kommer från bhvf@vagappen.se och kan ligga i skräpposten.</li></ul></li>
         <li><div><b>2.23</b><time>31 okt 2026</time></div><ul>
@@ -1462,7 +1466,7 @@ const MEM_F=[["fastighet","Fastighet"],["namn","Namn"],["telefon","Telefon","tel
 const ico=n=>`<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const contact=it=>`${it.telefon?`<a class="cbtn" href="tel:${E(it.telefon.replace(/\s/g,""))}">${ico("phone")}${E(it.telefon)}</a>`:""}${it.epost?`<a class="cbtn" href="mailto:${E(it.epost)}">${ico("mail")}${E(it.epost)}</a>`:""}`;
 const initials=n=>{ const w=String(n||"").trim().split(/\s+/).filter(Boolean); return E(((w[0]||"?")[0]+(w.length>1?w[w.length-1][0]:"")).toUpperCase()); };
-const person=(top,name,sub,it)=>`<div class="person"><span class="avatar" aria-hidden="true">${initials(name)}</span><div><span class="meta">${top}</span><h3>${E(name||"Namn saknas")}</h3>${sub?`<span class="addr">${E(sub)}</span>`:""}</div></div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}`;
+const person=(top,name,sub,it,av)=>`<div class="person">${av||`<span class="avatar" aria-hidden="true">${initials(name)}</span>`}<div><span class="meta">${top}</span><h3>${E(name||"Namn saknas")}</h3>${sub?`<span class="addr">${E(sub)}</span>`:""}</div></div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}`;
 const memView=it=>person(E(it.fastighet||"Fastighet saknas"),it.namn||"Namn ej ifyllt",it.adress,it);
 /* compact card per fastighet; tap to open all contact persons in a dialog */
 let memGroups=new Map();
@@ -1494,7 +1498,22 @@ const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik
 const MON=["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
 const dateblk=d=>{ const t=new Date((d||"")+"T12:00:00"); if(!d||isNaN(t)) return `<span class="dateblk"><span>Datum</span><b>?</b><small>&nbsp;</small></span>`; return `<span class="dateblk${d<today()?" past":""}"><span>${MON[t.getMonth()]}</span><b>${t.getDate()}</b><small>${t.getFullYear()}</small></span>`; };
 const meetView=it=>`<div class="mrow">${dateblk(it.datum)}<div class="mbody">${it.plats?`<span class="meta">${E(it.plats)}</span>`:""}<h3>${E(it.rubrik||"Möte")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}${/^https?:\/\//.test(it.lank||"")?`<a class="open" href="${E(it.lank)}" target="_blank" rel="noopener">${ico("file")}Öppna dokument</a>`:""}</div></div>`;
-const boardView=it=>person(E(it.roll||"Ledamot"),it.namn||"Namn saknas",it.fastighet,it);
+/* Symboler för styrelsens roller */
+const ROLLIKON={
+  ordf:{f:"#9a6b00",b:"#fbefd2",t:"Ordförande",svg:'<path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z" fill="currentColor" fill-opacity=".25"/><path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z"/><path d="M12.4 4l7.6 7.6M14.3 9.7L4.5 19.5"/><path d="M3 21.2h8.5"/>'},
+  vice:{f:"#5b6675",b:"#eceff3",t:"Vice ordförande",svg:'<path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z" fill="currentColor" fill-opacity=".2"/><path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z"/><path d="M14.3 9.7L4.5 19.5"/><path d="M3 21.2h8.5"/>'},
+  kass:{f:"#a67c00",b:"#fff3c4",t:"Kassör",svg:'<path d="M9.2 2.8h5.6l-1.6 3.4h-2.4z" fill="currentColor" fill-opacity=".3"/><path d="M9.2 2.8h5.6l-1.6 3.4h-2.4z"/><path d="M10.6 6.2C6.3 8.6 4.3 12 4.3 15.4c0 3.6 3 5.8 7.7 5.8s7.7-2.2 7.7-5.8c0-3.4-2-6.8-6.3-9.2z" fill="currentColor" fill-opacity=".25"/><path d="M10.6 6.2C6.3 8.6 4.3 12 4.3 15.4c0 3.6 3 5.8 7.7 5.8s7.7-2.2 7.7-5.8c0-3.4-2-6.8-6.3-9.2z"/><text x="12" y="17.6" text-anchor="middle" font-size="6.4" font-weight="800" font-family="system-ui,sans-serif" fill="currentColor" stroke="none">kr</text>'},
+  sekr:{f:"#2856a3",b:"#e3edfb",t:"Sekreterare",svg:'<path d="M20.5 3.5c-6.5.3-11 4.3-12.8 11.2l1.6 1.6C16.2 14.5 20.2 10 20.5 3.5z" fill="currentColor" fill-opacity=".25"/><path d="M20.5 3.5c-6.5.3-11 4.3-12.8 11.2l1.6 1.6C16.2 14.5 20.2 10 20.5 3.5z"/><path d="M16.5 7.5l-8 8M8.5 15.5L5 20.5"/><path d="M12 20.5h8"/>'},
+  leda:{f:"#1f5c41",b:"#e6f0ea",t:"Ledamot",svg:'<rect x="4" y="11" width="16" height="9.5" rx="1.6" fill="currentColor" fill-opacity=".2"/><rect x="4" y="11" width="16" height="9.5" rx="1.6"/><path d="M8 11V4h8v7"/><path d="M9.5 7.6l1.8 1.8 3.4-3.4"/><path d="M8.5 15h7"/>'},
+  supp:{f:"#6b4fa0",b:"#efe9f8",t:"Suppleant",svg:'<path d="M7 3.5h10v8H7z" fill="currentColor" fill-opacity=".2"/><path d="M7 3.5h10v8H7z"/><path d="M5 11.5h14v3H5z" fill="currentColor" fill-opacity=".35"/><path d="M5 11.5h14v3H5z"/><path d="M6.5 14.5v6M17.5 14.5v6"/>'},
+  revi:{f:"#b3412e",b:"#fde8e4",t:"Revisor",svg:'<path d="M5 3h9l4 4v6" /><path d="M14 3v4h4"/><path d="M5 3v17h6"/><circle cx="15.5" cy="16.5" r="3.6" fill="currentColor" fill-opacity=".2"/><circle cx="15.5" cy="16.5" r="3.6"/><path d="M18.2 19.2l2.8 2.8"/>'},
+  vag:{f:"#c25a00",b:"#fde9d6",t:"Vägansvarig",svg:'<path d="M10 3.5h4l5 15H5z" fill="currentColor" fill-opacity=".25"/><path d="M10 3.5h4l5 15H5z"/><path d="M8.6 9h6.8M7.3 13.5h9.4"/><path d="M3 20.5h18"/>'}
+};
+function rollIkon(roll){ const r=String(roll||"").toLowerCase();
+  const k= r.includes("vice")?"vice": r.includes("ordf")?"ordf": r.includes("kass")||r.includes("ekonom")?"kass": r.includes("sekr")?"sekr": r.includes("revis")?"revi": r.includes("suppl")||r.includes("ersätt")?"supp": (r.includes("väg")||r.includes("underhåll")||r.includes("snö"))?"vag": (r.includes("ledam")||!r)?"leda":null;
+  if(!k) return null; const i=ROLLIKON[k];
+  return `<span class="avatar rollikon" style="--rf:${i.f};--rb:${i.b}" title="${i.t}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${i.svg}</svg></span>`; }
+const boardView=it=>person(E(it.roll||"Ledamot"),it.namn||"Namn saknas",it.fastighet,it,rollIkon(it.roll));
 function renderLists(){
   const news=sorted(site.nyheter,true);
   q("#news").innerHTML = news.length? news.slice(0,board?99:6).map(it=>itemCard("nyheter",it,NEWS_F,newsView)).join("") : `<p class="empty">Inga aktuella händelser just nu.</p>`;

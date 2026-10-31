@@ -26,3 +26,8 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
 - Behörighet styrs i databasen (RLS och `security definer`-funktioner), aldrig bara i appen.
 - Nivåer: medlem < styrelse < admin < superadmin. Bara superadmin kan utse eller ta bort admins.
 - Alla filer ligger i låsta lagringsplatser (`filer`, `dokument`, `styrelse`) och hämtas med signerade adresser.
+
+## Filer
+- `index.html` – appen. `app.css` – gemensam stil (höj `app.css?v=` vid ändring). `sb.js` – inloggning och Supabase.
+- `verktyg.html` – andelstalsverktyget (eget fönster, läser/skriver `vag/config`, bara admin kan ändra).
+- Testskript (Playwright) ligger i Vag-repot under `tests/`.

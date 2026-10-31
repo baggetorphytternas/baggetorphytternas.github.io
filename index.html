@@ -170,7 +170,7 @@ button.danger:hover{background:var(--danger-soft);border-color:var(--danger-soft
 #kontoBtn{position:relative}
 .kbadge{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--warn);color:#fff;font-size:.7rem;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--surface)}
 .kbadge[hidden]{display:none}
-body.is-board #memMine{display:none}
+
 .kmina{display:flex;flex-direction:column;gap:2px}
 .minadlg .minarow:first-of-type{border-top:none}
 .startgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
@@ -506,6 +506,14 @@ details.mail[open]{gap:10px}
 .adminrad>div,.adminrad{min-width:0}
 .adminrad strong{display:block}
 .adminrad small{display:block;color:var(--muted);font-size:.85rem}
+.regstat{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
+.regstat .rs{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 12px;display:inline-flex;align-items:baseline;gap:5px}
+.regstat .rs b{font-size:.95rem}
+.regstat .rs span{font-size:.82rem;color:var(--muted)}
+.regstat .rs.warn{border-color:var(--warn);background:var(--warn-soft)}
+.regbtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.regbtns .tile{min-height:72px}
+@media (max-width:760px){ .regbtns .tile{flex-direction:row!important;text-align:left!important;justify-content:flex-start!important;padding:12px!important} .regbtns .tile small{display:block!important} .regbtns .tile .tico{width:40px!important;height:40px!important} }
 .acc-fast{font-size:.85rem;font-weight:700;color:var(--accent);padding:6px 10px;background:var(--accent-soft);border-radius:999px;white-space:nowrap}
 .adminrad button.armed{background:var(--warn);border-color:var(--warn);color:#fff}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
@@ -834,7 +842,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 
   <div class="page" id="page-medlemmar" hidden>
     <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg><span class="lg">Adresslista (PDF)</span><span class="sm">PDF</span></button><button type="button" class="ghost small board" id="addMember">+ <span class="lg">Lägg till medlem</span><span class="sm">Ny medlem</span></button></div></div>
+      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button></div></div>
       <p class="hint">Fastighetsägarna längs vägen. Håll dina egna uppgifter aktuella under Mina uppgifter.</p>
     </header>
     <section>
@@ -846,6 +854,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <div class="page" id="page-styrelse" hidden>
     <div class="subwrap board"><div class="filters subnav board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
+      <button type="button" class="chipbtn" data-st="reg">Register</button>
       <button type="button" class="chipbtn" data-st="utskick"><span class="lg">Skapa utskick</span><span class="sm">Utskick</span></button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
       <button type="button" class="chipbtn" data-st="prot">Dokument</button>
@@ -863,6 +872,15 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
         <p class="hint">Personer med särskilda uppdrag som inte sitter i styrelsen, till exempel vägansvarig och revisor.</p>
         <div id="funkList" class="cards"></div>
       </div>
+    </section>
+    <section id="st-reg" class="board" hidden>
+      <div class="ph"><h2>Medlemsregister</h2></div>
+      <p class="hint">Medlemmarna håller själva sina uppgifter aktuella. Befintliga kontakter ändrar du under Medlemmar → fastigheten → Ändra.</p>
+      <div class="regbtns">
+        <button type="button" class="tile" id="addMember"><span class="tico"><svg class="ico"><use href="#i-users"/></svg></span><span>Ny medlem<small>Lägg till en fastighet eller kontaktperson</small></span></button>
+        <button type="button" class="tile" id="memPdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span>Adresslista (PDF)<small>Alla fastigheter och kontakter, för styrelsens arbete</small></span></button>
+      </div>
+      <div class="regstat" id="regStat"></div>
     </section>
     <section id="st-utskick" class="board" hidden>
       <div class="panel ufm">
@@ -1001,9 +1019,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.43</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.44</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.44</b><time>31 okt 2026</time></div><ul>
+          <li>Knapparna PDF och Ny medlem har flyttat från Medlemmar till en ny underflik Styrelsen → Register, med en översikt över registret (fastigheter, kontakter och vad som saknas).</li></ul></li>
         <li><div><b>2.43</b><time>31 okt 2026</time></div><ul>
           <li>Underflikarna ligger nu alltid precis under sidhuvudet, ovanför sidans rubrik, och ser likadana ut på alla sidor (Start, Styrelsen och Dokument).</li></ul></li>
         <li><div><b>2.42</b><time>31 okt 2026</time></div><ul>
@@ -1866,7 +1886,7 @@ document.addEventListener("click",async e=>{
   const old=site.startbild&&site.startbild.id; site.startbild=null; saveSite(); renderHero();
   try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(old&&ASSETS) await ASSETS.delete(old); }catch(err){}
 });
-function renderSite(){ renderHero(); renderDok(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+function renderSite(){ renderHero(); renderDok(); if(q("#st-reg")&&!q("#st-reg").hidden) renderReg(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
@@ -2269,6 +2289,16 @@ async function kontaktDialog(){
   d.showModal();
 }
 document.addEventListener("click",e=>{ if(e.target.closest("#memMine")) kontaktDialog(); });
+/* Styrelsen → Register: översikt över medlemsregistret */
+function renderReg(){
+  const el=q("#regStat"); if(!el) return; const m=site.medlemmar||[];
+  const f=new Set(m.map(x=>String(x.fastighet||"").trim().toLowerCase()).filter(Boolean)).size;
+  const k=m.filter(x=>x.namn), utanMejl=k.filter(x=>!String(x.epost||"").includes("@")).length;
+  const utanKontakt=[...new Set(m.map(x=>x.fastighet))].filter(fa=>fa&&!m.some(x=>x.fastighet===fa&&x.namn)).length;
+  const utanBet=[...new Set(m.map(x=>x.fastighet))].filter(fa=>fa&&!m.some(x=>x.fastighet===fa&&x.beteckning)).length;
+  const box=(n,t,warn)=>`<div class="rs${warn&&n?" warn":""}"><b>${n}</b><span>${t}</span></div>`;
+  el.innerHTML=box(f,"fastigheter")+box(k.length,"kontaktpersoner")+box(utanKontakt,"utan kontakt",1)+box(utanMejl,"saknar mejl",1)+box(utanBet,"saknar beteckning",1);
+}
 /* Rader i Mitt konto (dialogen byggs i sb.js) */
 window.kontoBind=async d=>{
   const box=d.querySelector(".krows"); if(!box) return; await minEpostH(); const m=minaKontakter()[0];
@@ -2316,7 +2346,7 @@ document.addEventListener("click",e=>{
   const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,beteckning:first.beteckning||"",namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
-  if (b.id==="addMember"){ const it={id:nid(),fastighet:"",beteckning:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); showMemGroup(""); return; }
+  if (b.id==="addMember"){ const it={id:nid(),fastighet:"",beteckning:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); go("medlemmar"); window.scrollTo({top:0}); renderLists(); saveSite(); showMemGroup(""); return; }
   const card=b.closest(".item[data-kind]"); if(!card) return;
   const kind=card.dataset.kind, id=card.dataset.id;
   if (b.dataset.act==="edit"){ editing.add(id); renderLists(); }
@@ -2421,7 +2451,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderDok(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","reg","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="reg") renderReg(); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderDok(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }

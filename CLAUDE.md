@@ -28,6 +28,13 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
 - Alla filer ligger i låsta lagringsplatser (`filer`, `dokument`, `styrelse`) och hämtas med signerade adresser.
 
 ## Filer
-- `index.html` – appen. `app.css` – gemensam stil (höj `app.css?v=` vid ändring). `sb.js` – inloggning och Supabase.
-- `verktyg.html` – andelstalsverktyget (eget fönster, läser/skriver `vag/config`, bara admin kan ändra).
+- `index.html` – appens HTML. `app.js` – appens kod. `app.css` – gemensam stil. `sb.js` – inloggning och Supabase. Höj `?v=` på den fil som ändrats.
+- Ingen inline-JavaScript: sidorna har en Content-Security-Policy som bara tillåter skript från appen själv.
+- `verktyg.html` + `verktyg.js` – andelstalsverktyget (eget fönster, läser/skriver `vag/config`, bara admin kan ändra).
 - Testskript (Playwright) ligger i Vag-repot under `tests/`.
+
+## Data
+- `docs` (path → JSON): `site/main` (nyheter, möten, styrelse, funktionärer, dokumentlista, länkar, inställningar), `vag/config`, `styrelse/*`, `felanmalan/<uid>`, `synpunkter/<uid>`.
+- `medlemmar` – medlemsregistret, en rad per kontaktperson. Appen sparar bara ändrade rader.
+- `roller` – inloggning och behörighet. `andringslogg` – vem ändrade vad (triggers på docs, medlemmar, roller; bara admin läser).
+- Databasändringar som kräver godkännande läggs som SQL-filer i Vag-repot under `supabase/migrations/`.

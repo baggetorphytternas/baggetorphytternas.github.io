@@ -749,3 +749,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 body.vk main{padding-top:20px}
 a.biglink{text-decoration:none;color:var(--ink)}
 body.gated .vk-top{display:none}
+
+.loggrubrik{font-size:1rem;margin:16px 0 6px}
+.logglist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-sm);max-height:360px;overflow:auto;background:var(--surface)}
+.loggrow{display:flex;gap:12px;padding:8px 12px;border-top:1px solid var(--line);font-size:.88rem;align-items:baseline}
+.loggrow:first-child{border-top:none}
+.loggrow time{flex:none;width:96px;color:var(--muted);font-variant-numeric:tabular-nums}
+.loggrow small{color:var(--muted);margin-left:4px}
+@media (max-width:520px){ .loggrow{flex-direction:column;gap:2px} .loggrow time{width:auto} }

@@ -239,7 +239,6 @@ async function start(s){
   if(!roll){ requestAccess(s); return; }
   try{ await loadAll(); }catch(e){}
   realtime(); ungate(); readyRes();
-  const out=document.getElementById("logout"); if(out){ out.hidden=false; out.onclick=()=>(LS.set("vag_sign","{}"),sb.auth.signOut()).then(()=>location.reload()); }
   const kb=document.getElementById("kontoBtn"); if(kb){ kb.hidden=false; kb.onclick=()=>kontoDialog(session,false); }
   if(!(s.user.user_metadata&&s.user.user_metadata.har_losen) && LS.get("vag_losen_fraga")!=="nej") setTimeout(()=>kontoDialog(session,true),1200);
   const who=document.getElementById("who"); if(who) who.textContent=s.user.email;
@@ -312,7 +311,7 @@ function boardDialog(email,namn){
   return new Promise(resolve=>{
     const site=JSON.parse(JSON.stringify(cache.get("site/main")||{}));
     const lc=x=>String(x||"").trim().toLowerCase();
-    const mem=(site.medlemmar||[]).find(m=>lc(m.epost)===email)||{};
+    const mem=(window.getMedlemmar?window.getMedlemmar():[]).find(m=>lc(m.epost)===email)||{};
     const cur=(site.styrelse||[]).find(m=>lc(m.epost)===email);
     const nm=(cur&&cur.namn)||namn||mem.namn||"";
     const dlg=document.createElement("dialog"); dlg.className="bdlg";
@@ -335,7 +334,7 @@ function boardDialog(email,namn){
       if(!ok) return resolve(null);
       const list=site.styrelse||[]; const i=list.findIndex(m=>lc(m.epost)===email);
       if(i>=0) list[i]={...list[i],...it}; else list.push({id:Math.random().toString(36).slice(2,9),...it});
-      site.styrelse=list;
+      site.styrelse=list; delete site.medlemmar;
       try{ await db.doc("site/main").set(site); resolve(`${it.namn||email} är tillagd i styrelsen som ${roll}.`); }
       catch(e){ resolve("Behörigheten är sparad, men det gick inte att lägga till personen i styrelselistan."); }
     });
@@ -369,7 +368,7 @@ async function accessMgr(){
       const extra = roll==="styrelse" ? await boardDialog(email,namn) : null;
       render(email+" kan nu logga in."+(extra?" "+extra:"")); };
     box.querySelector("#aSync").onclick=async()=>{ const site=cache.get("site/main")||{}; const have=new Set((data||[]).map(r=>r.email));
-      const rows=(site.medlemmar||[]).filter(m=>(m.epost||"").includes("@")).map(m=>({email:m.epost.trim().toLowerCase(),roll:"medlem",namn:m.namn||""})).filter(r=>!have.has(r.email));
+      const rows=(window.getMedlemmar?window.getMedlemmar():[]).filter(m=>(m.epost||"").includes("@")).map(m=>({email:m.epost.trim().toLowerCase(),roll:"medlem",namn:m.namn||""})).filter(r=>!have.has(r.email));
       if(!rows.length) return render("Alla adresser i registret finns redan med.");
       const {error}=await sb.from("roller").insert(rows); render(error?"Kunde inte spara.":rows.length+" medlemmar tillagda."); };
     box.querySelectorAll("[data-aroll]").forEach(s=>s.onchange=async()=>{ if(s.dataset.aroll===session.user.email.toLowerCase() && s.value!=="admin" && !confirm("Du tar bort din egen adminbehörighet. Fortsätta?")) return render();

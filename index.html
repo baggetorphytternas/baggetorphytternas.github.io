@@ -251,6 +251,11 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+dialog.bdlg{border:none;border-radius:var(--radius);padding:0;width:min(460px,calc(100vw - 24px));box-shadow:var(--shadow-lg);color:var(--ink);background:var(--surface)}
+dialog.bdlg::backdrop{background:rgba(15,25,20,.45)}
+dialog.bdlg form{display:flex;flex-direction:column;gap:12px;padding:22px}
+.bdlg-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.bdlg-btns button{flex:1;min-height:46px}
 .acc-row em{font-style:normal;font-size:.8rem;font-weight:600;margin-top:2px}
 .acc-row em.seen{color:var(--ok)}
 .acc-row em.never{color:var(--warn)}
@@ -611,9 +616,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.4</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.5</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.5</b><time>31 okt 2026</time></div><ul>
+          <li>När admin ger någon rollen Styrelse frågar appen vilken roll personen har i styrelsen (t.ex. ordförande eller kassör) och lägger in personen under fliken Styrelsen direkt.</li></ul></li>
         <li><div><b>2.4</b><time>31 okt 2026</time></div><ul>
           <li>Under Inloggning och behörighet syns nu vilka som har loggat in och när senast, och hur många av alla som har kommit igång.</li></ul></li>
         <li><div><b>2.3</b><time>31 okt 2026</time></div><ul>

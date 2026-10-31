@@ -148,6 +148,42 @@ async function requestsMgr(){
 
 /* ---------- access management (admin) ---------- */
 const ROLL={admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"};
+const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
+/* Ask which board role a person has and add/update them in the board list on the Styrelsen page. Resolves to a message or null if skipped. */
+function boardDialog(email,namn){
+  return new Promise(resolve=>{
+    const site=JSON.parse(JSON.stringify(cache.get("site/main")||{}));
+    const lc=x=>String(x||"").trim().toLowerCase();
+    const mem=(site.medlemmar||[]).find(m=>lc(m.epost)===email)||{};
+    const cur=(site.styrelse||[]).find(m=>lc(m.epost)===email);
+    const nm=(cur&&cur.namn)||namn||mem.namn||"";
+    const dlg=document.createElement("dialog"); dlg.className="bdlg";
+    dlg.innerHTML=`<form method="dialog"><h2>Lägg till i styrelsen</h2>
+      <p class="hint">${H(email)} får behörigheten Styrelse. Vilken roll har personen i styrelsen? Personen visas sedan under fliken Styrelsen.</p>
+      <label>Namn<input id="bNamn" value="${H(nm)}" required></label>
+      <label>Roll i styrelsen<select id="bRoll">${STYR_ROLLER.map(r=>`<option ${(cur&&cur.roll?cur.roll===r:r==="Ledamot")?"selected":""}>${r}</option>`).join("")}<option value="">Annan roll…</option></select></label>
+      <label id="bAnnanL" hidden>Annan roll<input id="bAnnan" placeholder="t.ex. Vägansvarig"></label>
+      <div class="grid2"><label>Telefon<input id="bTel" type="tel" value="${H((cur&&cur.telefon)||mem.telefon||"")}"></label>
+      <label>Fastighet<input id="bFast" value="${H((cur&&cur.fastighet)||mem.fastighet||"")}"></label></div>
+      <div class="bdlg-btns"><button value="ok" id="bOk">Lägg till i styrelsen</button><button value="skip" class="ghost" formnovalidate>Hoppa över</button></div></form>`;
+    document.body.appendChild(dlg);
+    if(cur&&cur.roll&&!STYR_ROLLER.includes(cur.roll)){ dlg.querySelector("#bRoll").value=""; dlg.querySelector("#bAnnanL").hidden=false; dlg.querySelector("#bAnnan").value=cur.roll; }
+    dlg.querySelector("#bRoll").onchange=e=>{ dlg.querySelector("#bAnnanL").hidden=e.target.value!==""; };
+    dlg.addEventListener("close",async()=>{
+      const g=id=>dlg.querySelector(id).value.trim();
+      const ok=dlg.returnValue==="ok", roll=g("#bRoll")||g("#bAnnan")||"Ledamot";
+      const it={namn:g("#bNamn"),roll,telefon:g("#bTel"),fastighet:g("#bFast"),epost:email};
+      dlg.remove();
+      if(!ok) return resolve(null);
+      const list=site.styrelse||[]; const i=list.findIndex(m=>lc(m.epost)===email);
+      if(i>=0) list[i]={...list[i],...it}; else list.push({id:Math.random().toString(36).slice(2,9),...it});
+      site.styrelse=list;
+      try{ await db.doc("site/main").set(site); resolve(`${it.namn||email} är tillagd i styrelsen som ${roll}.`); }
+      catch(e){ resolve("Behörigheten är sparad, men det gick inte att lägga till personen i styrelselistan."); }
+    });
+    dlg.showModal();
+  });
+}
 async function accessMgr(){
   const box=document.getElementById("accessMgr"); if(!box) return;
   const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -168,13 +204,19 @@ async function accessMgr(){
       <select data-aroll="${E(r.email)}">${Object.entries(ROLL).map(([k,v])=>`<option value="${k}" ${k===r.roll?"selected":""}>${v}</option>`).join("")}</select>
       <button type="button" class="danger" data-adel="${E(r.email)}" aria-label="Ta bort">✕</button></div>`).join("")}</div>`;
     box.querySelector("#aAdd").onclick=async()=>{ const email=box.querySelector("#aEmail").value.trim().toLowerCase(); if(!/^\S+@\S+\.\S+$/.test(email)) return render("Skriv en giltig mejladress.");
-      const {error}=await sb.from("roller").upsert({email,roll:box.querySelector("#aRoll").value,namn:box.querySelector("#aNamn").value.trim()}); render(error?"Kunde inte spara.":email+" kan nu logga in."); };
+      const roll=box.querySelector("#aRoll").value, namn=box.querySelector("#aNamn").value.trim();
+      const {error}=await sb.from("roller").upsert({email,roll,namn}); if(error) return render("Kunde inte spara.");
+      const extra = roll==="styrelse" ? await boardDialog(email,namn) : null;
+      render(email+" kan nu logga in."+(extra?" "+extra:"")); };
     box.querySelector("#aSync").onclick=async()=>{ const site=cache.get("site/main")||{}; const have=new Set((data||[]).map(r=>r.email));
       const rows=(site.medlemmar||[]).filter(m=>(m.epost||"").includes("@")).map(m=>({email:m.epost.trim().toLowerCase(),roll:"medlem",namn:m.namn||""})).filter(r=>!have.has(r.email));
       if(!rows.length) return render("Alla adresser i registret finns redan med.");
       const {error}=await sb.from("roller").insert(rows); render(error?"Kunde inte spara.":rows.length+" medlemmar tillagda."); };
     box.querySelectorAll("[data-aroll]").forEach(s=>s.onchange=async()=>{ if(s.dataset.aroll===session.user.email.toLowerCase() && s.value!=="admin" && !confirm("Du tar bort din egen adminbehörighet. Fortsätta?")) return render();
-      const {error}=await sb.from("roller").update({roll:s.value}).eq("email",s.dataset.aroll); render(error?"Kunde inte spara.":"Sparat."); });
+      const {error}=await sb.from("roller").update({roll:s.value}).eq("email",s.dataset.aroll); if(error) return render("Kunde inte spara.");
+      const r=(data||[]).find(x=>x.email===s.dataset.aroll)||{};
+      const extra = s.value==="styrelse" ? await boardDialog(s.dataset.aroll,r.namn) : null;
+      render(extra||"Sparat."); });
     let armed=null;
     box.querySelectorAll("[data-adel]").forEach(b=>b.onclick=async()=>{ if(armed!==b.dataset.adel){ armed=b.dataset.adel; b.textContent="Säker?"; return; }
       const {error}=await sb.from("roller").delete().eq("email",b.dataset.adel); render(error?"Kunde inte ta bort.":"Borttagen."); });

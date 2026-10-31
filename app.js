@@ -538,6 +538,8 @@ const STD_LANKAR=[
   {id:"l1",namn:"Trafikverket: enskilda vägar",url:"https://www.trafikverket.se",beskr:"Statsbidrag till enskilda vägar, ansökan och regler. Sök på ”enskilda vägar” på sidan."},
   {id:"l2",namn:"Trafikverket: fel på statlig väg",url:"tel:0771921921",beskr:"Ring 0771-921 921 om fel på en statlig väg, till exempel vid utfarten."},
   {id:"l3",namn:"Lantmäteriet",url:"https://www.lantmateriet.se",beskr:"Gemensamhetsanläggningar, andelstal och samfällighetsföreningsregistret."},
+  {id:"l7",namn:"Lantmäteriets normalstadgar",url:"https://lm.se/globalassets/blanketter/normalstadgar-for-samfallighetsforeningar.pdf",beskr:"Mall för stadgar som många samfällighetsföreningar har antagit (PDF). Föreningens egna stadgar finns under Stadgar och beslut."},
+  {id:"l8",namn:"Guide vid stadgeändring",url:"https://lm.se/globalassets/fastigheter/samfalligheter/guide-vid-stadgeandring.pdf",beskr:"Lantmäteriets vägledning när föreningen vill ändra sina stadgar (PDF)."},
   {id:"l4",namn:"Min karta",url:"https://minkarta.lantmateriet.se",beskr:"Lantmäteriets karta med fastighetsgränser."},
   {id:"l5",namn:"Riksförbundet Enskilda Vägar",url:"https://www.revriks.se",beskr:"Råd och stöd för vägföreningar och samfälligheter."},
   {id:"l6",namn:"Flens kommun",url:"https://www.flen.se",beskr:"Kommunalt bidrag till enskilda vägar och kontakt med kommunen."}];

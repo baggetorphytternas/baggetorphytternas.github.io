@@ -104,7 +104,7 @@
       <p class="hint">Fastighetsägarna längs vägen. Håll dina egna uppgifter aktuella under Mina uppgifter.</p>
     </header>
     <section>
-      <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
+      <label for="memSearch" class="search" id="memSearchL" hidden>Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
       <div id="memberList" class="cards"></div>
     </section>
   </div>
@@ -288,9 +288,11 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.49</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.50</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.50</b><time>1 nov 2026</time></div><ul>
+          <li>Medlemmar: sökrutan visas först när det finns fler än 20 fastigheter, och korten visar bara fastighetens namn, beteckning och kontaktpersoner (utan initialer).</li></ul></li>
         <li><div><b>2.49</b><time>31 okt 2026</time></div><ul>
           <li>Mina uppgifter: står man redan i registret utan mejladress väljer man sig själv under sin fastighet, så kopplas raden till ens inloggning i stället för att man läggs till en gång till.</li></ul></li>
         <li><div><b>2.48</b><time>31 okt 2026</time></div><ul>
@@ -439,6 +441,6 @@
 </main>
 
 
-<script src="app.js?v=2.49"></script>
+<script src="app.js?v=2.50"></script>
 </body>
 </html>

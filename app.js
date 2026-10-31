@@ -176,7 +176,6 @@ function memCard(k,ps){
   const adr=(ps.find(m=>m.adress)||{}).adress, named=ps.filter(m=>m.namn), bet=betOf(ps);
   const av=named.slice(0,3).map(m=>`<span class="avatar">${initials(m.namn)}</span>`).join("")+(named.length>3?`<span class="avatar more">+${named.length-3}</span>`:"");
   return `<button type="button" class="mcard" data-mopen="${E(k)}">
-    <span class="avs">${av||'<span class="avatar">?</span>'}</span>
     <span class="mc-top"><strong>${E(ps[0].fastighet||"Fastighet saknas")}${bet?` <span class="mc-bet">${E(bet)}</span>`:""}</strong><small>${named.length?E(named.map(m=>m.namn).join(", ")):"Ingen kontakt ifylld"}</small></span>
     <svg class="ico bc-pil" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`;
 }
@@ -267,6 +266,9 @@ function renderLists(){
   const funk=site.funktionarer||[];
   q("#funkList").innerHTML = funk.length? funk.map(it=>bc("funktionarer",it)).join("") : `<p class="empty">Inga funktionärer inlagda ännu.</p>`;
   q("#funkBox").hidden = !funk.length && !board;
+  /* Sökrutan visas först när det finns fler än 20 fastigheter. */
+  const antalF=new Set((site.medlemmar||[]).map(m=>String(m.fastighet||"").trim().toLowerCase()).filter(Boolean)).size;
+  const sokL=q("#memSearchL"); if(sokL){ sokL.hidden=antalF<=20; if(sokL.hidden) q("#memSearch").value=""; }
   const qv=(q("#memSearch").value||"").toLowerCase();
   const groups=new Map();
   (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim().toLowerCase(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });

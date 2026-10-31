@@ -257,6 +257,12 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.mailatt{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.attpick{flex:0 0 auto;min-height:40px;padding:8px 14px}
+.attchips{display:flex;flex-wrap:wrap;gap:6px}
+.attchip{display:inline-flex;align-items:center;gap:6px;padding:4px 4px 4px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);font-size:.85rem;font-weight:600;max-width:100%}
+.attchip small{color:var(--muted);font-weight:400}
+.attchip button{padding:2px 8px;font-size:.8rem}
 .tonews{align-self:flex-start}
 .item.prot .docrow{margin-top:4px}
 .item.prot>.row:last-child{justify-content:flex-end}
@@ -690,6 +696,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
         <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
         <label for="uAmne">Ämne<input id="uAmne"></label>
         <label for="uText">Meddelande<textarea id="uText" rows="9"></textarea></label>
+        <div class="mailatt" data-attkey="utskick"></div>
         <div class="row urensa"><button type="button" class="ghost small" id="uClear">Rensa</button></div>
         <div class="ph"><strong>Mottagare</strong><button type="button" class="ghost small" id="uAll">Markera alla</button></div>
         <div id="uRcpt" class="rcpt"></div>
@@ -705,7 +712,6 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
           </div>
         </details>
         <span class="status" id="uMsg"></span>
-        <p class="hint">Bilagor går inte att skicka härifrån. Lägg upp dem under Aktuellt eller Möten och hänvisa till appen i meddelandet.</p>
       </div>
       <div class="ph"><h2>Tidigare utskick</h2></div>
       <div id="uLog" class="list"></div>
@@ -789,9 +795,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.21</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.22</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.22</b><time>31 okt 2026</time></div><ul>
+          <li>Bifoga filer i utskick och i svar från Inkorgen, upp till 15 MB per mejl.</li></ul></li>
         <li><div><b>2.21</b><time>31 okt 2026</time></div><ul>
           <li>Möten har fått fliken Protokoll där styrelsen laddar upp protokoll som alla medlemmar kan läsa.</li>
           <li>Styrelsen har fått fliken Protokoll för styrelsens egna protokoll. Bara styrelsen och admin kan se dem, och filerna ligger i en låst lagringsplats.</li>
@@ -1730,7 +1738,7 @@ document.addEventListener("click",e=>{
   const has=q("#uAmne").value.trim()||q("#uText").value.trim();
   if(has && !b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att rensa"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Rensa"; },4000); return; }
   b.classList.remove("armed"); b.textContent="Rensa";
-  q("#uAmne").value=""; q("#uText").value=""; q("#uNews").checked=false; uTouched=true; q("#uMsg").textContent=""; q("#uAmne").focus();
+  q("#uAmne").value=""; q("#uText").value=""; q("#uNews").checked=false; uTouched=true; q("#uMsg").textContent=""; clearAtt("utskick",true); q("#uAmne").focus();
 });
 q("#uTyp").addEventListener("change",()=>{ if(uTouched && q("#uText").value.trim() && !confirm("Ersätta texten med mallen?")) return; uTouched=false; uFill(); });
 ["#uAmne","#uText"].forEach(s=>q(s).addEventListener("input",()=>{uTouched=true;}));
@@ -1793,11 +1801,11 @@ document.addEventListener("click",async e=>{
     if (!till.length){ msg.textContent="Ingen vald mottagare har mejladress."; return; }
     if (!b.classList.contains("armed")){ b.classList.add("armed"); b.querySelector("span").textContent=`Tryck igen för att skicka till ${till.length}`; setTimeout(()=>{ if(b.classList.contains("armed")) updSend(); },6000); return; }
     b.classList.remove("armed"); b.disabled=true; b.querySelector("span").textContent="Skickar…"; msg.textContent="";
-    let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{amne,text,till,lank:location.origin+location.pathname}}); res = error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
+    let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{amne,text,till,bilagor:getAtt("utskick"),lank:location.origin+location.pathname}}); res = error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
     if (res.fel){ msg.textContent=res.fel; updSend(); return; }
-    site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:res.fran,kanal:"mejl",antal:res.skickade},...(site.utskick||[])].slice(0,100);
+    site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:res.fran,kanal:"mejl",antal:res.skickade,bilagor:res.bilagor||[]},...(site.utskick||[])].slice(0,100);
     if (q("#uNews").checked && !(site.nyheter||[]).some(x=>x.text===text)) site.nyheter=[...(site.nyheter||[]),{id:nid(),datum:today(),rubrik:amne||"Information",text}];
-    saveSite(); renderLists(); renderULog(); updSend();
+    saveSite(); renderLists(); renderULog(); updSend(); clearAtt("utskick",false);
     msg.textContent = `Klart! ${res.skickade} mejl skickade.` + (res.misslyckade&&res.misslyckade.length ? ` Det gick inte att skicka till: ${res.misslyckade.join(", ")}.` : "");
     return;
   }
@@ -1823,6 +1831,38 @@ document.addEventListener("click",async e=>{
   const app = b.id!=="uMail"?"Smsappen":"Mejlappen";
   msg.innerHTML=`${app} öppnas med ${n} mottagare. Kontrollera avsändaren och tryck skicka där. Öppnades den inte? <a href="${E(href)}" target="${/^https:/.test(href)?"_blank":"_top"}" rel="noopener">Tryck här</a>.`;
 });
+/* ---------- bilagor i mejl (utskick och svar). Filerna läggs i den låsta lagringsplatsen styrelse/bilagor/ ---------- */
+const mailAtt={}; const MAXATT=15*1024*1024;
+const fmtSize=n=>n>1048576?(n/1048576).toFixed(1).replace(".",",")+" MB":Math.max(1,Math.round(n/1024))+" kB";
+function attInner(key){ const l=mailAtt[key]||[];
+  return `<label class="filebtn attpick">${ico("file")}<span>Bifoga filer</span><input type="file" multiple data-mailatt="${E(key)}"></label>
+    ${l.length?`<div class="attchips">${l.map((a,i)=>`<span class="attchip">${E(a.namn)} <small>${fmtSize(a.size)}</small><button type="button" class="danger" data-attrm="${E(key)}|${i}" aria-label="Ta bort ${E(a.namn)}">✕</button></span>`).join("")}</div>`:""}
+    <span class="status" data-attmsg></span>`; }
+function renderAtt(key){ document.querySelectorAll(`.mailatt[data-attkey="${CSS.escape(key)}"]`).forEach(el=>{ const m=el.querySelector("[data-attmsg]"), t=m?m.textContent:""; el.innerHTML=attInner(key); if(t) el.querySelector("[data-attmsg]").textContent=t; }); }
+const getAtt=key=>(mailAtt[key]||[]).map(a=>({path:a.path,namn:a.namn}));
+function clearAtt(key,removeFiles){ const l=mailAtt[key]||[]; if(removeFiles&&l.length) window.SB.storage.from("styrelse").remove(l.map(a=>a.path)).catch(()=>{}); mailAtt[key]=[]; renderAtt(key); }
+document.addEventListener("change",async e=>{
+  const inp=e.target; if(!inp.dataset||inp.dataset.mailatt===undefined||!board) return;
+  const key=inp.dataset.mailatt, files=[...inp.files]; inp.value="";
+  const box=inp.closest(".mailatt"), msg=()=>box.querySelector("[data-attmsg]");
+  for(const f of files){
+    const l=mailAtt[key]||(mailAtt[key]=[]); const total=l.reduce((s,a)=>s+a.size,0)+f.size;
+    if(total>MAXATT){ msg().textContent=`${f.name} får inte plats. Bilagorna får vara högst 15 MB tillsammans.`; continue; }
+    if(l.length>=10){ msg().textContent="Högst 10 bilagor per mejl."; break; }
+    msg().textContent="Laddar upp "+f.name+"…";
+    const safe=(f.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w.-]+/g,"_").replace(/^_+|_+$/g,"")||"bilaga").slice(0,80);
+    const path=`bilagor/${crypto.randomUUID()}/${safe}`;
+    try{ const {error}=await window.SB.storage.from("styrelse").upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false}); if(error) throw error;
+      l.push({path,namn:f.name,size:f.size}); renderAtt(key); msg().textContent=""; }
+    catch(err){ msg().textContent="Kunde inte ladda upp "+f.name+"."; }
+  }
+});
+renderAtt("utskick");
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-attrm]"); if(!b) return; const [key,i]=b.dataset.attrm.split("|"); const l=mailAtt[key]||[]; const a=l[+i]; if(!a) return;
+  l.splice(+i,1); window.SB.storage.from("styrelse").remove([a.path]).catch(()=>{}); renderAtt(key);
+});
+
 /* ---------- inkorg (mejl till föreningens adress) ---------- */
 let inMail=[], inArch=false;
 async function loadInbox(){
@@ -1842,8 +1882,9 @@ function renderInbox(){
     <summary><span class="meta">${!m.last?'<span class="badge ny">Ny</span>':""}${(m.svar||[]).length?'<span class="badge klar">Besvarad</span>':""} ${E(dtfmt(m.mottagen))} · ${E(m.fran_namn||m.fran)}</span><h3>${E(m.amne||"(utan ämne)")}</h3></summary>
     <p class="meta">Från ${E(m.fran_namn?m.fran_namn+" <"+m.fran+">":m.fran)}</p>
     <div class="mailtext">${E(mailText(m))||'<em>Mejlet saknar text.</em>'}</div>
-    ${(m.svar||[]).map(s=>`<div class="reply"><strong>Svar ${E(dtfmt(s.datum))}${s.av?" av "+E(s.av):""}:</strong><br>${E(s.text)}</div>`).join("")}
+    ${(m.svar||[]).map(s=>`<div class="reply"><strong>Svar ${E(dtfmt(s.datum))}${s.av?" av "+E(s.av):""}:</strong><br>${E(s.text)}${(s.bilagor||[]).length?`<br><small>Bilagor: ${s.bilagor.map(E).join(", ")}</small>`:""}</div>`).join("")}
     <label>Svara ${E(m.fran)}<textarea rows="4" data-replytext></textarea></label>
+    <div class="mailatt" data-attkey="in-${E(m.id)}">${attInner("in-"+m.id)}</div>
     <div class="row acts"><button type="button" data-inreply>Skicka svar</button><button type="button" class="ghost small" data-inarch>${m.arkiv?"Flytta till inkorgen":"Arkivera"}</button><button type="button" class="ghost small" data-inunread>Markera som oläst</button></div>
     <span class="status" data-inmsg></span></details>`).join("") : `<p class="empty">${inArch?"Arkivet är tomt.":"Inga mejl i inkorgen."}</p>`;
 }
@@ -1865,16 +1906,16 @@ document.addEventListener("click",async e=>{
   const text=d.querySelector("[data-replytext]").value;
   if(!text.trim()){ msg.textContent="Skriv ett svar först."; return; }
   b.disabled=true; msg.textContent="Skickar…";
-  let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"svara",inkorg_id:id,text}}); res= error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
+  let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"svara",inkorg_id:id,text,bilagor:getAtt("in-"+id)}}); res= error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Det gick inte att skicka."} : data; }catch(err){ res={fel:"Det gick inte att skicka."}; }
   b.disabled=false;
   if(res.fel){ msg.textContent=res.fel; return; }
-  m.svar=[...(m.svar||[]),{datum:new Date().toISOString(),av:"",text}]; m.last=true; renderInbox();
+  m.svar=[...(m.svar||[]),{datum:new Date().toISOString(),av:"",text,bilagor:getAtt("in-"+id).map(x=>x.namn)}]; m.last=true; clearAtt("in-"+id,false); renderInbox();
   setMsg("Svaret är skickat till "+res.till+".");
 });
 const UTYP={info:"Information",kallelse:"Kallelse",ovrigt:"Övrigt"};
 function renderULog(){
   const l=site.utskick||[];
-  q("#uLog").innerHTML = l.length? l.map(u=>`<details class="item"><summary><span class="meta">${dfmt(u.datum)} · ${UTYP[u.typ]||""} · ${u.kanal} till ${u.antal}${u.fran?" från "+E(u.fran):""}</span> <strong>${E(u.amne||"Utan ämne")}</strong></summary><p>${E(u.text)}</p></details>`).join("") : `<p class="empty">Inga utskick ännu.</p>`;
+  q("#uLog").innerHTML = l.length? l.map(u=>`<details class="item"><summary><span class="meta">${dfmt(u.datum)} · ${UTYP[u.typ]||""} · ${u.kanal} till ${u.antal}${u.fran?" från "+E(u.fran):""}</span> <strong>${E(u.amne||"Utan ämne")}</strong></summary><p>${E(u.text)}</p>${(u.bilagor||[]).length?`<p class="meta">Bilagor: ${u.bilagor.map(E).join(", ")}</p>`:""}</details>`).join("") : `<p class="empty">Inga utskick ännu.</p>`;
 }
 /* ---------- fault reports and feedback ---------- */
 const STATUS={ny:"Ny",pagar:"Åtgärdas",klar:"Åtgärdad"};

@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.32"></script>
+<script src="sb.js?v=2.33"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -345,6 +345,21 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .attchip button{padding:2px 8px;font-size:.8rem}
 .tonews{align-self:flex-start}
 .item.prot .docrow{margin-top:4px}
+.dkgrp{font-size:.95rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px}
+.dkgrp:first-child{margin-top:0}
+.dknote{margin-top:22px}
+.lnklist{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.item.lnk{display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.lnkmain{display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:inherit;flex:1}
+.lnkmain:hover strong{color:var(--accent);text-decoration:underline}
+.lnkico{flex:none;width:40px;height:40px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.lnkico .ico{width:20px;height:20px}
+.lnktxt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lnktxt small{color:var(--muted);font-size:.88rem;line-height:1.4}
+.lnkurl{color:var(--accent);font-size:.82rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item.lnk>.row{justify-content:flex-end;gap:6px}
+.item.lnk>.row button{flex:0 0 auto;min-height:34px}
+@media (max-width:520px){ .lnklist{grid-template-columns:1fr} }
 .item.prot>.row:last-child{justify-content:flex-end}
 .item.prot>.row button{flex:0 0 auto;min-height:34px}
 [data-protdel].armed{color:var(--danger);background:var(--danger-soft)}
@@ -440,6 +455,19 @@ details.mail[open]{gap:10px}
 #boardList .person h3,#funkList .person h3{font-size:1.2rem;margin-top:2px}
 #boardList .avatar,#funkList .avatar{width:52px;height:52px;font-size:1.05rem}
 #boardList .contacts,#funkList .contacts{flex-direction:column;align-items:flex-start}
+#boardList,#funkList{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.bcard{display:flex;align-items:center;gap:12px;width:100%;height:100%;min-height:72px;padding:12px 14px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);font-weight:400;min-width:0;cursor:pointer}
+.bcard:hover{border-color:var(--line-strong);background:var(--surface)}
+.bcard .avatar{width:44px!important;height:44px!important;flex:none;font-size:.95rem}
+.bc-txt{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.bc-txt .meta{font-size:.82rem;font-weight:700;color:var(--accent)}
+.bc-txt strong{font-size:1.02rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
+.bc-pil{width:18px;height:18px;flex:none;color:var(--muted);fill:none;stroke:currentColor;stroke-width:2}
+.bdlg-person .bperson{border:none;box-shadow:none;padding:0;background:none}
+.bdlg-person .person .meta{font-size:1rem;font-weight:700;color:var(--accent)}
+.bdlg-person .person h3{font-size:1.25rem}
+.bdlg-person .avatar{width:56px;height:56px}
+.bdlg-person .contacts{flex-direction:column;align-items:stretch;margin-top:12px}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
 .mcard{height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
@@ -688,6 +716,8 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2"/><path d="m3 6 9 7 9-7"/></symbol>
   <symbol id="i-chart" viewBox="0 0 24 24"><path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></symbol>
   <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></symbol>
 </svg>
 <div class="topbar">
 <header class="masthead" id="welcome">
@@ -709,6 +739,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     <button type="button" role="tab" class="navtab" data-page="medlemmar"><svg class="ico"><use href="#i-users"/></svg><span>Medlemmar</span></button>
     <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span><span class="navcount" id="navInCount" hidden></span></button>
     <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span></button>
+    <button type="button" role="tab" class="navtab" data-page="dokument"><svg class="ico"><use href="#i-folder"/></svg><span>Dokument</span></button>
     <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span></button>
   </nav>
 </div>
@@ -766,7 +797,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick"><span class="lg">Skapa utskick</span><span class="sm">Utskick</span></button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
-      <button type="button" class="chipbtn" data-st="prot">Protokoll</button>
+      <button type="button" class="chipbtn" data-st="prot">Dokument</button>
       <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
     </div>
     <section id="st-led">
@@ -817,8 +848,8 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <details class="more atgdone" id="atgDoneBox" hidden><summary id="atgDoneSum">Klara</summary><div id="atgDoneList" class="list"></div></details>
     </section>
     <section id="st-prot" class="board" hidden>
-      <div class="ph"><h2>Styrelseprotokoll</h2><button type="button" class="ghost small" data-protadd="styrelse">+ <span class="lg">Ladda upp protokoll</span><span class="sm">Ladda upp</span></button></div>
-      <p class="hint">Bara styrelsen och admin kan se de här protokollen. Filerna ligger i en låst lagringsplats.</p>
+      <div class="ph"><h2>Styrelsens dokument</h2><button type="button" class="ghost small" data-dokadd="styrelse">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
+      <p class="hint">Styrelseprotokoll, avtal, offerter och annat internt. Bara styrelsen och admin kan se dokumenten här. Det som alla medlemmar ska kunna läsa laddar du upp under fliken Dokument.</p>
       <div id="sprotList" class="list"></div>
     </section>
   </div>
@@ -826,20 +857,36 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <div class="page" id="page-moten" hidden>
     <header class="pghead">
       <div class="ph"><div class="pagehead"><h1>Möten</h1></div></div>
-      <p class="hint">Kallelser, årsstämmor och protokoll.</p>
+      <p class="hint">Kallelser och årsstämmor. Protokollen finns under Dokument.</p>
     </header>
-    <div class="filters subnav" role="tablist" aria-label="Möten">
-      <button type="button" class="chipbtn on" data-mo="list">Möten</button>
-      <button type="button" class="chipbtn" data-mo="prot">Protokoll</button>
-    </div>
     <section id="mo-list">
       <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
       <div id="meetList" class="list"></div>
     </section>
-    <section id="mo-prot" hidden>
-      <div class="ph"><h2>Protokoll</h2><button type="button" class="ghost small board" data-protadd="medlem">+ <span class="lg">Ladda upp protokoll</span><span class="sm">Ladda upp</span></button></div>
-      <div id="protList" class="list"></div>
+  </div>
+
+  <div class="page" id="page-dokument" hidden>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Dokument</h1></div></div>
+      <p class="hint">Föreningens protokoll, stadgar, ekonomi och bra länkar. Alla medlemmar kan läsa.</p>
+    </header>
+    <div class="filters subnav" role="tablist" aria-label="Dokument">
+      <button type="button" class="chipbtn on" data-dk="protokoll">Protokoll</button>
+      <button type="button" class="chipbtn" data-dk="stadgar"><span class="lg">Stadgar och beslut</span><span class="sm">Stadgar</span></button>
+      <button type="button" class="chipbtn" data-dk="ekonomi">Ekonomi</button>
+      <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
+    </div>
+    <section id="dk-docs">
+      <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
+      <p class="hint" id="dkHint"></p>
+      <div id="dkList" class="list"></div>
     </section>
+    <section id="dk-lankar" hidden>
+      <div class="ph"><h2>Länkar</h2><button type="button" class="ghost small board" id="lnkAdd">+ Ny länk</button></div>
+      <p class="hint">Bra adresser för dig som är delägare i vägen.</p>
+      <div id="lnkList" class="list lnklist"></div>
+    </section>
+    <p class="hint board dknote">Styrelsens interna dokument finns under Styrelsen → Dokument och syns bara för styrelsen och admin.</p>
   </div>
 
   <div class="page" id="page-arenden" hidden>
@@ -899,9 +946,17 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.32</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.33</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.33</b><time>31 okt 2026</time></div><ul>
+          <li>Ny flik Dokument med Protokoll, Stadgar och beslut, Ekonomi och Länkar. Alla medlemmar kan läsa och styrelsen laddar upp. Filerna ligger i en låst lagringsplats som bara inloggade medlemmar kommer åt.</li>
+          <li>Protokollen har flyttat från Möten till Dokument. Ett möte som har ett protokoll visar knappen Läs protokollet.</li>
+          <li>Styrelsen → Protokoll heter nu Dokument och delas in i Styrelseprotokoll, Avtal och offerter samt Övrigt. Bara styrelsen och admin ser dem.</li>
+          <li>Dokument kan vara PDF, Word, Excel, text eller bild (max 20 MB).</li>
+          <li>Länkar till Trafikverket, Lantmäteriet, Riksförbundet Enskilda Vägar och Flens kommun. Styrelsen kan lägga till, ändra och ta bort.</li>
+          <li>Styrelsens och funktionärernas kort är mindre och visar bara symbol, roll och namn. Tryck på ett kort för telefon, mejl och fastighet.</li>
+          <li>Rättat: testnotisen kom inte fram.</li></ul></li>
         <li><div><b>2.32</b><time>31 okt 2026</time></div><ul>
           <li>Frågetecken vid Notiser i Mitt konto och på startsidan. Det visar steg för steg hur man slår på notiser på iPhone, Android och dator.</li>
           <li>Rättat: knappen Testa för notiser fungerade inte.</li></ul></li>
@@ -1607,7 +1662,7 @@ function memGroup(ps){
 const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;
 const MON=["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
 const dateblk=d=>{ const t=new Date((d||"")+"T12:00:00"); if(!d||isNaN(t)) return `<span class="dateblk"><span>Datum</span><b>?</b><small>&nbsp;</small></span>`; return `<span class="dateblk${d<today()?" past":""}"><span>${MON[t.getMonth()]}</span><b>${t.getDate()}</b><small>${t.getFullYear()}</small></span>`; };
-const meetView=it=>`<div class="mrow">${dateblk(it.datum)}<div class="mbody">${it.plats?`<span class="meta">${E(it.plats)}</span>`:""}<h3>${E(it.rubrik||"Möte")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}${/^https?:\/\//.test(it.lank||"")?`<a class="open" href="${E(it.lank)}" target="_blank" rel="noopener">${ico("file")}Öppna dokument</a>`:""}</div></div>`;
+const meetView=it=>`<div class="mrow">${dateblk(it.datum)}<div class="mbody">${it.plats?`<span class="meta">${E(it.plats)}</span>`:""}<h3>${E(it.rubrik||"Möte")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}${/^https?:\/\//.test(it.lank||"")?`<a class="open" href="${E(it.lank)}" target="_blank" rel="noopener">${ico("file")}Öppna dokument</a>`:""}${(site.dokument||[]).filter(d=>d.mote&&d.mote===it.id).map(d=>`<a class="open" href="#dokument" data-dokid="${E(d.id)}">${ico("file")}Läs protokollet</a>`).join("")}</div></div>`;
 /* Symboler för styrelsens roller */
 const ROLLIKON={
   ordf:{f:"#9a6b00",b:"#fbefd2",t:"Ordförande",svg:'<path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z" fill="currentColor" fill-opacity=".25"/><path d="M13.6 2.8l7.6 7.6-3.1 3.1-7.6-7.6z"/><path d="M12.4 4l7.6 7.6M14.3 9.7L4.5 19.5"/><path d="M3 21.2h8.5"/>'},
@@ -1623,6 +1678,18 @@ function rollIkon(roll){ const r=String(roll||"").toLowerCase();
   const k= r.includes("vice")?"vice": r.includes("ordf")?"ordf": r.includes("kass")||r.includes("ekonom")?"kass": r.includes("sekr")?"sekr": r.includes("revis")?"revi": r.includes("suppl")||r.includes("ersätt")?"supp": (r.includes("väg")||r.includes("underhåll")||r.includes("snö"))?"vag": (r.includes("ledam")||!r)?"leda":null;
   if(!k) return null; const i=ROLLIKON[k];
   return `<span class="avatar rollikon" style="--rf:${i.f};--rb:${i.b}" title="${i.t}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${i.svg}</svg></span>`; }
+/* litet kort: ikon, roll och namn. Tryck för kontaktuppgifter. */
+const boardCard=(kind,it)=>`<button type="button" class="bcard" data-bopen="${kind}" data-bid="${E(it.id)}">${rollIkon(it.roll)||`<span class="avatar" aria-hidden="true">${initials(it.namn)}</span>`}<span class="bc-txt"><span class="meta">${E(it.roll||(kind==="styrelse"?"Ledamot":"Funktionär"))}</span><strong>${E(it.namn||"Namn saknas")}</strong></span><svg class="ico bc-pil" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`;
+document.addEventListener("click",e=>{
+  const c=e.target.closest("[data-bopen]"); if(!c) return;
+  const kind=c.dataset.bopen, it=(site[kind]||[]).find(x=>x.id===c.dataset.bid); if(!it) return;
+  const d=document.createElement("dialog"); d.className="bdlg bdlg-person";
+  d.innerHTML=`<form method="dialog"><div class="item bperson">${boardView(it)}</div>${!(it.telefon||it.epost)?`<p class="hint">Inga kontaktuppgifter inlagda.</p>`:""}
+    <div class="bdlg-btns">${board?`<button type="button" class="ghost" id="bpEdit">Ändra</button>`:""}<button value="close">Stäng</button></div></form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
+  const ed=d.querySelector("#bpEdit"); if(ed) ed.onclick=()=>{ d.close(); editing.add(it.id); renderLists(); const el=document.querySelector(`.item[data-id="${it.id}"]`); if(el) el.scrollIntoView({block:"center"}); };
+  d.showModal();
+});
 const boardView=it=>person(E(it.roll||"Ledamot"),it.namn||"Namn saknas",it.fastighet,it,rollIkon(it.roll));
 function renderLists(){
   const news=sorted(site.nyheter,true);
@@ -1631,9 +1698,10 @@ function renderLists(){
   q("#meetList").innerHTML = meets.length? meets.map(it=>itemCard("moten",it,MEET_F,meetView)).join("") : `<p class="empty">Inga möten inlagda ännu.</p>`;
   const up=sorted(site.moten).filter(m=>m.datum&&m.datum>=today());
   q("#nextMeet").innerHTML = up.length? up.slice(0,2).map(it=>`<div class="item">${meetView(it)}</div>`).join("") : `<p class="empty">Inget möte planerat just nu.</p>`;
-  q("#boardList").innerHTML = (site.styrelse||[]).length? site.styrelse.map(it=>itemCard("styrelse",it,BOARD_F,boardView)).join("") : `<p class="empty">Styrelsen är inte inlagd ännu.</p>`;
+  const bc=(kind,it)=>board&&editing.has(it.id)?itemCard(kind,it,BOARD_F,boardView):boardCard(kind,it);
+  q("#boardList").innerHTML = (site.styrelse||[]).length? site.styrelse.map(it=>bc("styrelse",it)).join("") : `<p class="empty">Styrelsen är inte inlagd ännu.</p>`;
   const funk=site.funktionarer||[];
-  q("#funkList").innerHTML = funk.length? funk.map(it=>itemCard("funktionarer",it,BOARD_F,boardView)).join("") : `<p class="empty">Inga funktionärer inlagda ännu.</p>`;
+  q("#funkList").innerHTML = funk.length? funk.map(it=>bc("funktionarer",it)).join("") : `<p class="empty">Inga funktionärer inlagda ännu.</p>`;
   q("#funkBox").hidden = !funk.length && !board;
   const qv=(q("#memSearch").value||"").toLowerCase();
   const groups=new Map();
@@ -1670,7 +1738,7 @@ document.addEventListener("click",async e=>{
   const old=site.startbild&&site.startbild.id; site.startbild=null; saveSite(); renderHero();
   try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(old&&ASSETS) await ASSETS.delete(old); }catch(err){}
 });
-function renderSite(){ renderHero(); renderProt(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+function renderSite(){ renderHero(); renderDok(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
@@ -1774,71 +1842,155 @@ async function openPdf(url,name,dlUrl){
 }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"); if(b) openPdf(b.dataset.pdfopen,b.dataset.pdfname||"Dokument"); });
 
-/* ---------- protokoll: medlemmarnas (site.protokoll, öppen fillagring) och styrelsens (styrelse/protokoll, låst fillagring) ---------- */
-let sprot=[], sprotRef=null;
-document.addEventListener("click",e=>{ const t=e.target.closest("[data-mo]"); if(!t) return; document.querySelectorAll("[data-mo]").forEach(x=>x.classList.toggle("on",x===t)); q("#mo-list").hidden=t.dataset.mo!=="list"; q("#mo-prot").hidden=t.dataset.mo!=="prot"; renderProt(); });
-function protRows(list,kind){
-  if(!list.length) return `<p class="empty">${kind==="styrelse"?"Inga styrelseprotokoll uppladdade ännu.":"Inga protokoll uppladdade ännu."}</p>`;
-  return [...list].sort((a,b)=>String(b.datum).localeCompare(String(a.datum))).map(p=>`<div class="item prot" data-pid="${E(p.id)}" data-pkind="${kind}">
-    <span class="meta">${dfmt(p.datum)}</span><h3>${E(p.rubrik||"Protokoll")}</h3>
+/* ---------- dokument: medlemmarnas (site.dokument, låst lagring "dokument", alla medlemmar läser)
+   och styrelsens (styrelse/protokoll, låst lagring "styrelse", bara styrelse och admin) ---------- */
+const DK={protokoll:"Protokoll",stadgar:"Stadgar och beslut",ekonomi:"Ekonomi"};
+const DK_HINT={protokoll:"Protokoll från årsstämmor och extra stämmor.",stadgar:"Stadgar, anläggningsbeslut, andelslängd och andra viktiga beslut.",ekonomi:"Årsredovisning, budget, revisionsberättelse och debiteringslängd."};
+const SK={protokoll:"Styrelseprotokoll",avtal:"Avtal och offerter",ovrigt:"Övrigt"};
+const DOK_ACCEPT=".pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.jpg,.jpeg,.png";
+let sprot=[], sprotRef=null, dkKat="protokoll";
+const isPdf=f=>f&&(/\.pdf$/i.test(f.namn||"")||f.typ==="application/pdf");
+document.addEventListener("click",e=>{ const t=e.target.closest("[data-dk]"); if(!t) return; dkKat=t.dataset.dk;
+  document.querySelectorAll("[data-dk]").forEach(x=>x.classList.toggle("on",x===t)); try{ t.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(x){}
+  q("#dk-docs").hidden=dkKat==="lankar"; q("#dk-lankar").hidden=dkKat!=="lankar"; renderDok(); });
+function dokRows(list,kind){
+  if(!list.length) return `<p class="empty">Inga dokument uppladdade ännu.</p>`;
+  return sorted(list,true).map(p=>`<div class="item prot" data-pid="${E(p.id)}" data-pkind="${kind}">
+    <span class="meta">${dfmt(p.datum)}</span><h3>${E(p.rubrik||"Dokument")}</h3>
     <div class="docrow"><span class="docname">${ico("file")}<span>${E(p.fil.namn)}</span></span><span class="docbtns">
       <button type="button" class="small" data-protopen>Öppna</button><button type="button" class="ghost small" data-protdl>Ladda ner</button></span></div>
-    ${board?`<div class="row"><button type="button" class="danger" data-protdel>Ta bort</button></div>`:""}</div>`).join("");
+    ${board?`<div class="row"><button type="button" class="ghost small" data-dokedit>Ändra</button><button type="button" class="danger" data-protdel>Ta bort</button></div>`:""}</div>`).join("");
 }
-function renderProt(){ const a=q("#protList"); if(a) a.innerHTML=protRows(site.protokoll||[],"medlem"); const b=q("#sprotList"); if(b&&board) b.innerHTML=protRows(sprot,"styrelse"); }
+function renderDok(){
+  const a=q("#dkList");
+  if(a&&dkKat!=="lankar"){ q("#dkTitle").textContent=DK[dkKat]; q("#dkHint").textContent=DK_HINT[dkKat]; a.innerHTML=dokRows((site.dokument||[]).filter(d=>(d.kat||"protokoll")===dkKat),"medlem"); }
+  const b=q("#sprotList");
+  if(b&&board){ const html=Object.keys(SK).map(k=>{ const l=sprot.filter(x=>(SK[x.kat]?x.kat:"protokoll")===k); return l.length?`<h3 class="dkgrp">${SK[k]}</h3>${dokRows(l,"styrelse")}`:""; }).join(""); b.innerHTML=html||`<p class="empty">Inga dokument uppladdade ännu.</p>`; }
+  renderLankar();
+}
 async function protUrl(kind,p,dl){
-  if(kind==="medlem"){ const u=blobUrl(p.fil.id); return dl? u+"?download="+encodeURIComponent(p.fil.namn) : u; }
-  const {data,error}=await window.SB.storage.from("styrelse").createSignedUrl(p.fil.path,600,dl?{download:p.fil.namn}:undefined);
+  if(p.fil.id&&!p.fil.path){ const u=blobUrl(p.fil.id); return dl? u+"?download="+encodeURIComponent(p.fil.namn) : u; }
+  const {data,error}=await window.SB.storage.from(kind==="medlem"?"dokument":"styrelse").createSignedUrl(p.fil.path,600,dl?{download:p.fil.namn}:undefined);
   if(error) throw error; return data.signedUrl;
 }
+async function oppnaDok(kind,p){
+  if(isPdf(p.fil)){ openPdf(await protUrl(kind,p,false),p.fil.namn,await protUrl(kind,p,true)); return; }
+  const a=document.createElement("a"); a.href=await protUrl(kind,p,true); a.download=p.fil.namn; document.body.appendChild(a); a.click(); a.remove();
+}
 document.addEventListener("click",async e=>{
-  const b=e.target.closest("[data-protopen],[data-protdl],[data-protdel]"); if(!b) return;
-  const card=b.closest("[data-pid]"), kind=card.dataset.pkind, list=kind==="medlem"?(site.protokoll||[]):sprot, p=list.find(x=>x.id===card.dataset.pid); if(!p) return;
+  const l=e.target.closest("[data-dokid]"); if(!l) return; e.preventDefault();
+  const p=(site.dokument||[]).find(x=>x.id===l.dataset.dokid); if(!p) return;
+  try{ await oppnaDok("medlem",p); }catch(err){ setMsg("Kunde inte öppna filen."); }
+});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-protopen],[data-protdl],[data-protdel],[data-dokedit]"); if(!b) return;
+  const card=b.closest("[data-pid]"), kind=card.dataset.pkind, list=kind==="medlem"?(site.dokument||[]):sprot, p=list.find(x=>x.id===card.dataset.pid); if(!p) return;
   try{
-    if(b.dataset.protopen!==undefined){ openPdf(await protUrl(kind,p,false),p.fil.namn,await protUrl(kind,p,true)); return; }
+    if(b.dataset.protopen!==undefined){ await oppnaDok(kind,p); return; }
     if(b.dataset.protdl!==undefined){ const a=document.createElement("a"); a.href=await protUrl(kind,p,true); a.download=p.fil.namn; document.body.appendChild(a); a.click(); a.remove(); return; }
   }catch(err){ setMsg("Kunde inte öppna filen."); return; }
   if(!board) return;
+  if(b.dataset.dokedit!==undefined){ dokDialog(kind,p); return; }
   if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort"; },4000); return; }
-  if(kind==="medlem"){ site.protokoll=(site.protokoll||[]).filter(x=>x.id!==p.id); saveSite(); try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(ASSETS) await ASSETS.delete(p.fil.id); }catch(err){} }
-  else { sprot=sprot.filter(x=>x.id!==p.id); try{ await sprotRef.set({items:sprot}); await window.SB.storage.from("styrelse").remove([p.fil.path]); }catch(err){ setMsg("Kunde inte ta bort."); } }
-  renderProt(); setMsg("Protokollet är borttaget.");
+  try{
+    if(kind==="medlem"){ site.dokument=(site.dokument||[]).filter(x=>x.id!==p.id); saveSite(); if(p.fil.path) await window.SB.storage.from("dokument").remove([p.fil.path]); }
+    else { sprot=sprot.filter(x=>x.id!==p.id); await sprotRef.set({items:sprot}); await window.SB.storage.from("styrelse").remove([p.fil.path]); }
+  }catch(err){ setMsg("Kunde inte ta bort."); }
+  renderDok(); renderLists(); setMsg("Dokumentet är borttaget.");
 });
 document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-protadd]"); if(!b||!board) return; const kind=b.dataset.protadd;
+  const b=e.target.closest("[data-dokadd],#dkAdd"); if(!b||!board) return;
+  dokDialog(b.dataset.dokadd||"medlem",null);
+});
+function dokDialog(kind,old){
+  const K=kind==="styrelse"?SK:DK, kat0=old?(K[old.kat]?old.kat:"protokoll"):(kind==="medlem"?dkKat:"protokoll");
   const moten=sorted(site.moten,true).filter(m=>m.rubrik);
   const dlg=document.createElement("dialog"); dlg.className="bdlg";
-  dlg.innerHTML=`<form method="dialog"><h2>${kind==="styrelse"?"Ladda upp styrelseprotokoll":"Ladda upp protokoll"}</h2>
-    ${kind==="styrelse"?'<p class="hint">Bara styrelsen och admin kommer att kunna se protokollet.</p>':'<p class="hint">Alla medlemmar kommer att kunna läsa protokollet under Möten.</p>'}
-    ${moten.length&&kind==="medlem"?`<label>Hör till möte<select id="prMote"><option value="">Inget särskilt möte</option>${moten.map(m=>`<option value="${E(m.id)}">${E(m.rubrik)}${m.datum?" ("+E(m.datum)+")":""}</option>`).join("")}</select></label>`:""}
-    <label>Rubrik<input id="prRubrik" required placeholder="${kind==="styrelse"?"t.ex. Styrelsemöte 12 november":"t.ex. Protokoll årsstämma 2026"}"></label>
-    <label>Datum<input id="prDatum" type="date" value="${today()}" required></label>
-    <label class="filebtn" id="prFilL">${ico("file")}<span id="prFilN">Välj PDF</span><input type="file" accept="application/pdf" id="prFil"></label>
+  dlg.innerHTML=`<form method="dialog"><h2>${old?"Ändra dokument":kind==="styrelse"?"Ladda upp till styrelsen":"Ladda upp dokument"}</h2>
+    <p class="hint">${kind==="styrelse"?"Bara styrelsen och admin kommer att kunna se dokumentet.":"Alla medlemmar kommer att kunna läsa dokumentet under Dokument."}</p>
+    <label>Kategori<select id="prKat">${Object.entries(K).map(([k,v])=>`<option value="${k}"${k===kat0?" selected":""}>${v}</option>`).join("")}</select></label>
+    ${kind==="medlem"&&moten.length?`<label id="prMoteL">Hör till möte<select id="prMote"><option value="">Inget särskilt möte</option>${moten.map(m=>`<option value="${E(m.id)}"${old&&old.mote===m.id?" selected":""}>${E(m.rubrik)}${m.datum?" ("+E(m.datum)+")":""}</option>`).join("")}</select></label>`:""}
+    <label>Rubrik<input id="prRubrik" required value="${old?E(old.rubrik||""):""}" placeholder="t.ex. Protokoll årsstämma 2026"></label>
+    <label>Datum<input id="prDatum" type="date" value="${old?E(old.datum||""):today()}" required></label>
+    ${old?"":`<label class="filebtn" id="prFilL">${ico("file")}<span id="prFilN">Välj fil (PDF, Word, Excel eller bild)</span><input type="file" accept="${DOK_ACCEPT}" id="prFil"></label>`}
     <p class="status" id="prMsg"></p>
-    <div class="bdlg-btns"><button value="ok" id="prOk">Ladda upp</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+    <div class="bdlg-btns"><button value="ok" id="prOk">${old?"Spara":"Ladda upp"}</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
   document.body.appendChild(dlg);
   const g=id=>dlg.querySelector(id);
+  const moteVis=()=>{ if(g("#prMoteL")) g("#prMoteL").hidden=g("#prKat").value!=="protokoll"; }; moteVis(); g("#prKat").onchange=moteVis;
   if(g("#prMote")) g("#prMote").onchange=()=>{ const m=moten.find(x=>x.id===g("#prMote").value); if(m){ g("#prRubrik").value="Protokoll "+m.rubrik.charAt(0).toLowerCase()+m.rubrik.slice(1); if(m.datum) g("#prDatum").value=m.datum; } };
-  g("#prFil").onchange=()=>{ const f=g("#prFil").files[0]; g("#prFilN").textContent=f?f.name:"Välj PDF"; };
+  if(g("#prFil")) g("#prFil").onchange=()=>{ const f=g("#prFil").files[0]; g("#prFilN").textContent=f?f.name:"Välj fil"; };
   g("#prOk").onclick=async ev=>{
-    ev.preventDefault(); const f=g("#prFil").files[0], rubrik=g("#prRubrik").value.trim(), datum=g("#prDatum").value, msg=g("#prMsg");
-    if(!rubrik){ msg.textContent="Skriv en rubrik."; return; } if(!f){ msg.textContent="Välj en PDF-fil."; return; }
-    if(f.type&&f.type!=="application/pdf"){ msg.textContent="Filen måste vara en PDF."; return; }
+    ev.preventDefault(); const rubrik=g("#prRubrik").value.trim(), datum=g("#prDatum").value, kat=g("#prKat").value, msg=g("#prMsg");
+    const mote=(kat==="protokoll"&&g("#prMote"))?g("#prMote").value:"";
+    if(!rubrik){ msg.textContent="Skriv en rubrik."; return; }
+    if(old){
+      Object.assign(old,{rubrik,datum,kat}); if(kind==="medlem") old.mote=mote;
+      try{ if(kind==="medlem") saveSite(); else await sprotRef.set({items:sprot}); }catch(err){ msg.textContent="Kunde inte spara."; return; }
+      dlg.close(); renderDok(); renderLists(); setMsg("Dokumentet är ändrat."); return;
+    }
+    const f=g("#prFil").files[0]; if(!f){ msg.textContent="Välj en fil."; return; }
+    if(f.size>20*1024*1024){ msg.textContent="Filen är för stor. Max 20 MB."; return; }
+    const ext=((f.name.match(/\.([a-z0-9]{1,5})$/i)||[])[1]||"").toLowerCase();
+    if(!DOK_ACCEPT.split(",").includes("."+ext)){ msg.textContent="Filtypen stöds inte. Använd PDF, Word, Excel, text eller bild."; return; }
     g("#prOk").disabled=true; msg.textContent="Laddar upp…";
     try{
-      if(kind==="medlem"){
-        if(!ASSETS) ASSETS=await claude.use("assets"); if(!ASSETS) throw new Error("assets");
-        const r=await ASSETS.upload(f); const mote=g("#prMote")?g("#prMote").value:"";
-        site.protokoll=[...(site.protokoll||[]),{id:nid(),datum,rubrik,mote,fil:{id:r.id,namn:f.name}}]; saveSite();
-      } else {
-        const path=crypto.randomUUID()+".pdf";
-        const {error}=await window.SB.storage.from("styrelse").upload(path,f,{contentType:"application/pdf",upsert:false}); if(error) throw error;
-        sprot=[...sprot,{id:nid(),datum,rubrik,fil:{path,namn:f.name}}]; await sprotRef.set({items:sprot});
-      }
-      dlg.close(); renderProt(); setMsg("Protokollet är uppladdat.");
-    }catch(err){ g("#prOk").disabled=false; msg.textContent="Det gick inte att ladda upp. Max 20 MB."; }
+      const path=crypto.randomUUID()+"."+ext, bucket=kind==="medlem"?"dokument":"styrelse";
+      const {error}=await window.SB.storage.from(bucket).upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false}); if(error) throw error;
+      const item={id:nid(),kat,datum,rubrik,fil:{path,namn:f.name,typ:f.type||""}};
+      if(kind==="medlem"){ if(mote) item.mote=mote; site.dokument=[...(site.dokument||[]),item]; saveSite(); }
+      else { sprot=[...sprot,item]; await sprotRef.set({items:sprot}); }
+      dlg.close(); renderDok(); renderLists(); setMsg("Dokumentet är uppladdat.");
+    }catch(err){ g("#prOk").disabled=false; msg.textContent="Det gick inte att ladda upp. Försök igen."; }
   };
   dlg.addEventListener("close",()=>dlg.remove()); dlg.showModal();
+}
+
+/* ---------- länkar (site.lankar; förifyllda tills styrelsen ändrar) ---------- */
+const STD_LANKAR=[
+  {id:"l1",namn:"Trafikverket: enskilda vägar",url:"https://www.trafikverket.se",beskr:"Statsbidrag till enskilda vägar, ansökan och regler. Sök på ”enskilda vägar” på sidan."},
+  {id:"l2",namn:"Trafikverket: fel på statlig väg",url:"tel:0771921921",beskr:"Ring 0771-921 921 om fel på en statlig väg, till exempel vid utfarten."},
+  {id:"l3",namn:"Lantmäteriet",url:"https://www.lantmateriet.se",beskr:"Gemensamhetsanläggningar, andelstal och samfällighetsföreningsregistret."},
+  {id:"l4",namn:"Min karta",url:"https://minkarta.lantmateriet.se",beskr:"Lantmäteriets karta med fastighetsgränser."},
+  {id:"l5",namn:"Riksförbundet Enskilda Vägar",url:"https://www.revriks.se",beskr:"Råd och stöd för vägföreningar och samfälligheter."},
+  {id:"l6",namn:"Flens kommun",url:"https://www.flen.se",beskr:"Kommunalt bidrag till enskilda vägar och kontakt med kommunen."}];
+const lankar=()=>Array.isArray(site.lankar)?site.lankar:STD_LANKAR;
+const okUrl=u=>/^(https?:\/\/[^\s]+|tel:[+\d\s-]+|mailto:[^\s]+)$/i.test(String(u||"").trim());
+const visUrl=u=>{ if(/^tel:/i.test(u)) return u.slice(4); if(/^mailto:/i.test(u)) return u.slice(7); try{ return new URL(u).host.replace(/^www\./,""); }catch(e){ return u; } };
+function renderLankar(){
+  const el=q("#lnkList"); if(!el) return; const l=lankar();
+  el.innerHTML=l.length? l.map(x=>`<div class="item lnk" data-lid="${E(x.id)}">
+    <a class="lnkmain" href="${okUrl(x.url)?E(x.url):"#"}" ${/^https?:/i.test(x.url)?'target="_blank" rel="noopener"':""}><span class="lnkico">${ico(/^tel:/i.test(x.url)?"phone":"link")}</span>
+      <span class="lnktxt"><strong>${E(x.namn)}</strong>${x.beskr?`<small>${E(x.beskr)}</small>`:""}<span class="lnkurl">${E(visUrl(x.url))}</span></span></a>
+    ${board?`<div class="row"><button type="button" class="ghost small" data-lnkedit>Ändra</button><button type="button" class="danger" data-lnkdel>Ta bort</button></div>`:""}</div>`).join("")
+  : `<p class="empty">Inga länkar ännu.</p>`;
+}
+function lnkDialog(old){
+  const dlg=document.createElement("dialog"); dlg.className="bdlg";
+  dlg.innerHTML=`<form method="dialog"><h2>${old?"Ändra länk":"Ny länk"}</h2>
+    <label>Namn<input id="lnN" required value="${old?E(old.namn):""}" placeholder="t.ex. Trafikverket"></label>
+    <label>Adress<input id="lnU" required value="${old?E(old.url):""}" placeholder="https://… eller tel:…"></label>
+    <label>Beskrivning<input id="lnB" value="${old?E(old.beskr||""):""}" placeholder="Kort om vad man hittar där"></label>
+    <p class="status" id="lnMsg"></p>
+    <div class="bdlg-btns"><button value="ok" id="lnOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+  document.body.appendChild(dlg); const g=id=>dlg.querySelector(id);
+  g("#lnOk").onclick=ev=>{ ev.preventDefault();
+    let u=g("#lnU").value.trim(); const n=g("#lnN").value.trim(), bsk=g("#lnB").value.trim();
+    if(u&&!/^[a-z]+:/i.test(u)) u="https://"+u;
+    if(!n){ g("#lnMsg").textContent="Skriv ett namn."; return; }
+    if(!okUrl(u)){ g("#lnMsg").textContent="Adressen måste börja med https://, tel: eller mailto:"; return; }
+    const l=lankar().map(x=>({...x}));
+    if(old){ const i=l.findIndex(x=>x.id===old.id); if(i>=0) l[i]={...l[i],namn:n,url:u,beskr:bsk}; } else l.push({id:nid(),namn:n,url:u,beskr:bsk});
+    site.lankar=l; saveSite(); renderLankar(); dlg.close(); setMsg("Länken är sparad."); };
+  dlg.addEventListener("close",()=>dlg.remove()); dlg.showModal();
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("#lnkAdd")){ if(board) lnkDialog(null); return; }
+  const b=e.target.closest("[data-lnkedit],[data-lnkdel]"); if(!b||!board) return;
+  const x=lankar().find(y=>y.id===b.closest("[data-lid]").dataset.lid); if(!x) return;
+  if(b.dataset.lnkedit!==undefined){ lnkDialog(x); return; }
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort"; },4000); return; }
+  site.lankar=lankar().filter(y=>y.id!==x.id); saveSite(); renderLankar(); setMsg("Länken är borttagen.");
 });
 
 /* ---------- åtgärdslista (styrelse/atgarder, bara styrelse och admin) ---------- */
@@ -2067,7 +2219,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderProt(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderDok(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
@@ -2305,7 +2457,7 @@ renderSite(); renderCases();
     if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); loadMina(); },()=>{}); }
     loadMina(); setTimeout(pushBanner,2500);
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMina(); });
-    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderProt(); },()=>{}); }
+    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderDok(); },()=>{}); }
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{
       if (snap.metadata&&snap.metadata.hasPendingWrites) return;

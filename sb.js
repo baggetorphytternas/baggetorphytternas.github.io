@@ -148,7 +148,7 @@ const VagPush=(()=>{
     return true;
   }
   async function disable(){ try{ const r=await reg(); const sub=await r.pushManager.getSubscription(); if(sub){ await sb.from("push_prenumerationer").delete().eq("endpoint",sub.endpoint); await sub.unsubscribe(); } }catch(e){} }
-  async function test(){ const {data,error}=await sb.functions.invoke("notiser",{body:{action:"test"}}); if(error) throw error; return data; }
+  async function test(){ await enable(); const {data,error}=await sb.functions.invoke("notiser",{body:{action:"test"}}); if(error) throw error; return data; }
   const fel=e=>({ios:"På iPhone och iPad fungerar notiser bara när appen ligger på hemskärmen. Tryck på Dela-knappen i Safari och välj Lägg till på hemskärmen, öppna appen därifrån och slå på notiser igen.",ej:"Den här webbläsaren kan inte ta emot notiser.",nekad:"Notiser är blockerade för appen i webbläsaren. Tillåt notiser för baggetorphytternas.github.io i webbläsarens inställningar och försök igen."}[e&&e.message]||"Det gick inte att slå på notiser. Försök igen om en stund.");
   /* Hjälp: hur man slår på notiser på iPhone, Android och dator */
   function hjalp(){

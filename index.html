@@ -499,7 +499,21 @@ details.mail[open]{gap:10px}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
 .mc-top{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .mc-top strong{font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* kompaktare kontaktkort (medlemmar och styrelsen) */
+#memberList{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+#memberList,#boardList,#funkList{grid-auto-rows:1fr}
+#memberList>.mcard,#boardList>.bcard,#funkList>.bcard{height:100%!important}
+#boardList,#funkList{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))!important;gap:8px!important}
+.mcard,.bcard{height:auto!important;min-height:0!important;padding:8px 12px!important;gap:10px!important;border-radius:12px!important}
+.mcard .avs .avatar{width:30px;height:30px;font-size:.7rem}
+.bcard .avatar{width:34px!important;height:34px!important;font-size:.8rem}
+.mc-top strong,.bc-txt strong{font-size:.95rem!important}
+.mc-top small{font-size:.8rem}
+.bc-txt .meta{font-size:.75rem!important}
+.mcard .bc-pil,.bcard .bc-pil{width:16px;height:16px}
+@media (max-width:520px){ #memberList,#boardList,#funkList{grid-template-columns:1fr 1fr!important} .mcard .avs{display:none} .mcard .bc-pil,.bcard .bc-pil{display:none} .bcard{padding:8px 10px!important;gap:8px!important} .bcard .avatar{width:30px!important;height:30px!important} .mc-top strong{white-space:normal;line-height:1.2} .mc-bet{display:block;margin:2px 0 0} }
 .mc-bet{font-weight:600;font-size:.8rem;color:var(--muted);margin-left:4px}
+@media (max-width:520px){ .mc-bet{margin-left:0} }
 .mhead .mbet{display:block}
 .mc-top small{color:var(--muted);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mc-bot{display:flex;align-items:center;gap:10px;min-width:0}
@@ -807,7 +821,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <div class="page" id="page-medlemmar" hidden>
     <header class="pghead">
       <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg><span class="lg">Adresslista (PDF)</span><span class="sm">PDF</span></button><button type="button" class="ghost small board" id="addMember">+ <span class="lg">Lägg till medlem</span><span class="sm">Ny medlem</span></button></div></div>
-      <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Du ansvarar själv för att dina uppgifter stämmer. Tryck på Mina uppgifter för att ändra dem.</p>
+      <p class="hint">Fastighetsägarna längs vägen. Håll dina egna uppgifter aktuella under Mina uppgifter.</p>
     </header>
     <section>
       <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
@@ -973,9 +987,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.38</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.39</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.39</b><time>31 okt 2026</time></div><ul>
+          <li>Mindre kort för medlemmar, styrelse och funktionärer. På mobilen ligger de två i bredd.</li></ul></li>
         <li><div><b>2.38</b><time>31 okt 2026</time></div><ul>
           <li>Fastigheter har nu två fält: fastighetens namn (t.ex. Stavberga) och fastighetsbeteckning (t.ex. Stav 1:5). Beteckningen visas på korten, går att söka på och finns med i adresslistan.</li></ul></li>
         <li><div><b>2.37</b><time>31 okt 2026</time></div><ul>

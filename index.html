@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baggetorp Hytternäs vägsamfällighet</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f6b4f">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<script src="supabase.js"></script>
+<script src="sb.js"></script>
+<script src="jspdf.umd.min.js"></script>
+<script src="jspdf.plugin.autotable.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: summary table first, then one card per fastighet, then road segments and schablon values. */
+:root{
+  --bg:#f4f5f1; --surface:#ffffff; --ink:#1f2a24; --muted:#5d6a62; --line:#d6dcd4;
+  --accent:#2f6b4f; --accent-soft:#e3efe8; --warn:#9a5b00;
+  --display:"Source Serif 4", Georgia, serif; --body:"Source Sans 3", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141a17; --surface:#1c2420; --ink:#e6ece8; --muted:#9fb0a6; --line:#33413a;
+  --accent:#7cc4a0; --accent-soft:#24362d; --warn:#e0a84a; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#141a17; --surface:#1c2420; --ink:#e6ece8; --muted:#9fb0a6; --line:#33413a;
+  --accent:#7cc4a0; --accent-soft:#24362d; --warn:#e0a84a; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body)}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:22px}
+h1,h2{font-family:var(--display);font-weight:600;text-wrap:balance;margin:0}
+h1{font-size:1.7rem} h2{font-size:1.25rem}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px}
+.status{font-size:.85rem;color:var(--muted)}
+.status.warn{color:var(--warn)}
+section{display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.8rem;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right;white-space:nowrap}
+tfoot td{font-weight:600;border-bottom:none}
+.share{font-weight:600;color:var(--accent)}
+.chip{display:inline-block;font-size:.75rem;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin:1px 2px 1px 0;white-space:nowrap}
+#summary tbody tr{cursor:pointer}
+#summary tbody tr:hover td{background:var(--accent-soft)}
+#summary tbody tr.sel td{background:var(--accent-soft)}
+#cards .card{max-width:620px}
+.card{display:flex;flex-direction:column;gap:10px}
+.card-head{display:flex;gap:8px;align-items:center}
+.card-head input{font-weight:600;font-size:1rem}
+.card-head button{white-space:nowrap}
+.card-head{justify-content:space-between}
+.pname{margin:0;font-family:var(--display);font-size:1.15rem}
+.lockwrap{border:0;padding:0;margin:0;min-width:0;display:flex;flex-direction:column;gap:10px}
+.lockwrap[disabled]{opacity:.75}
+.lockwrap[disabled] .seg{cursor:default}
+.card.editing{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:6px;padding:3px 8px;font-size:.85rem;color:var(--ink);cursor:pointer;background:var(--bg)}
+.seg input{width:auto;margin:0}
+.seg.on{background:var(--accent-soft);border-color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.check{flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:.85rem}
+.check input{width:auto}
+.calc{font-size:.85rem;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+button{font:inherit;cursor:pointer;border-radius:6px;padding:7px 12px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);font-weight:600}
+button.ghost{background:transparent;color:var(--accent)}
+button.danger{border-color:var(--warn);color:var(--warn);background:transparent;padding:4px 9px;font-size:.85rem}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line)}
+.tab{background:transparent;color:var(--muted);border:1px solid var(--line);border-bottom:none;border-radius:8px 8px 0 0;padding:8px 14px}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.tab::after{content:" ▸";font-size:.8em}
+.tab[aria-selected="true"]::after{content:" ▾"}
+.tabpanel{display:flex;flex-direction:column;gap:12px}
+.tabpanel[hidden]{display:none}
+.hero{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;background:var(--accent);color:var(--surface);border-radius:12px;padding:22px 20px}
+.hero h1{font-size:1.9rem;color:var(--surface)}
+.hero .eyebrow{margin:0 0 4px;font-size:.85rem;opacity:.85;letter-spacing:.02em}
+.hero .lead{margin:8px 0 0;max-width:60ch;opacity:.92}
+.hero-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.hero-actions button{background:var(--surface);color:var(--accent);border-color:var(--surface)}
+.hero-actions .status{color:var(--surface);opacity:.85}
+.hero-actions .status.warn{color:var(--surface);opacity:1;font-weight:600}
+.notice{margin:0;background:var(--accent-soft);color:var(--ink);border-radius:8px;padding:10px 14px;font-size:.9rem}
+.notice[hidden]{display:none}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .hero{background:#23392e} }
+:root[data-theme="dark"] .hero{background:#23392e}
+.tab[hidden]{display:none}
+.nav{display:flex;gap:4px;overflow-x:auto;border-bottom:2px solid var(--line);padding-bottom:0;scrollbar-width:thin}
+.navtab{background:transparent;color:var(--muted);border:none;border-bottom:3px solid transparent;border-radius:0;padding:10px 12px;white-space:nowrap;font-weight:600}
+.navtab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.page{display:flex;flex-direction:column;gap:22px}
+.page[hidden]{display:none}
+.ph{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+button.small{padding:4px 10px;font-size:.85rem}
+.list{display:flex;flex-direction:column;gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.item{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.item .meta{font-size:.8rem;color:var(--muted)}
+.item h3{margin:0;font-size:1.05rem;font-family:var(--display);font-weight:600}
+.item p{margin:0;white-space:pre-wrap}
+.reply{border-left:3px solid var(--accent);padding:4px 10px;background:var(--accent-soft);border-radius:0 6px 6px 0;font-size:.92rem}
+.badge{display:inline-block;font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+.badge.ny{background:#f9eeda;color:#7a4b00}
+.badge.klar{background:#e5f4e4;color:#2f6b4f}
+.acts{border-top:1px dashed var(--line);padding-top:8px;margin-top:2px}
+.acts button{flex:1;min-height:40px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;margin-top:4px}
+.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block;background:var(--line)}
+.gallery a:only-child img{aspect-ratio:auto;max-height:420px;object-fit:contain}
+.docs{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.doclink{display:flex;align-items:center;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);text-decoration:none;font-weight:600;min-height:44px}
+.attedit{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:8px}
+.attlist{display:flex;flex-wrap:wrap;gap:6px}
+.att{position:relative;display:flex;align-items:center;gap:6px}
+.att img{width:72px;height:72px;object-fit:cover;border-radius:6px}
+.att button{position:absolute;top:-6px;right:-6px;padding:0 6px;background:var(--surface);font-size:.8rem}
+.att.doc{border:1px solid var(--line);border-radius:6px;padding:8px 30px 8px 10px;font-size:.85rem}
+.filebtn{flex:1;flex-direction:row;justify-content:center;align-items:center;gap:6px;border:1px dashed var(--accent);color:var(--accent);border-radius:8px;padding:10px;font-size:.9rem;font-weight:600;cursor:pointer;min-height:44px}
+.filebtn input{position:absolute;opacity:0;width:1px;height:1px}
+.filebtn:focus-within{outline:2px solid var(--accent)}
+section[hidden]{display:none!important}
+.ufm{display:flex;flex-direction:column;gap:10px}
+.ufm input,.ufm select,.ufm textarea{font-size:16px;padding:10px 12px}
+.rcpt{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;max-height:320px;overflow:auto}
+.rc{flex-direction:row;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink);font-size:.95rem;cursor:pointer}
+.rc:last-child{border-bottom:none}
+.rc input{width:20px;height:20px;margin-top:2px;flex:none}
+.rc span{display:flex;flex-direction:column}
+.rc small{color:var(--muted);font-size:.8rem;word-break:break-all}
+.rc.none{opacity:.55}
+.ubtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ubtns button{min-height:44px}
+.ubtns #uMail{grid-column:1/-1}
+details.item summary{cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.prose p{margin:0 0 .6em;max-width:68ch;white-space:pre-wrap}
+.empty{color:var(--muted);font-size:.9rem;margin:0}
+.role{font-size:.8rem;background:rgba(255,255,255,.18);padding:2px 10px;border-radius:999px}
+.role:empty{display:none}
+a{color:var(--accent)}
+body:not(.is-board) .board{display:none!important}
+body:not(.is-admin) .admin{display:none!important}
+.shares{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.share-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.share-row:last-child{border-bottom:none}
+.sname{font-weight:600}
+.sval{font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-end}
+.sval small{font-weight:400;color:var(--muted);font-size:.8rem}
+.share-row.total{background:var(--accent-soft)}
+.adminlinks{display:flex;flex-direction:column;gap:10px}
+.biglink{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--bg);color:var(--ink);border:1px solid var(--line);padding:14px 16px;border-radius:10px;min-height:56px}
+.biglink strong{color:var(--accent);font-size:1rem}
+.biglink span{font-weight:400;font-size:.85rem;color:var(--muted)}
+/* mobile first refinements */
+.nav{position:sticky;top:0;z-index:5;background:var(--bg);margin:0 -16px;padding:0 12px}
+.navtab{padding:12px 12px;font-size:.95rem}
+.item label{font-size:.8rem}
+.item input,.item textarea,.item select{font-size:16px;padding:10px 12px}
+.item .row button{flex:1;min-height:44px}
+.item .row button.ghost.small{flex:0 0 auto;min-height:36px}
+.contacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.cbtn{display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:999px;background:var(--accent-soft);text-decoration:none;font-size:.9rem;word-break:break-all}
+.search{max-width:none}
+.search input{font-size:16px;padding:10px 12px}
+#caseForm input[type=text],#caseForm #caseTitle,#caseForm textarea{font-size:16px;padding:10px 12px}
+#caseForm button{min-height:44px}
+.seg2{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg2 .opt{flex:1;flex-direction:row;margin:0;cursor:pointer}
+.seg2 .opt input{position:absolute;opacity:0;width:1px;height:1px}
+.seg2 .opt span{flex:1;text-align:center;padding:11px 8px;font-size:.95rem;font-weight:600;color:var(--muted)}
+.seg2 .opt input:checked+span{background:var(--accent);color:var(--surface)}
+.seg2 .opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:-3px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.chipbtn{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.85rem}
+.chipbtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.badge.typ{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.quick .row button{flex:1 1 45%;min-height:44px}
+@media (max-width:640px){
+  main{padding:12px 12px 48px;gap:16px}
+  .hero{padding:16px;border-radius:10px}
+  .hero h1{font-size:1.35rem}
+  .hero .lead{display:none}
+  .hero-actions{flex-direction:row;align-items:center;width:100%;justify-content:space-between}
+  .cards{grid-template-columns:1fr}
+  #summary th:nth-child(2),#summary td:nth-child(2),#summary th:nth-child(4),#summary td:nth-child(4){display:none}
+  #summary th,#summary td{padding:8px 5px;font-size:.92rem}
+  .ph h2{font-size:1.15rem}
+  .tabs{flex-wrap:nowrap;overflow-x:auto}
+  .tab{white-space:nowrap}
+}
+
+.fs{border:1px solid var(--line);border-radius:8px;padding:10px 12px 12px;margin:0;display:flex;flex-direction:column;gap:8px}
+.fs legend{font-size:.8rem;font-weight:600;color:var(--accent);padding:0 4px}
+.more summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:.9rem;padding:4px 0}
+.more[open]{display:flex;flex-direction:column;gap:8px}
+.card select,.card input{font-size:16px;padding:9px 10px}
+.hint{font-size:.85rem;color:var(--muted);margin:0;max-width:65ch}
+.segtable input{min-width:60px}
+@media (max-width:420px){ .grid2{grid-template-columns:1fr} .hero h1{font-size:1.5rem} .hero-actions{align-items:flex-start} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important} }
+
+body.gated main{display:none}
+#gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--bg)}
+.gatebox{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 20px;display:flex;flex-direction:column;gap:12px}
+.gatebox h1{font-size:1.5rem;color:var(--accent)}
+.gatebox p{margin:0}
+.gatebox .eyebrow{font-size:.85rem;color:var(--muted)}
+.gatebox input{font-size:16px;padding:12px}
+.gatebox button{min-height:48px;font-size:1rem}
+.gmsg{color:var(--muted);font-size:.92rem}
+.logout{background:transparent;border:1px solid rgba(255,255,255,.5);color:var(--surface);padding:3px 10px;font-size:.8rem;font-weight:600}
+.acc-add{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acc-add input,.acc-add select{font-size:16px;padding:10px}
+.acc-add button{min-height:44px}
+.acc-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px}
+.acc-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.acc-row:last-child{border-bottom:none}
+.acc-row span{flex:1;display:flex;flex-direction:column;min-width:0}
+.acc-row small{color:var(--muted);word-break:break-all}
+.acc-row select{width:auto;font-size:15px;padding:6px}
+#accessMgr{display:flex;flex-direction:column;gap:10px}
+body:not(.is-admin) #accessMgr{display:none}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Väg 13986 · Mellösa, Flens kommun</p>
+      <h1>Baggetorp Hytternäs vägsamfällighet</h1>
+      <p class="lead">Medlemssidor för vägen mellan Baggetorp, Hytternäs och utfarten vid Stav.</p>
+    </div>
+    <div class="hero-actions">
+      <span class="role" id="role"></span>
+      <button type="button" class="logout" id="logout" hidden>Logga ut</button>
+      <span class="status" id="status">Laddar…</span>
+    </div>
+  </header>
+
+  <nav class="nav" role="tablist" aria-label="Sidor">
+    <button type="button" role="tab" class="navtab" data-page="start" aria-selected="true">Start</button>
+    <button type="button" role="tab" class="navtab" data-page="medlemmar">Medlemmar</button>
+    <button type="button" role="tab" class="navtab" data-page="styrelse">Styrelsen</button>
+    <button type="button" role="tab" class="navtab" data-page="moten">Möten</button>
+    <button type="button" role="tab" class="navtab" data-page="arenden">Fel och synpunkter</button>
+    <button type="button" role="tab" class="navtab admin" data-page="admin">Admin</button>
+  </nav>
+
+  <div class="page" id="page-start">
+    <section class="panel">
+      <div class="ph"><h2>Om vägen</h2><button type="button" class="ghost small board" data-edit="intro">Ändra</button></div>
+      <div id="introView" class="prose"></div>
+      <div id="introEdit" hidden><textarea id="introText" rows="7"></textarea><div class="row" style="margin-top:8px"><button type="button" id="introSave">Spara</button><button type="button" class="ghost" data-edit="intro">Avbryt</button></div></div>
+    </section>
+    <section>
+      <div class="ph"><h2>Aktuellt</h2><button type="button" class="ghost small board" id="addNews">Ny händelse</button></div>
+      <div id="news" class="list"></div>
+    </section>
+    <section>
+      <div class="ph"><h2>Kommande möten</h2></div>
+      <div id="nextMeet" class="list"></div>
+    </section>
+    <section class="panel quick">
+      <h2>Snabbval</h2>
+      <div class="row">
+        <button type="button" class="ghost" data-goto="arenden">Anmäl fel på vägen</button>
+        <button type="button" class="ghost" data-goto="arenden">Lämna en synpunkt</button>
+        <button type="button" class="ghost" data-goto="styrelse">Kontakta styrelsen</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="page" id="page-medlemmar" hidden>
+    <section>
+      <div class="ph"><h2>Medlemsregister</h2><button type="button" class="ghost small board" id="addMember">Lägg till medlem</button></div>
+      <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Ändrade uppgifter? Meddela styrelsen via fliken Synpunkter.</p>
+      <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn eller fastighet"></label>
+      <div id="memberList" class="cards"></div>
+    </section>
+  </div>
+
+  <div class="page" id="page-styrelse" hidden>
+    <div class="filters board" role="tablist" aria-label="Styrelsen">
+      <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
+      <button type="button" class="chipbtn" data-st="utskick">Skapa utskick</button>
+    </div>
+    <section id="st-led">
+      <div class="ph"><h2>Styrelsen</h2><button type="button" class="ghost small board" id="addBoard">Lägg till ledamot</button></div>
+      <div id="boardList" class="cards"></div>
+    </section>
+    <section id="st-utskick" class="board" hidden>
+      <div class="panel ufm">
+        <h2>Skapa utskick</h2>
+        <p class="hint">Skriv meddelandet, välj mottagare ur medlemsregistret och skicka från din egen mejl eller sms app. Mottagarna läggs som dold kopia så att ingen ser de andras adresser.</p>
+        <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
+        <label for="uAmne">Ämne<input id="uAmne"></label>
+        <label for="uText">Meddelande<textarea id="uText" rows="9"></textarea></label>
+        <div class="ph"><strong>Mottagare</strong><button type="button" class="ghost small" id="uAll">Markera alla</button></div>
+        <div id="uRcpt" class="rcpt"></div>
+        <label class="check"><input type="checkbox" id="uNews">Lägg också upp meddelandet under Aktuellt</label>
+        <fieldset class="fs"><legend>Avsändare</legend>
+          <label for="uFrom">Skicka från<select id="uFrom"></select></label>
+          <label for="uFromOwn" id="uFromOwnL" hidden>Din mejladress<input id="uFromOwn" type="email" inputmode="email" placeholder="namn@exempel.se"></label>
+          <label for="uVia">Öppna i<select id="uVia"><option value="app">Mejlappen i telefonen eller datorn</option><option value="gmail">Gmail</option><option value="outlook">Outlook</option></select></label>
+          <p class="hint" id="uViaHint"></p>
+        </fieldset>
+        <div class="ubtns">
+          <button type="button" id="uMail">✉ Skicka med mejl</button>
+          <button type="button" class="ghost" id="uSms">💬 Skicka som sms</button>
+          <button type="button" class="ghost" id="uCopyAddr">Kopiera mejladresser</button>
+          <button type="button" class="ghost" id="uCopyText">Kopiera texten</button>
+        </div>
+        <span class="status" id="uMsg"></span>
+        <p class="hint">Bilagor går inte att skicka härifrån. Lägg upp dem under Aktuellt eller Möten och hänvisa till appen i meddelandet.</p>
+      </div>
+      <div class="ph"><h2>Tidigare utskick</h2></div>
+      <div id="uLog" class="list"></div>
+    </section>
+  </div>
+
+  <div class="page" id="page-moten" hidden>
+    <section>
+      <div class="ph"><h2>Möten och protokoll</h2><button type="button" class="ghost small board" id="addMeet">Nytt möte</button></div>
+      <p class="hint">Kallelser, datum för årsstämma och protokoll.</p>
+      <div id="meetList" class="list"></div>
+    </section>
+  </div>
+
+  <div class="page" id="page-arenden" hidden>
+    <section class="panel" id="caseForm">
+      <h2>Anmäl fel eller lämna synpunkt</h2>
+      <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
+        <label class="opt"><input type="radio" name="ctype" value="fel" checked><span>Fel på vägen</span></label>
+        <label class="opt"><input type="radio" name="ctype" value="syn"><span>Synpunkt eller fråga</span></label>
+      </div>
+      <p class="hint" id="caseHint"></p>
+      <label for="caseTitle"><span id="caseTitleLbl">Var</span><input id="caseTitle"></label>
+      <label for="caseText"><span id="caseTextLbl">Vad har hänt</span><textarea id="caseText" rows="4"></textarea></label>
+      <div class="row"><button type="button" id="caseSend">Skicka</button><span class="status" id="caseMsg"></span></div>
+    </section>
+    <section>
+      <div class="ph"><h2 id="caseHead">Ärenden</h2><button type="button" class="ghost small board" data-showarch="all">Visa arkiv</button></div>
+      <div class="filters" id="caseFilter">
+        <button type="button" class="chipbtn on" data-cf="alla">Alla</button>
+        <button type="button" class="chipbtn" data-cf="fel">Fel på vägen</button>
+        <button type="button" class="chipbtn" data-cf="syn">Synpunkter</button>
+      </div>
+      <div id="caseList" class="list"></div>
+    </section>
+  </div>
+
+  <div class="page" id="page-admin" hidden>
+    <section class="panel">
+      <h2>Admin</h2>
+      <p class="hint">Verktyg som bara du som admin ser.</p>
+      <div class="adminlinks">
+        <button type="button" class="biglink" data-goto="verktyg"><strong>Verktyg för andelstal</strong><span>Ändra fastigheter, delsträckor, schablonvärden och belopp</span></button>
+        <button type="button" class="biglink" id="pdf"><strong>Skapa PDF för medlemmar</strong><span>Förslaget med karta och alla fastigheter</span></button>
+      </div>
+    </section>
+    <section class="panel" id="accessMgr"></section>
+  </div>
+
+  <div class="page" id="page-verktyg" hidden>
+  <div class="ph"><h2>Verktyg för andelstal</h2><button type="button" class="ghost small" data-goto="admin">Tillbaka till Admin</button></div>
+  <p class="hint">Varje fastighets andel räknas med Lantmäteriets tonkilometermetod: fastighetens trafik per år gånger hur lång sträcka av vägen den kör på ut till Stav.</p>
+  <p class="notice" id="readonly" hidden>Bara admin kan ändra uppgifterna om andelstal och vägsträckning.</p>
+
+  <section>
+    <div class="panel row admin"><label for="utdeb" style="max-width:260px">Belopp att fördela, kr per år (lämna tomt för bara andelar)<input id="utdeb" inputmode="decimal" data-s="utdebitering" placeholder="t.ex. 25000"></label></div>
+    <div class="panel scroll">
+      <table id="summary">
+        <thead><tr><th>Fastighet</th><th>Typ</th><th class="num">Väglängd</th><th class="num">Tonkm</th><th class="num">Förslag 2012</th><th class="num">Andel</th><th class="num kr">Kr per år</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="row">
+      <button type="button" id="copy" class="ghost">Kopiera resultatet som text</button>
+      <span class="status" id="copied"></span>
+    </div>
+  </section>
+
+  <section class="tabs-wrap">
+    <div class="tabs" role="tablist" aria-label="Inställningar">
+      <button type="button" role="tab" class="tab" id="tabbtn-edit" data-tab="edit" aria-controls="tab-edit">Ändra fastighet</button>
+      <button type="button" role="tab" class="tab" id="tabbtn-segs" data-tab="segs" aria-controls="tab-segs">Delsträckor</button>
+      <button type="button" role="tab" class="tab" id="tabbtn-karta" data-tab="karta" aria-controls="tab-karta">Karta</button>
+      <button type="button" role="tab" class="tab" id="tabbtn-schab" data-tab="schab" aria-controls="tab-schab">Schablonvärden</button>
+    </div>
+    <p class="hint">Tryck på en flik för att öppna den. Tryck igen för att fälla ihop.</p>
+  <div class="tabpanel" id="tab-edit" role="tabpanel" aria-labelledby="tabbtn-edit">
+    <div class="row">
+      <label for="pick" style="flex:1;min-width:220px">Välj fastighet<select id="pick"></select></label>
+      <button type="button" id="addProp" style="align-self:flex-end">Lägg till fastighet</button>
+    </div>
+    <p class="hint">Fyll i antal bostäder, areal och vilka delsträckor fastigheten kör på ut till Stav. Ändringar sparas automatiskt. Du kan också välja en fastighet genom att trycka på den i listan ovan.</p>
+    <div id="cards"></div>
+  </div>
+
+  <div class="tabpanel" id="tab-karta" role="tabpanel" aria-labelledby="tabbtn-karta" hidden>
+    <div class="panel">
+      <img src="vagkarta.png" alt="Karta över vägen med delsträckorna A1 till H, korset, anslutningspunkter och utfarten vid Stav" style="width:100%;height:auto;border-radius:6px;display:block">
+      <p class="hint" style="margin-top:10px">Vita punkter: gränsen mot Hytternäs på A, korset där vägarna från Baggetorp och Hytternäs möts, samt Hytternäs och Hytternäs 1:5 längs B och C. Gul punkt: Stavbergavägen, där Stavberga, Asplunda och Älvsjö ansluter. Grön punkt: Stavviken. Röd punkt: Vretstugan och Skogstorp. Lila punkt: utfarten vid Stav. Längderna är uppmätta på fastighetskartan och fördelade på vägens totala längd 3 370 m.</p>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-segs" role="tabpanel" aria-labelledby="tabbtn-segs" hidden>
+    <div class="panel scroll">
+      <table class="segtable" id="segtable">
+        <thead><tr><th>Beteckning</th><th>Sträcka</th><th class="num">Meter</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="row" style="margin-top:10px"><button type="button" id="addSeg" class="ghost">Lägg till delsträcka</button></div>
+    </div>
+  </div>
+
+  <div class="tabpanel" id="tab-schab" role="tabpanel" aria-labelledby="tabbtn-schab" hidden>
+    <div class="panel">
+      <div class="grid2" id="schablon"></div>
+      <p class="hint" style="margin-top:10px">Värdena följer Lantmäteriets tonkilometermetod (PM 2025, skog enligt PM 2010). Jordbruk: fast belopp plus ton per hektar åker när åkerarealen är minst gränsen, annars ton per hektar för liten åkerareal.</p>
+    </div>
+  </div>
+  </section>
+  </div>
+</main>
+
+<script>
+const DOC_PATH = "vag/config";
+const SCHABLON_FIELDS = [
+  ["perm","Permanentbostad, ton per år"],
+  ["fritNormal","Fritidshus normal, ton per år"],
+  ["fritLag","Fritidshus låg, ton per år"],
+  ["fritIntensiv","Fritidshus intensiv, ton per år"],
+  ["skog","Skog, ton per ha och år"],
+  ["akerFast","Jordbruk fast belopp, ton"],
+  ["akerPerHa","Jordbruk, ton per ha åker"],
+  ["akerSmallPerHa","Liten åkerareal, ton per ha"],
+  ["akerGrans","Gräns liten åkerareal, ha"],
+  ["minKm","Minsta väglängd, km"]
+];
+const DEFAULT = {
+  segments:[], props:[],
+  schablon:{perm:2500,fritNormal:900,fritLag:450,fritIntensiv:1800,skog:30,akerFast:1000,akerPerHa:35,akerSmallPerHa:100,akerGrans:20,minKm:0.3,utdebitering:""}
+};
+let state = structuredClone(DEFAULT);
+let selected = null;
+let db = null, ref = null, saveTimer = null, dirty = false, saving = false, pendingRemote = null;
+
+const $ = s => document.querySelector(s);
+const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+const fmt = (n, d=0) => n.toLocaleString("sv-SE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const uid = () => Math.random().toString(36).slice(2,9);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let stTimer=null;
+function setStatus(t, warn){ const el=$("#status"); el.textContent=t; el.classList.toggle("warn",!!warn); clearTimeout(stTimer); if(!warn) stTimer=setTimeout(()=>{ if(el.textContent===t) el.textContent=""; },3000); }
+
+/* ---------- calculation ---------- */
+/* Average distance to the exit for traffic spread evenly along the given segments.
+   Each segment's "mot" names the next segment toward Stav; without it, half the length is used. */
+function jamnKm(ids){
+  ids=ids||[]; const seg=id=>state.segments.find(x=>x.id===id);
+  if (!ids.every(id=>{ const g=seg(id); return g && "mot" in g; })) return segKm(ids)/2;
+  const down=id=>{ let s=0, g=seg(seg(id).mot), n=0; while(g && n++<50){ s+=num(g.m); g=seg(g.mot); } return s; };
+  let w=0, t=0; ids.forEach(id=>{ const L=num(seg(id).m); w+=L; t+=L*(L/2+down(id)); });
+  return w? t/w/1000 : 0;
+}
+function segKm(ids){
+  return (ids||[]).reduce((s,id)=>{ const g=state.segments.find(x=>x.id===id); return s+(g?num(g.m):0); },0)/1000;
+}
+function calc(){
+  const S = state.schablon;
+  const fritVal = {lag:num(S.fritLag), normal:num(S.fritNormal), intensiv:num(S.fritIntensiv)};
+  const rows = state.props.map(p=>{
+    let d = segKm(p.route); if (d>0) d = Math.max(d, num(S.minKm));
+    const aker = num(p.akerHa);
+    const jord = aker>0 ? (aker>=num(S.akerGrans) ? num(S.akerFast)+num(S.akerPerHa)*aker : num(S.akerSmallPerHa)*aker) : 0;
+    const bostad = num(p.perm)*num(S.perm) + num(p.frit)*(fritVal[p.fritNiva||"normal"]||0);
+    let dSkog = (p.skogRoute&&p.skogRoute.length) ? segKm(p.skogRoute) : d;
+    if (p.skogJamn) dSkog = jamnKm(p.skogRoute&&p.skogRoute.length ? p.skogRoute : p.route);
+    const skogTon = num(p.skogHa)*num(S.skog);
+    const ton = bostad + jord + skogTon;
+    const tkm = (bostad+jord)*d + skogTon*dSkog;
+    const fixed = (p.fast!==undefined && p.fast!==null && String(p.fast).trim()!=="") ? num(p.fast) : null;
+    return {p, d, dSkog, ton, tkm, fixed, bostad, jord, skogTon};
+  });
+  const fixedSum = rows.reduce((s,r)=>s+(r.fixed??0),0);
+  const S0 = rows.filter(r=>r.fixed===null).reduce((s,r)=>s+r.tkm,0);
+  rows.forEach(r=>{ r.share = r.fixed!==null ? r.fixed : (S0>0 ? r.tkm/S0*(100-fixedSum) : 0); r.kr = r.share/100*num(S.utdebitering); });
+  // Avrunda till en decimal så att summan blir exakt 100 (största rest)
+  const tenths = rows.map(r=>r.share*10), fl = tenths.map(Math.floor);
+  let left = Math.round(tenths.reduce((x,y)=>x+y,0)) - fl.reduce((x,y)=>x+y,0);
+  tenths.map((t,i)=>[t-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{ if(left>0){ fl[i]++; left--; } });
+  rows.forEach((r,i)=>{ r.disp = fl[i]/10; });
+  return {rows, fixedSum, total:S0};
+}
+function typeChips(p){
+  const t=[];
+  if (num(p.akerHa)>0 || num(p.skogHa)>0) t.push(num(p.akerHa)>0&&num(p.skogHa)>0?"Jord och skog":num(p.skogHa)>0?"Skog":"Jordbruk");
+  if (num(p.perm)>0) t.push(num(p.perm)>1?num(p.perm)+" permanent":"Permanent");
+  if (num(p.frit)>0) t.push((num(p.frit)>1?num(p.frit)+" ":"")+"Fritid"+(p.fritNiva&&p.fritNiva!=="normal"?" ("+p.fritNiva+")":""));
+  if (p.fast!==undefined&&p.fast!==null&&String(p.fast).trim()!=="") t.push("Fast andel");
+  return t.map(x=>`<span class="chip">${esc(x)}</span>`).join("") || `<span class="chip">Ej angiven</span>`;
+}
+
+/* ---------- rendering ---------- */
+function renderPublic(){
+  const el=document.getElementById("pubShares"); if(!el) return;
+  const {rows}=calc(); const sorted=[...rows].sort((a,b)=>b.share-a.share);
+  const kr=num(state.schablon.utdebitering)>0;
+  el.innerHTML = sorted.length ? sorted.map(r=>`<div class="share-row"><span class="sname">${esc(r.p.namn)}</span><span class="sval">${fmt(r.disp,1)} %${kr?`<small>${fmt(Math.round(r.kr))} kr per år</small>`:""}</span></div>`).join("")
+    + `<div class="share-row total"><span class="sname">Totalt</span><span class="sval">${fmt(rows.reduce((s,r)=>s+r.disp,0),1)} %</span></div>` : `<p class="empty">Inga andelstal ännu.</p>`;
+}
+function renderSummary(){
+  renderPublic();
+  const {rows,total} = calc();
+  const showKr = num(state.schablon.utdebitering)>0;
+  const sorted = [...rows].sort((a,b)=>b.share-a.share);
+  $("#summary tbody").innerHTML = sorted.map(r=>`<tr data-row="${r.p.id}" class="${r.p.id===selected?"sel":""}">
+    <td>${esc(r.p.namn||"Namnlös")}</td><td>${typeChips(r.p)}</td>
+    <td class="num">${r.fixed!==null?"":fmt(r.d,2)+" km"}</td>
+    <td class="num">${r.fixed!==null?"":fmt(r.tkm)}</td>
+    <td class="num">${r.p.andel2012?esc(String(r.p.andel2012).replace(".",","))+" %":"ny"}</td>
+    <td class="num share">${fmt(r.disp,1)} %</td>
+    ${showKr?`<td class="num">${fmt(Math.round(r.kr))}</td>`:""}</tr>`).join("");
+  const sumShare = rows.reduce((s,r)=>s+r.disp,0), sumKr = rows.reduce((s,r)=>s+r.kr,0);
+  $("#summary tfoot").innerHTML = `<tr><td>Totalt</td><td></td><td></td><td class="num">${fmt(total)}</td><td></td><td class="num">${fmt(sumShare,1)} %</td>${showKr?`<td class="num">${fmt(Math.round(sumKr))}</td>`:""}</tr>`;
+  document.querySelector("#summary th.kr").style.display = showKr?"":"none";
+  rows.forEach(r=>{ const el=document.getElementById("calc-"+r.p.id); if(el) el.textContent = calcText(r); });
+}
+function calcText(r){
+  if (r.fixed!==null) return `Fast andel ${fmt(r.fixed,1)} %. Övriga fält påverkar inte resultatet.`;
+  const parts=[];
+  if (r.bostad) parts.push(`bostäder ${fmt(r.bostad)} ton`);
+  if (r.jord) parts.push(`jordbruk ${fmt(r.jord)} ton`);
+  if (r.skogTon) parts.push(`skog ${fmt(r.skogTon)} ton på ${fmt(r.dSkog,2)} km`);
+  return (parts.length?parts.join(", ")+". ":"") + `Väg ${fmt(r.d,2)} km, ${fmt(r.tkm)} tonkm, andel ${fmt(r.disp,1)} %.`;
+}
+function segBoxes(p, key){
+  return state.segments.map(g=>{
+    const on=(p[key]||[]).includes(g.id); const id=`${key}-${p.id}-${g.id}`;
+    return `<label class="seg ${on?"on":""}" for="${id}" title="${esc(g.namn)}"><input type="checkbox" id="${id}" data-p="${p.id}" data-key="${key}" data-seg="${esc(g.id)}" ${on?"checked":""}>${esc(g.id)}</label>`;
+  }).join("") || `<span class="hint">Lägg till delsträckor längre ner.</span>`;
+}
+function renderPick(){
+  if (!state.props.find(p=>p.id===selected)) selected = state.props[0]?.id ?? null;
+  const sorted=[...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv"));
+  $("#pick").innerHTML = sorted.map(p=>`<option value="${p.id}" ${p.id===selected?"selected":""}>${esc(p.namn||"Namnlös")}</option>`).join("") || `<option value="">Inga fastigheter</option>`;
+}
+const TYPER=[["perm","Permanentbostad"],["frit","Fritidshus"],["jord","Jord och skogsbruk utan bostad"],["jordperm","Jord och skogsbruk med permanentbostad"],["jordfrit","Jord och skogsbruk med fritidshus"],["annan","Annat, fast andel"]];
+function typOf(p){
+  if (p.typ) return p.typ;
+  const j=num(p.akerHa)>0||num(p.skogHa)>0;
+  if (String(p.fast??"").trim()!=="") return "annan";
+  return j ? (num(p.perm)>0?"jordperm":num(p.frit)>0?"jordfrit":"jord") : (num(p.frit)>0&&!num(p.perm)?"frit":"perm");
+}
+function setTyp(p,t){
+  p.typ=t;
+  const jord=t.startsWith("jord"), perm=t==="perm"||t==="jordperm", frit=t==="frit"||t==="jordfrit";
+  if (perm){ if(!num(p.perm)) p.perm=1; } else p.perm=0;
+  if (frit){ if(!num(p.frit)) p.frit=1; } else p.frit=0;
+  if (!jord){ p.akerHa=0; p.skogHa=0; p.skogRoute=[]; p.skogJamn=false; }
+  if (t!=="annan") p.fast="";
+}
+let editProp=null;
+document.addEventListener("click", e=>{
+  const u=e.target.closest("[data-unlock]"); if(u){ editProp=u.dataset.unlock; renderCards(); const f=document.getElementById("namn-"+editProp); if(f) f.focus(); return; }
+  if (e.target.closest("[data-lock]")){ editProp=null; renderCards(); renderSummary(); }
+});
+function renderCards(){
+  renderPick();
+  $("#cards").innerHTML = state.props.filter(p=>p.id===selected).map(p=>{
+    const t=typOf(p), jord=t.startsWith("jord"), perm=t==="perm"||t==="jordperm", frit=t==="frit"||t==="jordfrit";
+    const ed=editProp===p.id;
+    return `<div class="panel card${ed?" editing":""}" data-card="${p.id}">
+    <div class="card-head">
+      ${ed?`<input id="namn-${p.id}" aria-label="Fastighetens namn" data-p="${p.id}" data-f="namn" value="${esc(p.namn)}">`:`<h3 class="pname">${esc(p.namn)}</h3>`}
+      ${ed?`<button type="button" data-lock="1">Klar</button>`:`<button type="button" class="ghost" data-unlock="${p.id}">Redigera</button>`}
+    </div>
+    ${ed?"":`<p class="hint">Tryck på Redigera för att ändra uppgifterna.</p>`}
+    <fieldset class="lockwrap" ${ed?"":"disabled"}>
+    <label for="typ-${p.id}">Typ av fastighet<select id="typ-${p.id}" data-typ="${p.id}">${TYPER.map(([v,l])=>`<option value="${v}" ${v===t?"selected":""}>${l}</option>`).join("")}</select></label>
+    ${perm?`<fieldset class="fs"><legend>Bostad</legend>
+      <label for="perm-${p.id}">Antal permanentbostäder<input id="perm-${p.id}" inputmode="numeric" data-p="${p.id}" data-f="perm" value="${esc(p.perm??1)}"></label></fieldset>`:""}
+    ${frit?`<fieldset class="fs"><legend>Fritidshus</legend><div class="grid2">
+      <label for="frit-${p.id}">Antal fritidshus<input id="frit-${p.id}" inputmode="numeric" data-p="${p.id}" data-f="frit" value="${esc(p.frit??1)}"></label>
+      <label for="fritNiva-${p.id}">Hur mycket används det<select id="fritNiva-${p.id}" data-p="${p.id}" data-f="fritNiva">
+        ${["lag","normal","intensiv"].map(v=>`<option value="${v}" ${(p.fritNiva||"normal")===v?"selected":""}>${v==="lag"?"Lite":v==="normal"?"Normalt":"Mycket"}</option>`).join("")}</select></label></div></fieldset>`:""}
+    ${jord?`<fieldset class="fs"><legend>Mark</legend><div class="grid2">
+      <label for="akerHa-${p.id}">Åker och bete, ha<input id="akerHa-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="akerHa" value="${esc(p.akerHa??0)}"></label>
+      <label for="skogHa-${p.id}">Produktiv skog, ha<input id="skogHa-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="skogHa" value="${esc(p.skogHa??0)}"></label></div></fieldset>`:""}
+    ${t==="annan"?`<fieldset class="fs"><legend>Fast andel</legend>
+      <label for="fast-${p.id}">Andel i procent<input id="fast-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="fast" value="${esc(p.fast??"")}"></label></fieldset>`:""}
+    <fieldset class="fs"><legend>Vägen</legend>
+      <label>${jord?(perm||frit?"Bostad och jordbruk kör på delsträckor":"Jordbruket kör på delsträckor"):"Kör på delsträckor"} ut till Stav</label><div class="segs">${segBoxes(p,"route")}</div>
+      ${jord?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>
+      <label class="check" for="jamn-${p.id}"><input type="checkbox" id="jamn-${p.id}" data-p="${p.id}" data-f="skogJamn" ${p.skogJamn?"checked":""}>Skogen ligger jämnt utmed sträckan</label>`:""}
+    </fieldset>
+    <details class="more"><summary>Fler uppgifter</summary>
+      <label for="a2012-${p.id}">Andel i förslaget 2012, %<input id="a2012-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="andel2012" value="${esc(String(p.andel2012??"").replace(".",","))}"></label>
+      <label for="note-${p.id}">Anteckning (syns bara här)<textarea id="note-${p.id}" rows="2" data-p="${p.id}" data-f="note">${esc(p.note)}</textarea></label>
+    </details>
+    ${ed?`<div class="row"><button type="button" class="danger" data-del="${p.id}">Ta bort fastigheten</button></div>`:""}
+    </fieldset>
+    <div class="calc" id="calc-${p.id}"></div>
+  </div>`; }).join("");
+}
+document.addEventListener("change", e=>{
+  const id=e.target.dataset&&e.target.dataset.typ; if(!id) return;
+  const p=state.props.find(x=>x.id===id); if(!p) return;
+  setTyp(p,e.target.value); renderCards(); renderSummary(); scheduleSave();
+});
+function renderSegments(){
+  $("#segtable tbody").innerHTML = state.segments.map((g,i)=>`<tr>
+    <td><input id="segid-${i}" aria-label="Beteckning" data-seg-i="${i}" data-sf="id" value="${esc(g.id)}" style="width:70px"></td>
+    <td><input id="segnamn-${i}" aria-label="Sträcka" data-seg-i="${i}" data-sf="namn" value="${esc(g.namn)}"></td>
+    <td class="num"><input id="segm-${i}" aria-label="Meter" inputmode="decimal" data-seg-i="${i}" data-sf="m" value="${esc(g.m)}" style="width:90px;text-align:right"></td>
+    <td><button type="button" class="danger" data-segdel="${i}">Ta bort</button></td></tr>`).join("");
+}
+function renderSchablon(){
+  $("#schablon").innerHTML = SCHABLON_FIELDS.map(([k,l])=>`<label for="s-${k}">${l}<input id="s-${k}" inputmode="decimal" data-s="${k}" value="${esc(state.schablon[k])}"></label>`).join("");
+}
+function renderAll(){ renderCards(); renderSegments(); renderSchablon(); const u=document.getElementById("utdeb"); if(u && document.activeElement!==u) u.value = state.schablon.utdebitering ?? ""; renderSummary(); }
+
+let openTab="edit";
+function renderTabs(){
+  document.querySelectorAll(".tab").forEach(b=>{ const on=b.dataset.tab===openTab; b.setAttribute("aria-selected",on?"true":"false"); b.setAttribute("aria-expanded",on?"true":"false"); });
+  document.querySelectorAll(".tabpanel").forEach(p=>{ p.hidden = p.id!=="tab-"+openTab; });
+}
+/* ---------- events ---------- */
+document.addEventListener("input", e=>{
+  const t=e.target;
+  if (t.dataset.f && t.dataset.p){
+    const p=state.props.find(x=>x.id===t.dataset.p); if(!p) return;
+    p[t.dataset.f] = t.type==="checkbox" ? t.checked : t.value;
+  } else if (t.dataset.key){
+    const p=state.props.find(x=>x.id===t.dataset.p); if(!p) return;
+    const arr=new Set(p[t.dataset.key]||[]); t.checked?arr.add(t.dataset.seg):arr.delete(t.dataset.seg);
+    p[t.dataset.key]=state.segments.map(g=>g.id).filter(id=>arr.has(id));
+    t.closest(".seg").classList.toggle("on",t.checked);
+  } else if (t.dataset.segI!==undefined){
+    const g=state.segments[+t.dataset.segI]; const old=g.id; g[t.dataset.sf]=t.value;
+    if (t.dataset.sf==="id"){ state.props.forEach(p=>["route","skogRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].map(x=>x===old?t.value:x); })); }
+  } else if (t.dataset.s){
+    state.schablon[t.dataset.s]=t.value;
+  } else return;
+  renderSummary(); scheduleSave();
+});
+document.addEventListener("change", e=>{ if (e.target.dataset.sf==="id"||e.target.dataset.sf==="namn") renderCards(), renderSummary(); if (e.target.dataset.f==="namn") renderPick(); });
+document.addEventListener("change", e=>{ if(e.target.id==="pick"){ selected=e.target.value; editProp=null; renderCards(); renderSummary(); } });
+document.addEventListener("click", e=>{
+  const tr=e.target.closest("#summary tbody tr[data-row]");
+  if (tr){ selected=tr.dataset.row; openTab="edit"; renderTabs(); renderCards(); renderSummary(); document.getElementById("pick").scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  const t=e.target.closest("button"); if(!t) return;
+  if (t.id==="pdf"){ makePdf(); return; }
+  if (t.dataset.tab){ openTab = openTab===t.dataset.tab ? null : t.dataset.tab; renderTabs(); return; }
+  if (t.dataset.del){
+    if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort fastigheten";}},3000); return; }
+    state.props=state.props.filter(p=>p.id!==t.dataset.del); selected=null; editProp=null; renderCards(); renderSummary(); scheduleSave();
+  } else if (t.dataset.segdel!==undefined){
+    if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Bekräfta"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort";}},3000); return; }
+    const g=state.segments.splice(+t.dataset.segdel,1)[0];
+    state.props.forEach(p=>["route","skogRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].filter(x=>x!==g.id); }));
+    renderAll(); scheduleSave();
+  } else if (t.id==="addProp"){
+    const p={id:uid(),namn:"Ny fastighet",typ:"perm",perm:1,frit:0,fritNiva:"normal",akerHa:0,skogHa:0,route:[],skogRoute:[],skogJamn:false,fast:"",note:""};
+    state.props.push(p); selected=p.id; editProp=p.id; renderCards(); renderSummary(); scheduleSave();
+    const el=document.getElementById("namn-"+p.id); if(el){ el.focus(); el.select(); }
+  } else if (t.id==="addSeg"){
+    state.segments.push({id:String.fromCharCode(65+state.segments.length),namn:"Ny delsträcka",m:0}); renderAll(); scheduleSave();
+  } else if (t.id==="copy"){
+    const {rows}=calc();
+    const kr=num(state.schablon.utdebitering)>0;
+    const txt=["Fastighet\tAndel"+(kr?"\tKr per år":""),...[...rows].sort((a,b)=>b.share-a.share).map(r=>`${r.p.namn}\t${fmt(r.disp,1)} %`+(kr?`\t${fmt(Math.round(r.kr))}`:""))].join("\n");
+    navigator.clipboard.writeText(txt).then(()=>$("#copied").textContent="Kopierat.",()=>$("#copied").textContent="Kunde inte kopiera, markera tabellen och kopiera själv.");
+  }
+});
+
+
+/* ---------- read only ---------- */
+let readOnly=true;
+function applyReadOnly(){
+  document.getElementById("readonly").hidden=!readOnly;
+  document.body.classList.toggle("is-admin",!readOnly);
+  ["tabbtn-edit","tabbtn-segs","tabbtn-schab"].forEach(id=>{ const b=document.getElementById(id); if(b) b.hidden=readOnly; });
+  if (readOnly && openTab!=="karta"){ openTab="karta"; renderTabs(); }
+}
+
+/* ---------- PDF ---------- */
+const NBSP=/ | /g;
+const pdfText=t=>String(t??"").replace(NBSP," ").replace(/−/g,"–");
+function routeText(p){
+  const ids=new Set([...(p.route||[]),...((num(p.skogHa)>0&&p.skogRoute)||[])]);
+  return state.segments.map(g=>g.id).filter(id=>ids.has(id)).join(", ");
+}
+function typeText(p){
+  const ha=num(p.akerHa)+num(p.skogHa);
+  const t=[];
+  if (num(p.akerHa)>0||num(p.skogHa)>0) t.push("Jord och skogsbruk");
+  if (num(p.perm)>0) t.push((t.length?"med ":"")+(num(p.perm)>1?num(p.perm)+" permanentbostäder":"permanentbostad"));
+  if (num(p.frit)>0) t.push((t.length?"med ":"")+(num(p.frit)>1?num(p.frit)+" fritidshus":"fritidsbostad"));
+  let s=t.join(" ").replace(/^./,c=>c.toUpperCase());
+  if ((num(p.akerHa)>0||num(p.skogHa)>0) && !num(p.perm) && !num(p.frit)) s+=" utan bostad";
+  if (ha>0) s+=`, ${fmt(ha)} ha`;
+  return s||"Ej angiven";
+}
+async function imgData(src){
+  const r=await fetch(src); const b=await r.blob();
+  return await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(b); });
+}
+async function makePdf(){
+  const btn=$("#pdf"); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML="<strong>Skapar PDF…</strong>";
+  try{
+    if (!window.jspdf) throw new Error("lib");
+    const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"mm",format:"a4"});
+    const W=210, M=18, CW=W-2*M; let y=M;
+    const green=[47,107,79], ink=[31,42,36], muted=[93,106,98];
+    const today=new Date().toLocaleDateString("sv-SE",{year:"numeric",month:"long",day:"numeric"});
+    const {rows}=calc(); const sorted=[...rows].sort((a,b)=>b.share-a.share);
+    const S=state.schablon; const showKr=num(S.utdebitering)>0;
+    const para=(t,size=10.5,color=ink,gap=2)=>{ doc.setFont("helvetica","normal"); doc.setFontSize(size); doc.setTextColor(...color); const lines=doc.splitTextToSize(pdfText(t),CW); if(y+lines.length*size*0.42>285){doc.addPage(); y=M;} doc.text(lines,M,y); y+=lines.length*size*0.42+gap; };
+    const head=t=>{ if(y>255){doc.addPage(); y=M;} y+=3; doc.setFont("helvetica","bold"); doc.setFontSize(13.5); doc.setTextColor(...green); doc.text(pdfText(t),M,y); y+=7; };
+    const table=(h,b,opts={})=>{ doc.autoTable(Object.assign({head:[h.map(pdfText)],body:b.map(r=>r.map(pdfText)),startY:y,margin:{left:M,right:M},theme:"grid",styles:{font:"helvetica",fontSize:9,cellPadding:1.8,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},headStyles:{fillColor:green,textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[244,245,241]}},opts)); y=doc.lastAutoTable.finalY+5; };
+    // band
+    doc.setFillColor(...green); doc.rect(0,0,W,38,"F");
+    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Baggetorp Hytternäs vägsamfällighet · väg 13986"),M,13);
+    doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text(pdfText("Förslag till nya andelstal"),M,25);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Utkast för diskussion, "+today),M,32);
+    y=48;
+    head("Sammanfattning");
+    para("Det här är ett förslag till nya andelstal för vägsamfälligheten, räknade på samma sätt som Lantmäteriet gör vid en förrättning. Gällande andelstal kommer från lantmäteriförrättningen 1958. Ett förslag till nya andelstal togs fram 2012 men antogs aldrig, och sedan dess har flera fastigheter tillkommit eller ändrats.");
+    para("Har du synpunkter på hur din fastighet beskrivs, till exempel om den används som fritidshus eller permanentbostad, hör av dig till styrelsen.");
+    head("Hur andelstalen räknas");
+    para("Varje fastighets andel bygger på två saker: hur mycket trafik fastigheten ger upphov till, och hur lång sträcka av vägen trafiken kör på ut till Stav. Trafiken gånger väglängden ger fastighetens belastning, och andelen är fastighetens belastning delat med summan för alla fastigheter. Den som ansluter närmare än "+fmt(num(S.minKm)*1000)+" meter från utfarten räknas som "+fmt(num(S.minKm)*1000)+" meter.");
+    table(["Fastighetstyp","Trafik per år enligt Lantmäteriets schablon"],[
+      ["Permanentbostad",fmt(num(S.perm))+" ton"],
+      ["Fritidsbostad",fmt(num(S.fritNormal))+" ton vid normal användning ("+fmt(num(S.fritLag))+" låg, "+fmt(num(S.fritIntensiv))+" intensiv)"],
+      ["Skogsbruk",fmt(num(S.skog))+" ton per hektar produktiv skog"],
+      ["Jordbruk",fmt(num(S.akerFast))+" ton plus "+fmt(num(S.akerPerHa))+" ton per hektar åker, eller "+fmt(num(S.akerSmallPerHa))+" ton per hektar vid mindre än "+fmt(num(S.akerGrans))+" ha åker"]]);
+    para("En jord och skogsbruksfastighet med bostad får både värdet för bostaden och för sin skog och åker.",9.5,muted);
+    // map
+    doc.addPage(); y=M;
+    head("Vägen och delsträckorna");
+    try{ const img=await imgData("vagkarta.png"); const h=CW*1200/1474; doc.addImage(img,"PNG",M,y,CW,h); y+=h+5; }catch(e){ para("Kartan kunde inte läggas in.",9.5,muted); }
+    const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
+    table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,"cirka "+fmt(num(g.m))+" m"]).concat([["","Totalt","cirka "+fmt(segTot)+" m"]]),{columnStyles:{0:{cellWidth:24},2:{cellWidth:32,halign:"right"}}});
+    para("Längderna är uppmätta på fastighetskartan och stämmer på ungefär 5 % när.",9,muted);
+    // properties
+    doc.addPage(); y=M;
+    head("Fastigheterna och föreslagna andelar");
+    const h1=["Fastighet","Typ","Kör på delsträcka","Väglängd","Förslag 2012","Ny andel"].concat(showKr?["Kr per år"]:[]);
+    const b1=sorted.map(r=>{
+      const vl = r.fixed!==null ? "" : fmt(r.d,1)+" km";
+      return [r.p.namn,typeText(r.p),routeText(r.p),vl,r.p.andel2012?r.p.andel2012.replace(".",",")+" %":"ny",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
+    });
+    b1.push(["Totalt","","","","100 %",fmt(rows.reduce((s,r)=>s+r.disp,0),1)+" %"].concat(showKr?[fmt(Math.round(rows.reduce((s,r)=>s+r.kr,0)))]:[]));
+    table(h1,b1,{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:30,fontStyle:"bold"},3:{halign:"right",cellWidth:24},4:{halign:"right",cellWidth:17},5:{halign:"right",fontStyle:"bold",cellWidth:17},6:{halign:"right"}},didParseCell:d=>{ if(d.section==="body"&&d.row.index===b1.length-1){ d.cell.styles.fontStyle="bold"; } }});
+    if (showKr) para("Kronorna visar hur "+fmt(num(S.utdebitering))+" kr per år fördelas enligt de nya andelarna.",9,muted);
+    head("Underlag och antaganden");
+    ["Fastigheternas användning, areal och anslutning till vägen bygger på styrelsens uppgifter.",
+     "Schablonvärdena kommer från Lantmäteriets promemoria om tonkilometermetoden (2025, skog enligt 2010).",
+     "Den senaste lantmäteriförrättningen är från 1958 (akt 04-MEL-1291.1). Nya andelstal kan antas av medlemmarna genom en överenskommelse. Vill någon ha en ny förrättning kan Lantmäteriet göra den."].forEach(t=>para("•  "+t,9.5,ink,1.2));
+    const pages=doc.getNumberOfPages();
+    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Baggetorp Hytternäs vägsamfällighet · Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
+    const blob=doc.output("blob");
+    const dl=await claude.use("downloads");
+    if (!dl) throw {code:"unavailable"};
+    await dl.save({filename:"Förslag nya andelstal Baggetorp Hytternäs.pdf",data:blob});
+    setStatus("PDF skapad");
+  }catch(e){
+    if (e && e.code==="declined") setStatus("PDF sparades inte");
+    else if (e && e.message==="lib") setStatus("PDF verktyget kunde inte laddas. Ladda om sidan.",true);
+    else setStatus("Kunde inte skapa PDF. Ladda om sidan och försök igen.",true);
+  }finally{ btn.disabled=false; btn.innerHTML=old; }
+}
+/* ---------- storage ---------- */
+function scheduleSave(){
+  if (readOnly) return;
+  dirty=true; if(!ref){ setStatus("Sparas inte: lagringen är inte tillgänglig i den här vyn.",true); return; }
+  setStatus("Osparade ändringar…"); clearTimeout(saveTimer); saveTimer=setTimeout(save,900);
+}
+async function save(){
+  if (saving){ scheduleSave(); return; }
+  saving=true; dirty=false;
+  try{ await ref.set(JSON.parse(JSON.stringify(state))); setStatus("Sparat"); }
+  catch(err){
+    if (err && err.code==="unavailable"){ setTimeout(save, 1500+Math.random()*1000); }
+    else setStatus(err && err.code==="invalid_argument" ? "Du har inte behörighet att ändra, bara att läsa." : "Kunde inte spara. Försök igen om en stund.", true);
+  } finally { saving=false; }
+  if (pendingRemote && !dirty){ applyRemote(pendingRemote); pendingRemote=null; }
+}
+function applyRemote(data){
+  data = JSON.parse(JSON.stringify(data||{}));
+  const editing = document.activeElement && document.activeElement.closest && document.activeElement.closest("main") && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+  if (dirty || saving || editing){ pendingRemote=data; return; }
+  state = Object.assign(structuredClone(DEFAULT), data, {schablon:Object.assign({},DEFAULT.schablon,data.schablon||{})});
+  renderAll();
+}
+document.addEventListener("focusout", ()=>{ setTimeout(()=>{ if(pendingRemote && !dirty && !saving){ const d=pendingRemote; pendingRemote=null; applyRemote(d);} },50); });
+
+renderAll(); renderTabs(); applyReadOnly();
+(async ()=>{
+  const timer=setTimeout(()=>setStatus("Kan inte nå lagringen ännu. Visar standardvärden.",true),10000);
+  try{
+    try{ const u=await claude.use("user"); if(u){ const ow=await u.isOwner(); readOnly = ow!==true; applyReadOnly(); } }catch(e){}
+    db = await claude.use("db");
+    if (!db){ clearTimeout(timer); setStatus("Lagringen är inte tillgänglig här. Ändringar sparas inte.",true); return; }
+    ref = db.doc(DOC_PATH);
+    ref.onSnapshot(snap=>{
+      if (!snap.metadata.fromCache) clearTimeout(timer);
+      if (snap.metadata.hasPendingWrites) return;
+      if (snap.exists){ applyRemote(snap.data()); if(!dirty) setStatus("Sparat"); }
+      else if (!snap.metadata.fromCache){ setStatus("Inga sparade uppgifter ännu. Lägg till fastigheter."); }
+    }, err=>{ clearTimeout(timer); setStatus("Kontakten med lagringen bröts. Ladda om sidan för att fortsätta spara.",true); ref=null; });
+  }catch(e){ clearTimeout(timer); setStatus("Lagringen är inte tillgänglig här. Ändringar sparas inte.",true); }
+})();
+</script>
+
+<script>
+/* ---------- Portal: start page, members, board, meetings, fault reports, feedback ----------
+   site/main          one doc: intro, nyheter, moten, styrelse, medlemmar (styrelsen skriver)
+   felanmalan/<uid>   one doc per medlem: {items:[...]} (alla läser, var och en skriver sin egen)
+   synpunkter/<uid>   one doc per medlem: {items:[...]} (medlemmen och styrelsen läser) */
+(function(){
+const q=s=>document.querySelector(s);
+const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nid=()=>Math.random().toString(36).slice(2,9);
+const today=()=>new Date().toISOString().slice(0,10);
+const dfmt=d=>{ if(!d) return ""; const t=new Date(d+"T12:00:00"); return isNaN(t)?E(d):t.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"}); };
+let board=false, canWrite=false, me=null, U=null, DB=null, siteRef=null;
+let site={intro:"",nyheter:[],moten:[],styrelse:[],medlemmar:[]};
+let fel={}, syn={}, siteSaving=false, siteDirty=false, editIntro=false;
+const editing=new Set();
+
+/* navigation */
+function go(page){
+  if ((page==="admin"||page==="verktyg") && !document.body.classList.contains("is-admin")) page="start";
+  document.querySelectorAll(".navtab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.page===(page==="verktyg"?"admin":page))));
+  document.querySelectorAll(".page").forEach(p=>p.hidden=p.id!=="page-"+page);
+  const ab=document.querySelector('.navtab[aria-selected="true"]'); if(ab&&ab.scrollIntoView) ab.scrollIntoView({block:"nearest",inline:"nearest"});
+  try{ history.replaceState(null,"","#"+page); }catch(e){}
+}
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,a"); if(!t) return;
+  if (t.classList.contains("navtab")) return go(t.dataset.page);
+  if (t.dataset.goto) return go(t.dataset.goto);
+});
+const start=(location.hash||"").slice(1); if (document.getElementById("page-"+start)) go(start);
+
+/* names of people who wrote reports */
+async function names(ids){ if(!U||!ids.length) return {}; try{ const ps=await U.profiles(ids); const o={}; ids.forEach(i=>o[i]=(ps[i]&&ps[i].name)||"En medlem"); return o; }catch(e){ return {}; } }
+
+/* ---------- save site doc ---------- */
+let siteTimer=null, siteGen=0;
+function saveSite(){
+  if(!board||!siteRef) return; siteDirty=true; clearTimeout(siteTimer);
+  const gen=++siteGen;
+  siteTimer=setTimeout(async()=>{ siteSaving=true; setMsg("Sparar…"); try{ await siteRef.set(JSON.parse(JSON.stringify(site))); if(gen===siteGen) siteDirty=false; setMsg("Sparat"); }catch(e){ setMsg("Kunde inte spara. Försök igen."); } siteSaving=false; },600);
+}
+
+/* ---------- renderers ---------- */
+function renderIntro(){
+  q("#introView").innerHTML = site.intro ? site.intro.split(/\n\s*\n/).map(p=>`<p>${E(p)}</p>`).join("") : `<p class="empty">Ingen information ännu.</p>`;
+  q("#introView").hidden=editIntro; q("#introEdit").hidden=!editIntro;
+}
+function sorted(arr,desc){ return [...(arr||[])].sort((a,b)=>desc? String(b.datum).localeCompare(String(a.datum)) : String(a.datum).localeCompare(String(b.datum))); }
+function itemCard(kind,it,fields,view){
+  if (board && editing.has(it.id)){
+    return `<div class="item" data-kind="${kind}" data-id="${it.id}">${fields.map(([k,l,t])=>`<label>${l}${t==="area"?`<textarea rows="4" data-f="${k}">${E(it[k])}</textarea>`:`<input ${t==="date"?'type="date"':t==="tel"?'type="tel" inputmode="tel"':t==="email"?'type="email" inputmode="email"':''} data-f="${k}" value="${E(it[k])}">`}</label>`).join("")}
+      ${ATT_KINDS.includes(kind)?attEdit(it):""}
+      <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
+  }
+  return `<div class="item" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row"><button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
+}
+const ATT_KINDS=["nyheter","moten"];
+const blobUrl=id=>(window.BLOB_BASE||"/_blob/")+encodeURIComponent(id);
+function attView(it){
+  const imgs=(it.bilder||[]), docs=(it.filer||[]);
+  return (imgs.length?`<div class="gallery">${imgs.map(b=>`<a href="${blobUrl(b.id)}" target="_blank" rel="noopener"><img src="${blobUrl(b.id)}" alt="${E(b.namn||"Bild")}" loading="lazy"></a>`).join("")}</div>`:"")
+   + (docs.length?`<div class="docs">${docs.map(f=>`<a class="doclink" href="${blobUrl(f.id)}" target="_blank" rel="noopener">📄 ${E(f.namn||"Dokument")}</a>`).join("")}</div>`:"");
+}
+function attEdit(it){
+  const imgs=(it.bilder||[]), docs=(it.filer||[]);
+  return `<div class="attedit">
+    ${imgs.length||docs.length?`<div class="attlist">${imgs.map(b=>`<div class="att"><img src="${blobUrl(b.id)}" alt=""><button type="button" class="danger" data-attdel="bilder:${E(b.id)}" aria-label="Ta bort bild">✕</button></div>`).join("")}${docs.map(f=>`<div class="att doc"><span>📄 ${E(f.namn)}</span><button type="button" class="danger" data-attdel="filer:${E(f.id)}" aria-label="Ta bort fil">✕</button></div>`).join("")}</div>`:""}
+    <div class="row">
+      <label class="filebtn">📷 Lägg till bild<input type="file" accept="image/*" multiple data-upload="bilder"></label>
+      <label class="filebtn">📄 Bifoga PDF<input type="file" accept="application/pdf" multiple data-upload="filer"></label>
+    </div><span class="status upmsg"></span></div>`;
+}
+async function shrink(file){
+  if (!/^image\/(jpeg|png|webp|heic|heif)/.test(file.type)) return file;
+  try{
+    const bmp=await createImageBitmap(file); const max=1600; const k=Math.min(1,max/Math.max(bmp.width,bmp.height));
+    if (k===1 && file.size<1.5e6) return file;
+    const c=document.createElement("canvas"); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+    c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    return await new Promise(r=>c.toBlob(b=>r(b||file),"image/jpeg",0.85));
+  }catch(e){ return file; }
+}
+let ASSETS=null;
+document.addEventListener("change",async e=>{
+  const inp=e.target; if(!inp.dataset||!inp.dataset.upload||!board) return;
+  const card=inp.closest(".item[data-kind]"); const it=(site[card.dataset.kind]||[]).find(x=>x.id===card.dataset.id); if(!it) return;
+  const msg=card.querySelector(".upmsg"); const field=inp.dataset.upload;
+  if (!ASSETS) ASSETS=await claude.use("assets");
+  if (!ASSETS){ msg.textContent="Uppladdning går inte just nu. Ladda om sidan och försök igen."; return; }
+  const files=[...inp.files]; inp.value="";
+  for (const f of files){
+    msg.textContent="Laddar upp "+f.name+"…";
+    try{
+      const body = field==="bilder" ? await shrink(f) : f;
+      const r=await ASSETS.upload(body);
+      it[field]=[...(it[field]||[]),{id:r.id,namn:f.name}];
+    }catch(err){ msg.textContent="Kunde inte ladda upp "+f.name+". Max 20 MB."; return; }
+  }
+  saveSite(); renderLists();
+});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-attdel]"); if(!b||!board) return;
+  if(!confirmDel()) return;
+  const [field,id]=b.dataset.attdel.split(":"); const card=b.closest(".item[data-kind]");
+  const it=(site[card.dataset.kind]||[]).find(x=>x.id===card.dataset.id); if(!it) return;
+  it[field]=(it[field]||[]).filter(x=>x.id!==id); saveSite(); renderLists();
+  try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(ASSETS) await ASSETS.delete(id); }catch(err){}
+});
+const NEWS_F=[["datum","Datum","date"],["rubrik","Rubrik"],["text","Text","area"]];
+const MEET_F=[["datum","Datum","date"],["rubrik","Rubrik, t.ex. Årsstämma 2027"],["plats","Plats och tid"],["text","Kallelse eller sammanfattning","area"],["lank","Länk till protokoll eller kallelse"]];
+const BOARD_F=[["namn","Namn"],["roll","Roll, t.ex. ordförande"],["fastighet","Fastighet"],["telefon","Telefon"],["epost","Mejl"]];
+const MEM_F=[["fastighet","Fastighet"],["namn","Namn"],["telefon","Telefon","tel"],["epost","Mejl","email"],["adress","Adress"]];
+const contact=it=>`${it.telefon?`<a class="cbtn" href="tel:${E(it.telefon.replace(/\s/g,""))}">📞 ${E(it.telefon)}</a>`:""}${it.epost?`<a class="cbtn" href="mailto:${E(it.epost)}">✉ ${E(it.epost)}</a>`:""}`;
+const memView=it=>`<span class="meta">${E(it.fastighet||"Fastighet saknas")}</span><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress?`<span>${E(it.adress)}</span>`:""}<div class="contacts">${contact(it)}</div>`;
+const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;
+const meetView=it=>`<span class="meta">${dfmt(it.datum)}${it.plats?" · "+E(it.plats):""}</span><h3>${E(it.rubrik||"Möte")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}${/^https?:\/\//.test(it.lank||"")?`<a href="${E(it.lank)}" target="_blank" rel="noopener">Öppna dokument</a>`:""}`;
+const boardView=it=>`<span class="meta">${E(it.roll||"Ledamot")}</span><h3>${E(it.namn||"Namn saknas")}</h3>${it.fastighet?`<span>${E(it.fastighet)}</span>`:""}<div class="contacts">${contact(it)}</div>`;
+function renderLists(){
+  const news=sorted(site.nyheter,true);
+  q("#news").innerHTML = news.length? news.slice(0,board?99:6).map(it=>itemCard("nyheter",it,NEWS_F,newsView)).join("") : `<p class="empty">Inga aktuella händelser just nu.</p>`;
+  const meets=sorted(site.moten,true);
+  q("#meetList").innerHTML = meets.length? meets.map(it=>itemCard("moten",it,MEET_F,meetView)).join("") : `<p class="empty">Inga möten inlagda ännu.</p>`;
+  const up=sorted(site.moten).filter(m=>m.datum&&m.datum>=today());
+  q("#nextMeet").innerHTML = up.length? up.slice(0,2).map(it=>`<div class="item">${meetView(it)}</div>`).join("") : `<p class="empty">Inget möte planerat just nu.</p>`;
+  q("#boardList").innerHTML = (site.styrelse||[]).length? site.styrelse.map(it=>itemCard("styrelse",it,BOARD_F,boardView)).join("") : `<p class="empty">Styrelsen är inte inlagd ännu.</p>`;
+  const qv=(q("#memSearch").value||"").toLowerCase();
+  const mem=[...(site.medlemmar||[])].sort((a,b)=>String(a.fastighet).localeCompare(String(b.fastighet),"sv")).filter(m=>!qv||(m.fastighet+" "+m.namn).toLowerCase().includes(qv)||editing.has(m.id));
+  q("#memberList").innerHTML = mem.length? mem.map(it=>itemCard("medlemmar",it,MEM_F,memView)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
+}
+function renderSite(){ renderIntro(); renderLists(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+
+/* board edits on lists */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b||!board) return;
+  if (b.dataset.edit==="intro"){ editIntro=!editIntro; q("#introText").value=site.intro||""; renderIntro(); return; }
+  if (b.id==="introSave"){ site.intro=q("#introText").value; editIntro=false; renderIntro(); saveSite(); return; }
+  const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoard:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
+  if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+  if (b.id==="addMember"){ const it={id:nid(),fastighet:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+  const card=b.closest(".item[data-kind]"); if(!card) return;
+  const kind=card.dataset.kind, id=card.dataset.id;
+  if (b.dataset.act==="edit"){ editing.add(id); renderLists(); }
+  else if (b.dataset.act==="done"){ editing.delete(id); renderLists(); }
+  else if (b.dataset.act==="del"){ if(!confirmDel()) return; site[kind]=site[kind].filter(x=>x.id!==id); editing.delete(id); renderLists(); saveSite(); }
+});
+let delArmed=0; function confirmDel(){ const n=Date.now(); if(n-delArmed<4000){ delArmed=0; return true; } delArmed=n; setMsg("Tryck på ta bort en gång till för att bekräfta."); return false; }
+function setMsg(t){ const s=q("#status"); s.textContent=t; setTimeout(()=>{ if(s.textContent===t) s.textContent=""; },4000); }
+document.addEventListener("input",e=>{
+  if(!board) return; const t=e.target;
+  const card=t.closest(".item[data-kind]"); if(!card||!t.dataset.f) return;
+  const it=(site[card.dataset.kind]||[]).find(x=>x.id===card.dataset.id); if(it){ it[t.dataset.f]=t.value; saveSite(); }
+});
+
+
+/* ---------- utskick ---------- */
+const UTEMPL={
+  info:{amne:"Information från Baggetorp Hytternäs vägsamfällighet",text:"Hej!\n\n\n\nMed vänlig hälsning\nStyrelsen, Baggetorp Hytternäs vägsamfällighet"},
+  kallelse:{amne:"Kallelse till årsstämma, Baggetorp Hytternäs vägsamfällighet",text:"Hej!\n\nVälkommen till årsstämma i Baggetorp Hytternäs vägsamfällighet.\n\nDatum: \nTid: \nPlats: \n\nFörslag till dagordning\n1. Stämmans öppnande\n2. Val av ordförande och sekreterare för stämman\n3. Val av två justerare\n4. Frågan om stämman är behörigen kallad\n5. Styrelsens förvaltningsberättelse och räkenskaper\n6. Revisorernas berättelse\n7. Ansvarsfrihet för styrelsen\n8. Ersättning till styrelse och revisorer\n9. Styrelsens förslag och inkomna motioner\n10. Utgifts och inkomststat samt debiteringslängd\n11. Val av styrelse och suppleanter\n12. Val av revisorer\n13. Övriga frågor\n14. Meddelande om var protokollet hålls tillgängligt\n15. Stämmans avslutande\n\nMed vänlig hälsning\nStyrelsen"},
+  ovrigt:{amne:"",text:""}
+};
+let uTouched=false;
+function uFill(){ const t=UTEMPL[q("#uTyp").value]; if(!uTouched||!q("#uText").value.trim()){ q("#uAmne").value=t.amne; q("#uText").value=t.text; uTouched=false; } }
+q("#uTyp").addEventListener("change",()=>{ if(uTouched && q("#uText").value.trim() && !confirm("Ersätta texten med mallen?")) return; uTouched=false; uFill(); });
+["#uAmne","#uText"].forEach(s=>q(s).addEventListener("input",()=>{uTouched=true;}));
+uFill();
+let uSel=null;
+function renderRcpt(){
+  const mem=[...(site.medlemmar||[])].sort((a,b)=>String(a.fastighet).localeCompare(String(b.fastighet),"sv"));
+  if (uSel===null) uSel=new Set(mem.filter(m=>m.epost||m.telefon).map(m=>m.id));
+  q("#uRcpt").innerHTML = mem.length? mem.map(m=>{ const has=m.epost||m.telefon;
+    return `<label class="rc ${has?"":"none"}"><input type="checkbox" data-rc="${m.id}" ${uSel.has(m.id)&&has?"checked":""} ${has?"":"disabled"}><span><strong>${E(m.fastighet)}</strong> ${E(m.namn)}<small>${has?[m.epost,m.telefon].filter(Boolean).map(E).join(" · "):"Saknar mejl och telefon"}</small></span></label>`; }).join("")
+    : `<p class="empty">Medlemsregistret är tomt.</p>`;
+}
+function senders(){ return (site.styrelse||[]).filter(x=>(x.epost||"").includes("@")); }
+function lsGet(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function renderFrom(){
+  const sel=q("#uFrom"); const cur=sel.value||lsGet("vag_from");
+  sel.innerHTML = senders().map(x=>`<option value="${E(x.epost)}">${E(x.namn||x.epost)}${x.roll?", "+E(x.roll):""} (${E(x.epost)})</option>`).join("") + `<option value="own">Min egen mejladress</option>`;
+  sel.value = [...sel.options].some(o=>o.value===cur) ? cur : sel.options[0].value;
+  q("#uFromOwn").value = q("#uFromOwn").value || lsGet("vag_own");
+  const v=lsGet("vag_via"); if(v) q("#uVia").value=v;
+  updFrom();
+}
+function fromAddr(){ return q("#uFrom").value==="own" ? q("#uFromOwn").value.trim() : q("#uFrom").value; }
+function updFrom(){
+  q("#uFromOwnL").hidden = q("#uFrom").value!=="own";
+  const via=q("#uVia").value, a=fromAddr();
+  q("#uViaHint").textContent = via==="app" ? "Mejlet skickas från det konto som är standard i din mejlapp. Byt konto i mejlappen innan du skickar om det behövs."
+    : via==="gmail" ? `Gmail öppnas i webbläsaren${a?" med kontot "+a+", om du är inloggad på det":""}.`
+    : `Outlook öppnas i webbläsaren. Logga in med ${a||"rätt konto"} om du inte redan är inloggad.`;
+}
+["#uFrom","#uVia"].forEach(id=>q(id).addEventListener("change",()=>{ lsSet("vag_from",q("#uFrom").value); lsSet("vag_via",q("#uVia").value); updFrom(); }));
+q("#uFromOwn").addEventListener("input",()=>{ lsSet("vag_own",q("#uFromOwn").value); updFrom(); });
+function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
+document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); });
+document.addEventListener("click",async e=>{
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); q("#st-led").hidden=st.dataset.st!=="led"; q("#st-utskick").hidden=st.dataset.st!=="utskick"; if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } return; }
+  const b=e.target.closest("#uAll,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
+  const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
+  if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); return; }
+  const mails=[...new Set(picked().map(m=>(m.epost||"").trim()).filter(Boolean))];
+  const tels=[...new Set(picked().map(m=>(m.telefon||"").replace(/[^\d+]/g,"")).filter(Boolean))];
+  if (b.id==="uCopyAddr"){ try{ await navigator.clipboard.writeText(mails.join(", ")); msg.textContent=mails.length+" adresser kopierade."; }catch(err){ msg.textContent="Kunde inte kopiera."; } return; }
+  if (b.id==="uCopyText"){ try{ await navigator.clipboard.writeText((amne?amne+"\n\n":"")+text); msg.textContent="Texten är kopierad."; }catch(err){ msg.textContent="Kunde inte kopiera."; } return; }
+  if (!text.trim()){ msg.textContent="Skriv ett meddelande först."; return; }
+  let href;
+  if (b.id==="uMail"){
+    if(!mails.length){ msg.textContent="Ingen vald mottagare har mejladress."; return; }
+    const via=q("#uVia").value, from=fromAddr(), bcc=mails.join(",");
+    if (via==="gmail") href="https://mail.google.com/mail/?view=cm&fs=1"+(from?"&authuser="+encodeURIComponent(from):"")+"&bcc="+encodeURIComponent(bcc)+"&su="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text);
+    else if (via==="outlook"){ const live=/@(outlook|hotmail|live|msn)\./i.test(from); href=(live?"https://outlook.live.com":"https://outlook.office.com")+"/mail/deeplink/compose?bcc="+encodeURIComponent(bcc)+"&subject="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text)+(from&&!live?"&login_hint="+encodeURIComponent(from):""); }
+    else href="mailto:?bcc="+mails.map(encodeURIComponent).join(",")+"&subject="+encodeURIComponent(amne)+"&body="+encodeURIComponent(text);
+  } else {
+    if(!tels.length){ msg.textContent="Ingen vald mottagare har telefonnummer."; return; }
+    const sep=/iPhone|iPad|iPod/.test(navigator.userAgent)?"&":"?";
+    href="sms:"+tels.join(",")+sep+"body="+encodeURIComponent((amne?amne+"\n\n":"")+text);
+  }
+  const link=document.createElement("a"); link.href=href; link.target=/^https:/.test(href)?"_blank":"_top"; link.rel="noopener"; document.body.appendChild(link); link.click(); link.remove();
+  const n = b.id==="uMail"?mails.length:tels.length;
+  site.utskick=[{id:nid(),datum:today(),typ:q("#uTyp").value,amne,text,fran:fromAddr(),kanal:b.id==="uMail"?"mejl":"sms",antal:n},...(site.utskick||[])].slice(0,100);
+  if (q("#uNews").checked && !(site.nyheter||[]).some(x=>x.text===text)) site.nyheter=[...(site.nyheter||[]),{id:nid(),datum:today(),rubrik:amne||"Information",text}];
+  saveSite(); renderLists(); renderULog();
+  const app = b.id!=="uMail"?"Smsappen" : ({gmail:"Gmail",outlook:"Outlook"}[q("#uVia").value]||"Mejlappen");
+  msg.innerHTML=`${app} öppnas med ${n} mottagare. Kontrollera avsändaren och tryck skicka där. Öppnades den inte? <a href="${E(href)}" target="${/^https:/.test(href)?"_blank":"_top"}" rel="noopener">Tryck här</a>.`;
+});
+const UTYP={info:"Information",kallelse:"Kallelse",ovrigt:"Övrigt"};
+function renderULog(){
+  const l=site.utskick||[];
+  q("#uLog").innerHTML = l.length? l.map(u=>`<details class="item"><summary><span class="meta">${dfmt(u.datum)} · ${UTYP[u.typ]||""} · ${u.kanal} till ${u.antal}${u.fran?" från "+E(u.fran):""}</span> <strong>${E(u.amne||"Utan ämne")}</strong></summary><p>${E(u.text)}</p></details>`).join("") : `<p class="empty">Inga utskick ännu.</p>`;
+}
+/* ---------- fault reports and feedback ---------- */
+const STATUS={ny:"Ny",pagar:"Åtgärdas",klar:"Åtgärdad"};
+const arch={all:false}; let cfilter="alla";
+function actions(coll,it,done){
+  return `<div class="row acts">
+    <button type="button" class="${done?"ghost":""} small" data-done="${coll}">${done?"Ångra åtgärdad":"Markera som åtgärdad"}</button>
+    <button type="button" class="ghost small" data-arch="${coll}">${it.arkiv?"Återställ från arkiv":"Arkivera"}</button></div>`;
+}
+document.addEventListener("click",async e=>{
+  const f=e.target.closest("[data-cf]"); if(f){ cfilter=f.dataset.cf; document.querySelectorAll("[data-cf]").forEach(x=>x.classList.toggle("on",x===f)); renderCases(); return; }
+  const b=e.target.closest("[data-done],[data-arch],[data-showarch]"); if(!b||!board) return;
+  if (b.dataset.showarch){ arch.all=!arch.all; b.textContent=arch.all?"Visa aktuella":"Visa arkiv"; renderCases(); return; }
+  const card=b.closest("[data-uid]"); const uid=card.dataset.uid, id=card.dataset.fid||card.dataset.sid;
+  const coll=b.dataset.done||b.dataset.arch, store=coll==="felanmalan"?fel:syn;
+  const it=(store[uid]?.items||[]).find(x=>x.id===id); if(!it) return;
+  let patch;
+  if (b.dataset.done){ patch = coll==="felanmalan" ? {status:(it.status==="klar"?"ny":"klar")} : {klar:!it.klar}; }
+  else patch={arkiv:!it.arkiv};
+  b.disabled=true;
+  try{ await patchItem(coll,store,uid,id,patch); }catch(err){ setMsg("Kunde inte spara."); }
+  renderCases();
+});
+function felCard(it,nm){
+  return `<div class="item" data-uid="${E(it.uid)}" data-fid="${E(it.id)}">
+    <span class="meta"><span class="badge typ">Fel på vägen</span> ${dfmt(it.datum)} · ${E(nm[it.uid]||"En medlem")} <span class="badge ${it.status||"ny"}">${STATUS[it.status||"ny"]}</span></span>
+    <h3>${E(it.plats||"Plats ej angiven")}</h3><p>${E(it.text)}</p>
+    ${it.svar&&!board?`<div class="reply"><strong>Styrelsen:</strong> ${E(it.svar)}</div>`:""}
+    ${board?`<div class="grid2"><label>Status<select data-ff="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===(it.status||"ny")?"selected":""}>${v}</option>`).join("")}</select></label><label>Svar från styrelsen<input data-ff="svar" value="${E(it.svar)}"></label></div>${actions("felanmalan",it,(it.status||"ny")==="klar")}`:""}
+    ${(it.uid===me&&!board)?`<div class="row"><button type="button" class="danger" data-feldel="${E(it.id)}">Ta bort min anmälan</button></div>`:""}
+  </div>`;
+}
+function synCard(it,nm){
+  return `<div class="item" data-uid="${E(it.uid)}" data-sid="${E(it.id)}">
+    <span class="meta"><span class="badge typ">Synpunkt</span> ${dfmt(it.datum)}${board?" · "+E(nm[it.uid]||"En medlem"):""} ${it.klar?'<span class="badge klar">Åtgärdad</span>':'<span class="badge ny">Ny</span>'}</span>
+    <h3>${E(it.amne||"Synpunkt")}</h3><p>${E(it.text)}</p>
+    ${board?`<label>Svar till medlemmen<textarea rows="2" data-sf="svar">${E(it.svar)}</textarea></label>${actions("synpunkter",it,!!it.klar)}`:(it.svar?`<div class="reply"><strong>Styrelsen svarar:</strong> ${E(it.svar)}</div>`:`<span class="meta">Inget svar ännu. Bara du och styrelsen ser den här synpunkten.</span>`)}
+  </div>`;
+}
+async function renderCases(){
+  const all=[];
+  Object.entries(fel).forEach(([uid,d])=>(d.items||[]).forEach(it=>all.push({...it,uid,kind:"fel"})));
+  Object.entries(syn).forEach(([uid,d])=>(d.items||[]).forEach(it=>all.push({...it,uid,kind:"syn"})));
+  let list=all.filter(it=> it.kind==="syn"&&!board ? true : !!it.arkiv===arch.all);
+  if (cfilter!=="alla") list=list.filter(it=>it.kind===cfilter);
+  list.sort((a,b)=>String(b.datum).localeCompare(String(a.datum)));
+  q("#caseHead").textContent = arch.all? "Arkiv" : board? "Alla ärenden" : "Fel och dina synpunkter";
+  const nm=await names([...new Set(list.map(x=>x.uid))]);
+  q("#caseList").innerHTML = list.length? list.map(it=>it.kind==="fel"?felCard(it,nm):synCard(it,nm)).join("") : `<p class="empty">${arch.all?"Arkivet är tomt.":"Inga ärenden just nu."}</p>`;
+}
+const renderFel=renderCases, renderSyn=renderCases;
+function caseType(){ return (document.querySelector('input[name=ctype]:checked')||{}).value||"fel"; }
+function updateForm(){
+  const f=caseType()==="fel";
+  q("#caseHint").textContent = f? "Till exempel hål, trasig trumma, fallna träd eller dåligt plogat. Alla medlemmar ser felanmälningarna." : "Bara styrelsen läser det du skriver. Du ser själv dina synpunkter och styrelsens svar här nedanför.";
+  q("#caseTitleLbl").textContent = f? "Var på vägen" : "Ämne";
+  q("#caseTitle").placeholder = f? "t.ex. sträcka F, strax efter Stavbergavägen" : "t.ex. andelstal, snöröjning, mina kontaktuppgifter";
+  q("#caseTextLbl").textContent = f? "Vad har hänt" : "Din synpunkt eller fråga";
+  q("#caseSend").textContent = f? "Skicka felanmälan" : "Skicka till styrelsen";
+}
+document.addEventListener("change",e=>{ if(e.target.name==="ctype") updateForm(); });
+updateForm();
+async function addTo(coll,store,item){
+  const ref=DB.doc(coll+"/"+me); const cur=store[me]||{items:[]};
+  const next={items:[...(cur.items||[]),item]};
+  await ref.set(next); store[me]=next;
+}
+async function patchItem(coll,store,uid,id,patch){
+  const d=store[uid]; if(!d) return; const items=d.items.map(x=>x.id===id?{...x,...patch}:x);
+  store[uid]={items}; await DB.doc(coll+"/"+uid).set({items});
+}
+q("#caseSend").addEventListener("click",async()=>{
+  const f=caseType()==="fel", title=q("#caseTitle").value.trim(), text=q("#caseText").value.trim(), msg=q("#caseMsg");
+  if(!text){ msg.textContent= f?"Skriv vad som har hänt.":"Skriv din synpunkt."; return; }
+  if(!DB||!me||!canWrite){ msg.textContent="Du behöver vara inbjuden som medlem för att kunna skicka."; return; }
+  try{
+    if (f) await addTo("felanmalan",fel,{id:nid(),datum:today(),plats:title,text,status:"ny",svar:""});
+    else await addTo("synpunkter",syn,{id:nid(),datum:today(),amne:title,text,svar:""});
+    q("#caseTitle").value=""; q("#caseText").value=""; msg.textContent= f?"Tack! Felanmälan är skickad.":"Tack! Styrelsen har fått din synpunkt."; renderCases();
+  }catch(e){ msg.textContent="Kunde inte skicka. Försök igen."; }
+});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-feldel]"); if(!b) return;
+  if(!confirmDel()) return;
+  const d=fel[me]; if(!d) return; const items=d.items.filter(x=>x.id!==b.dataset.feldel);
+  try{ await DB.doc("felanmalan/"+me).set({items}); fel[me]={items}; renderFel(); }catch(err){ setMsg("Kunde inte ta bort."); }
+});
+const ptimers={};
+document.addEventListener("input",e=>{
+  if(!board) return; const t=e.target;
+  const f=t.closest("[data-fid]"), s=t.closest("[data-sid]");
+  if (f&&t.dataset.ff){ const k=f.dataset.uid+f.dataset.fid; clearTimeout(ptimers[k]); ptimers[k]=setTimeout(()=>patchItem("felanmalan",fel,f.dataset.uid,f.dataset.fid,{[t.dataset.ff]:t.value}).catch(()=>setMsg("Kunde inte spara.")),t.tagName==="SELECT"?0:700); }
+  if (s&&t.dataset.sf){ const k=s.dataset.uid+s.dataset.sid; clearTimeout(ptimers[k]); ptimers[k]=setTimeout(()=>patchItem("synpunkter",syn,s.dataset.uid,s.dataset.sid,{[t.dataset.sf]:t.value}).catch(()=>setMsg("Kunde inte spara.")),700); }
+});
+document.addEventListener("input",e=>{ if(e.target.id==="memSearch") renderLists(); });
+document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.ff==="status") e.target.dispatchEvent(new Event("input",{bubbles:true})); });
+
+function busy(){ const a=document.activeElement; return a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.closest(".page:not(#page-verktyg)"); }
+
+/* ---------- connect ---------- */
+renderSite(); renderCases();
+(async()=>{
+  try{
+    U=await claude.use("user");
+    let owner=false;
+    if (U){ owner=(await U.isOwner())===true; board=owner||(await U.canEdit())===true; const cw=await U.can("data.write"); canWrite = cw!==false; me=await U.id(); }
+    document.body.classList.toggle("is-board",board);
+    q("#role").textContent = owner? "Admin" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
+    DB=await claude.use("db"); if(!DB) return;
+    siteRef=DB.doc("site/main");
+    siteRef.onSnapshot(snap=>{
+      if (snap.metadata&&snap.metadata.hasPendingWrites) return;
+      if (snap.exists && !siteDirty && !siteSaving && !busy()){ const d=JSON.parse(JSON.stringify(snap.data()||{})); site={intro:"",nyheter:[],moten:[],styrelse:[],medlemmar:[],...d}; renderSite(); }
+    },()=>{});
+    DB.collection("felanmalan").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); fel=o; if(!busy()) renderFel(); },()=>{});
+    if (board){ DB.collection("synpunkter").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); syn=o; if(!busy()) renderSyn(); },()=>{}); }
+    else if (me){ DB.doc("synpunkter/"+me).onSnapshot(snap=>{ syn = snap.exists? {[me]:JSON.parse(JSON.stringify(snap.data()))} : {}; renderSyn(); },()=>{}); }
+    if (!canWrite){ ["#caseForm"].forEach(s=>{ const f=q(s); f.querySelectorAll("input,textarea,button").forEach(x=>x.disabled=true); f.insertAdjacentHTML("beforeend",'<p class="hint">Du kan inte skicka just nu. Kontakta styrelsen.</p>'); }); }
+  }catch(e){}
+})();
+})();
+</script>
+</body>
+</html>

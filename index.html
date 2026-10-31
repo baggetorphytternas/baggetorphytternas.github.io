@@ -257,6 +257,7 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.funkbox{display:flex;flex-direction:column;gap:12px;margin-top:20px}
 .avatar.rollikon{background:var(--rb);color:var(--rf);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--rf) 18%,transparent)}
 .avatar.rollikon svg{width:64%;height:64%}
 dialog.sentdlg{border:none;border-radius:20px;padding:0;width:min(420px,calc(100vw - 24px));box-shadow:var(--shadow-lg);color:var(--ink);background:var(--surface)}
@@ -360,16 +361,16 @@ details.mail[open]{gap:10px}
 .navcount{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--warn);color:#fff;font-size:.68rem;font-weight:700;line-height:1}
 @media (max-width:760px){ .navcount{position:absolute;top:4px;left:calc(50% + 6px)} }
 .chipbtn .count{min-width:20px;height:20px;font-size:.72rem;margin-left:4px}
-#boardList{grid-auto-rows:1fr;align-items:stretch}
-#boardList>.item{height:100%}
-#boardList:has(.item input){grid-auto-rows:auto;align-items:start}
-#boardList:has(.item input)>.item{height:auto}
-#boardList>.item>.row:last-child{margin-top:auto}
-#boardList .person{align-items:flex-start}
-#boardList .person .meta{font-size:1.02rem;font-weight:700;color:var(--accent);letter-spacing:.01em}
-#boardList .person h3{font-size:1.2rem;margin-top:2px}
-#boardList .avatar{width:52px;height:52px;font-size:1.05rem}
-#boardList .contacts{flex-direction:column;align-items:flex-start}
+#boardList,#funkList{grid-auto-rows:1fr;align-items:stretch}
+#boardList>.item,#funkList>.item{height:100%}
+#boardList:has(.item input),#funkList:has(.item input){grid-auto-rows:auto;align-items:start}
+#boardList:has(.item input)>.item,#funkList:has(.item input)>.item{height:auto}
+#boardList>.item>.row:last-child,#funkList>.item>.row:last-child{margin-top:auto}
+#boardList .person,#funkList .person{align-items:flex-start}
+#boardList .person .meta,#funkList .person .meta{font-size:1.02rem;font-weight:700;color:var(--accent);letter-spacing:.01em}
+#boardList .person h3,#funkList .person h3{font-size:1.2rem;margin-top:2px}
+#boardList .avatar,#funkList .avatar{width:52px;height:52px;font-size:1.05rem}
+#boardList .contacts,#funkList .contacts{flex-direction:column;align-items:flex-start}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
 .mcard{height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
@@ -701,6 +702,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
       <div id="boardList" class="cards"></div>
+      <div id="funkBox" class="funkbox">
+        <div class="ph"><h2>Funktionärer</h2><button type="button" class="ghost small board" id="addFunk">+ <span class="lg">Lägg till funktionär</span><span class="sm">Ny funktionär</span></button></div>
+        <p class="hint">Personer med särskilda uppdrag som inte sitter i styrelsen, till exempel vägansvarig och revisor.</p>
+        <div id="funkList" class="cards"></div>
+      </div>
     </section>
     <section id="st-utskick" class="board" hidden>
       <div class="panel ufm">
@@ -808,9 +814,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.25</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.26</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.26</b><time>31 okt 2026</time></div><ul>
+          <li>Ny del Funktionärer under Styrelsen för uppdrag utanför styrelsen, till exempel vägansvarig, revisor och valberedning.</li></ul></li>
         <li><div><b>2.25</b><time>31 okt 2026</time></div><ul>
           <li>Styrelsens kort har fått symboler för rollerna: klubba för ordförande, penningsäck för kassör, fjäderpenna för sekreterare, valurna för ledamot med flera.</li></ul></li>
         <li><div><b>2.24</b><time>31 okt 2026</time></div><ul>
@@ -1522,6 +1530,9 @@ function renderLists(){
   const up=sorted(site.moten).filter(m=>m.datum&&m.datum>=today());
   q("#nextMeet").innerHTML = up.length? up.slice(0,2).map(it=>`<div class="item">${meetView(it)}</div>`).join("") : `<p class="empty">Inget möte planerat just nu.</p>`;
   q("#boardList").innerHTML = (site.styrelse||[]).length? site.styrelse.map(it=>itemCard("styrelse",it,BOARD_F,boardView)).join("") : `<p class="empty">Styrelsen är inte inlagd ännu.</p>`;
+  const funk=site.funktionarer||[];
+  q("#funkList").innerHTML = funk.length? funk.map(it=>itemCard("funktionarer",it,BOARD_F,boardView)).join("") : `<p class="empty">Inga funktionärer inlagda ännu.</p>`;
+  q("#funkBox").hidden = !funk.length && !board;
   const qv=(q("#memSearch").value||"").toLowerCase();
   const groups=new Map();
   (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim().toLowerCase(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
@@ -1560,37 +1571,40 @@ function renderSite(){ renderHero(); renderProt(); renderIntro(); renderLists();
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
-async function pickBoardMember(){
+const FUNK_ROLLER=["Vägansvarig","Revisor","Revisorssuppleant","Valberedning"];
+async function pickBoardMember(target){
+  target=target||"styrelse"; const funk=target==="funktionarer";
   const lc=x=>String(x||"").trim().toLowerCase();
   const people=[]; const seen=new Set();
   (site.medlemmar||[]).forEach(m=>{ if(!m.namn&&!m.epost) return; const k=lc(m.epost)||("n:"+lc(m.namn)+lc(m.fastighet)); if(seen.has(k)) return; seen.add(k); people.push({namn:m.namn||m.epost,epost:m.epost||"",telefon:m.telefon||"",fastighet:m.fastighet||""}); });
   /* bara personer ur medlemsregistret, inte inloggningskonton */
   people.sort((a,b)=>a.namn.localeCompare(b.namn,"sv"));
-  const isAdmin=document.body.classList.contains("is-admin");
+  const isAdmin=document.body.classList.contains("is-admin")&&!funk;
+  const ROLLER=funk?FUNK_ROLLER:STYR_ROLLER, def=funk?"Vägansvarig":"Ledamot";
   const dlg=document.createElement("dialog"); dlg.className="bdlg";
-  dlg.innerHTML=`<form method="dialog"><h2>Lägg till i styrelsen</h2>
+  dlg.innerHTML=`<form method="dialog"><h2>${funk?"Lägg till funktionär":"Lägg till i styrelsen"}</h2>${funk?'<p class="hint">Funktionärer sitter inte i styrelsen och får ingen styrelsebehörighet i appen.</p>':""}
     <label>Person<select id="pPers"><option value="">Välj person…</option>${people.map((p,i)=>`<option value="${i}">${E(p.namn)}${p.fastighet?" – "+E(p.fastighet):p.epost&&p.epost!==p.namn?" – "+E(p.epost):""}</option>`).join("")}<option value="ny">Någon som inte finns i medlemsregistret…</option></select></label>
-    <label>Roll i styrelsen<select id="pRoll">${STYR_ROLLER.map(r=>`<option ${r==="Ledamot"?"selected":""}>${r}</option>`).join("")}<option value="">Annan roll…</option></select></label>
-    <label id="pAnnanL" hidden>Annan roll<input id="pAnnan" placeholder="t.ex. Vägansvarig"></label>
+    <label>${funk?"Uppdrag":"Roll i styrelsen"}<select id="pRoll">${ROLLER.map(r=>`<option ${r===def?"selected":""}>${r}</option>`).join("")}<option value="">${funk?"Annat uppdrag…":"Annan roll…"}</option></select></label>
+    <label id="pAnnanL" hidden>${funk?"Annat uppdrag":"Annan roll"}<input id="pAnnan" placeholder="${funk?"t.ex. Snöröjningsansvarig":"t.ex. Ledamot och sammankallande"}"></label>
     ${isAdmin?`<label class="check" id="pAccL"><input type="checkbox" id="pAcc" checked>Ge personen behörigheten Styrelse i appen</label>`:""}
     <p class="hint" id="pInfo"></p>
     <div class="bdlg-btns"><button value="ok" id="pOk" disabled>Lägg till</button><button value="skip" class="ghost">Avbryt</button></div></form>`;
   document.body.appendChild(dlg);
   const g=id=>dlg.querySelector(id);
   const upd=()=>{ const v=g("#pPers").value, p=people[v]; g("#pOk").disabled=!v;
-    const cur=p&&(site.styrelse||[]).find(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
-    g("#pInfo").textContent = v==="ny" ? "Du får fylla i namn och kontaktuppgifter själv på nästa steg." : cur ? `${p.namn} finns redan i styrelsen som ${cur.roll||"ledamot"}. Rollen uppdateras.` : (p&&!p.epost&&isAdmin) ? "Personen saknar mejladress i registret och kan därför inte få behörighet att logga in." : "";
+    const cur=p&&(site[target]||[]).find(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
+    g("#pInfo").textContent = v==="ny" ? "Du får fylla i namn och kontaktuppgifter själv på nästa steg." : cur ? `${p.namn} finns redan ${funk?"bland funktionärerna":"i styrelsen"} som ${cur.roll||def.toLowerCase()}. ${funk?"Uppdraget":"Rollen"} uppdateras.` : (p&&!p.epost&&isAdmin) ? "Personen saknar mejladress i registret och kan därför inte få behörighet att logga in." : "";
     if(g("#pAccL")) g("#pAccL").hidden = v==="ny" || !(p&&p.epost); };
   g("#pPers").onchange=upd; g("#pRoll").onchange=()=>{ g("#pAnnanL").hidden=g("#pRoll").value!==""; }; upd();
   dlg.addEventListener("close",async()=>{
-    const v=g("#pPers").value, p=people[v], roll=g("#pRoll").value||g("#pAnnan").value.trim()||"Ledamot", acc=g("#pAcc")&&g("#pAcc").checked;
+    const v=g("#pPers").value, p=people[v], roll=g("#pRoll").value||g("#pAnnan").value.trim()||def, acc=g("#pAcc")&&g("#pAcc").checked;
     const ok=dlg.returnValue==="ok"; dlg.remove(); if(!ok||!v) return;
-    if(v==="ny"){ const it={id:nid(),namn:"",roll,fastighet:"",telefon:"",epost:""}; site.styrelse=[...(site.styrelse||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
-    const list=site.styrelse||[]; const i=list.findIndex(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
+    if(v==="ny"){ const it={id:nid(),namn:"",roll,fastighet:"",telefon:"",epost:""}; site[target]=[...(site[target]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+    const list=site[target]||[]; const i=list.findIndex(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
     const it={namn:p.namn,roll,fastighet:p.fastighet,telefon:p.telefon,epost:p.epost};
     if(i>=0) list[i]={...list[i],...Object.fromEntries(Object.entries(it).filter(([k,x])=>x||k==="roll"))}; else list.push({id:nid(),...it});
-    site.styrelse=list; renderLists(); saveSite();
-    let msg=`${p.namn} är tillagd i styrelsen som ${roll}.`;
+    site[target]=list; renderLists(); saveSite();
+    let msg= funk ? `${p.namn} är tillagd som ${roll.toLowerCase()}.` : `${p.namn} är tillagd i styrelsen som ${roll}.`;
     if(isAdmin&&acc&&p.epost){ try{
       const email=lc(p.epost); const {data}=await window.SB.from("roller").select("roll").eq("email",email);
       const now=data&&data[0]&&data[0].roll;
@@ -1729,7 +1743,8 @@ document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b||!board) return;
   if (b.dataset.edit==="intro"){ editIntro=!editIntro; q("#introText").value=site.intro||""; renderIntro(); return; }
   if (b.id==="introSave"){ site.intro=q("#introText").value; editIntro=false; renderIntro(); saveSite(); return; }
-  if (b.id==="addBoard"){ pickBoardMember(); return; }
+  if (b.id==="addBoard"){ pickBoardMember("styrelse"); return; }
+  if (b.id==="addFunk"){ pickBoardMember("funktionarer"); return; }
   const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }

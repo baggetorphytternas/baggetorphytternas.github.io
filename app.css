@@ -771,3 +771,9 @@ body.gated .vk-top{display:none}
 .hp-d{aspect-ratio:5.8}
 @media (max-width:520px){ .heroprevs{grid-template-columns:1fr} }
 .heropos input[type=range]{accent-color:var(--accent);width:100%}
+
+/* När en ruta (dialog) är öppen ska sidan bakom stå still: ingen scroll, inga klick. */
+html{scrollbar-gutter:stable}
+html:has(dialog[open]){overflow:hidden;overscroll-behavior:none}
+dialog{overscroll-behavior:contain}
+dialog::backdrop{touch-action:none}

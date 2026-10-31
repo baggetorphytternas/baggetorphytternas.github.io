@@ -257,6 +257,33 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.navtab:active,.chipbtn:active,.tab:active,.iconbtn:active,.mcard:active,.tile:active{transform:none}
+.welcome.has-img{background:linear-gradient(180deg,rgba(8,28,18,.08) 0%,rgba(8,28,18,.25) 40%,rgba(8,28,18,.7) 100%),var(--hero-img) center/cover no-repeat,#1f5c41;min-height:200px;justify-content:flex-end}
+.welcome.has-img::after{display:none}
+.welcome.has-img h1,.welcome.has-img .eyebrow{text-shadow:0 1px 8px rgba(0,0,0,.45)}
+.welcome.has-img .eyebrow{color:#e6f2ea}
+.heroedit{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:2}
+.herobtn{display:inline-flex;flex-direction:row;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:.8rem;font-weight:600;cursor:pointer;backdrop-filter:blur(4px)}
+.herobtn:hover{background:rgba(0,0,0,.5);border-color:rgba(255,255,255,.6);color:#fff}
+.herobtn .ico{width:15px;height:15px}
+.herobtn input{position:absolute;opacity:0;width:1px;height:1px}
+.herobtn.armed{background:var(--danger);border-color:var(--danger)}
+@media (max-width:760px){ .welcome.has-img{min-height:170px} .heroedit{top:8px;right:8px} .herobtn span{font-size:.75rem} }
+.docrow{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+.docname{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0;flex:1 1 200px}
+.docname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.docbtns{display:flex;gap:8px;flex:none}
+.btnlink{display:inline-flex;align-items:center;justify-content:center;padding:6px 12px;font-size:.85rem;font-weight:600;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--accent);text-decoration:none}
+.btnlink:hover{background:var(--accent-soft);border-color:var(--accent)}
+dialog.pdfdlg{width:min(1060px,100vw);height:100dvh;max-height:100dvh;max-width:100vw;margin:0 auto;padding:0;border:none;background:#525659;display:flex;flex-direction:column}
+dialog.pdfdlg:not([open]){display:none}
+dialog.pdfdlg::backdrop{background:rgba(0,0,0,.6)}
+.pdfhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line)}
+.pdfhead strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdfacts{display:flex;gap:8px;align-items:center;flex:none}
+.pdfpages{flex:1;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:10px;padding:10px 8px 40px}
+.pdfpages canvas{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);max-width:100%;height:auto!important}
+.pdfmsg{color:#fff;margin:40px 0}
 .urensa{justify-content:flex-end;margin-top:-6px}
 #uClear.armed{color:var(--danger);border-color:var(--danger)}
 .iconbtn{width:38px;height:38px;padding:0;border-radius:50%;background:transparent;color:var(--muted);border:1px solid var(--line)}
@@ -552,9 +579,13 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
 <main>
 
   <div class="page" id="page-start">
-    <section class="welcome">
+    <section class="welcome" id="welcome">
       <p class="eyebrow">Väg 13986 · Mellösa, Flens kommun</p>
       <h1>Baggetorp Hytternäs vägsamfällighet</h1>
+      <div class="heroedit board">
+        <label class="herobtn"><svg class="ico"><use href="#i-file"/></svg><span id="heroLbl">Byt startbild</span><input type="file" accept="image/*" id="heroFile"></label>
+        <button type="button" class="herobtn" id="heroDel" hidden>Ta bort bild</button>
+      </div>
     </section>
     <section class="panel board" id="reqMgr"></section>
     <div class="quick">
@@ -687,9 +718,14 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.16</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.18</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.18</b><time>31 okt 2026</time></div><ul>
+          <li>Styrelsen kan byta startbild med knappen Byt startbild på välkomstrutan.</li>
+          <li>Flikarna rör sig inte längre när man klickar på dem.</li></ul></li>
+        <li><div><b>2.17</b><time>31 okt 2026</time></div><ul>
+          <li>Bifogade PDF:er har knapparna Öppna och Ladda ner. Öppna visar filen direkt i appen, oavsett webbläsarens inställningar.</li></ul></li>
         <li><div><b>2.16</b><time>31 okt 2026</time></div><ul>
           <li>Knappen Adresslista (PDF) under Medlemmar skapar en utskriftsvänlig lista med fastigheter, kontaktpersoner, adress, telefon och mejl.</li>
           <li>Undertexten i rubriken på startsidan är borttagen.</li></ul></li>
@@ -1263,7 +1299,8 @@ const blobUrl=id=>(window.BLOB_BASE||"/_blob/")+encodeURIComponent(id);
 function attView(it){
   const imgs=(it.bilder||[]), docs=(it.filer||[]);
   return (imgs.length?`<div class="gallery">${imgs.map(b=>`<a href="${blobUrl(b.id)}" target="_blank" rel="noopener"><img src="${blobUrl(b.id)}" alt="${E(b.namn||"Bild")}" loading="lazy"></a>`).join("")}</div>`:"")
-   + (docs.length?`<div class="docs">${docs.map(f=>`<a class="doclink" href="${blobUrl(f.id)}" target="_blank" rel="noopener">${ico("file")}${E(f.namn||"Dokument")}</a>`).join("")}</div>`:"");
+   + (docs.length?`<div class="docs">${docs.map(f=>{ const u=blobUrl(f.id), n=f.namn||"Dokument";
+       return `<div class="docrow"><span class="docname">${ico("file")}<span>${E(n)}</span></span><span class="docbtns"><button type="button" class="small" data-pdfopen="${E(u)}" data-pdfname="${E(n)}">Öppna</button><a class="btnlink" href="${E(u)}?download=${encodeURIComponent(n)}" download="${E(n)}">Ladda ner</a></span></div>`; }).join("")}</div>`:"");
 }
 function attEdit(it){
   const imgs=(it.bilder||[]), docs=(it.filer||[]);
@@ -1367,7 +1404,32 @@ function renderLists(){
   q("#memberList").innerHTML = gl.length? gl.map(([k,ps])=>memCard(k,ps)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
   refreshMemDlg();
 }
-function renderSite(){ renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+function renderHero(){
+  const w=q("#welcome"); if(!w) return; const id=site.startbild&&site.startbild.id;
+  w.classList.toggle("has-img",!!id); w.style.setProperty("--hero-img", id?`url("${blobUrl(id)}")`:"none");
+  const del=q("#heroDel"); if(del) del.hidden=!id;
+}
+document.addEventListener("change",async e=>{
+  if(e.target.id!=="heroFile"||!board) return;
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  const lbl=q("#heroLbl"); lbl.textContent="Laddar upp…";
+  try{
+    if(!ASSETS) ASSETS=await claude.use("assets"); if(!ASSETS) throw new Error("assets");
+    const r=await ASSETS.upload(await shrink(f));
+    const old=site.startbild&&site.startbild.id; site.startbild={id:r.id}; saveSite(); renderHero();
+    if(old) ASSETS.delete(old).catch(()=>{});
+    setMsg("Startbilden är bytt.");
+  }catch(err){ setMsg("Kunde inte ladda upp bilden. Max 20 MB."); }
+  lbl.textContent="Byt startbild";
+});
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("#heroDel"); if(!b||!board) return;
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort bild"; },4000); return; }
+  b.classList.remove("armed"); b.textContent="Ta bort bild";
+  const old=site.startbild&&site.startbild.id; site.startbild=null; saveSite(); renderHero();
+  try{ if(!ASSETS) ASSETS=await claude.use("assets"); if(old&&ASSETS) await ASSETS.delete(old); }catch(err){}
+});
+function renderSite(){ renderHero(); renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
@@ -1444,6 +1506,29 @@ document.addEventListener("click",async e=>{
     setMsg("Adresslistan är skapad.");
   }catch(err){ setMsg("Kunde inte skapa PDF:en."); }
 });
+
+/* PDF viewer inside the app (pdf.js), works regardless of the browser's PDF settings */
+let pdfjsLib=null;
+async function openPdf(url,name){
+  let d=q("#pdfDlg");
+  if(!d){ d=document.createElement("dialog"); d.id="pdfDlg"; d.className="pdfdlg"; document.body.appendChild(d);
+    d.addEventListener("click",e=>{ if(e.target.closest("[data-pdfclose]")) d.close(); }); d.addEventListener("close",()=>{ d.querySelector(".pdfpages").innerHTML=""; }); }
+  d.innerHTML=`<div class="pdfhead"><strong>${E(name)}</strong><span class="pdfacts"><a class="btnlink" href="${E(url)}?download=${encodeURIComponent(name)}" download="${E(name)}">Ladda ner</a><button type="button" class="iconbtn" data-pdfclose aria-label="Stäng">✕</button></span></div><div class="pdfpages"><p class="pdfmsg">Öppnar…</p></div>`;
+  d.showModal();
+  const box=d.querySelector(".pdfpages");
+  try{
+    if(!pdfjsLib){ pdfjsLib=await import(new URL("pdfjs/pdf.min.mjs",location.href).href); pdfjsLib.GlobalWorkerOptions.workerSrc=new URL("pdfjs/pdf.worker.min.mjs",location.href).href; }
+    const pdf=await pdfjsLib.getDocument({url}).promise; box.innerHTML="";
+    const w=Math.min(box.clientWidth-16, 1000), ratio=window.devicePixelRatio||1;
+    for(let i=1;i<=pdf.numPages;i++){
+      if(!d.open) return;
+      const page=await pdf.getPage(i), v1=page.getViewport({scale:1}), vp=page.getViewport({scale:w/v1.width*ratio});
+      const c=document.createElement("canvas"); c.width=vp.width; c.height=vp.height; c.style.width=(vp.width/ratio)+"px"; c.style.height=(vp.height/ratio)+"px";
+      box.appendChild(c); await page.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+    }
+  }catch(err){ box.innerHTML=`<p class="pdfmsg">Det gick inte att visa filen här. Använd Ladda ner i stället.</p>`; }
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"); if(b) openPdf(b.dataset.pdfopen,b.dataset.pdfname||"Dokument"); });
 
 /* board edits on lists */
 document.addEventListener("click",e=>{

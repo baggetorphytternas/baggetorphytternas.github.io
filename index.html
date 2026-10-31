@@ -14,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.27"></script>
+<script src="sb.js?v=2.29"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -257,6 +257,27 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.notismeta{margin-right:auto}
+[data-act=notis].armed{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pushbanner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 16px;border-radius:var(--radius);background:var(--accent-soft);border:1px solid var(--accent-soft-2)}
+.pushbanner[hidden]{display:none}
+.pb-ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--surface);color:var(--accent);flex:none}
+.pb-txt{display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0}
+.pb-txt small{color:var(--muted);font-size:.88rem}
+.pb-btns{display:flex;gap:8px;flex-wrap:wrap}
+.minaatg{gap:10px}
+.atg-body .meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.82rem;color:var(--muted)}
+.minarow{display:flex;gap:14px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.minarow:first-of-type{border-top:none}
+.minarow.sen .atg-body strong{color:var(--danger)}
+.kontodlg .krows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.krow{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.krow:first-child{border-top:none}
+.ktxt{display:flex;flex-direction:column;gap:2px;flex:1 1 200px;min-width:0}
+.ktxt small{color:var(--muted);font-size:.85rem}
+.kbtns{display:flex;gap:6px;flex-wrap:wrap}
+.kpw{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border-top:1px solid var(--line);background:var(--surface-2)}
+.kpw[hidden]{display:none}
 .item.atg{gap:10px;padding:14px 16px}
 .item.atg.sen{border-left:4px solid var(--danger)}
 .item.atg.snart{border-left:4px solid var(--warn)}
@@ -646,6 +667,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.5M12 17.5h.01"/></symbol>
   <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4 4-6.5 8-6.5s7.2 2.5 8 6.5"/></symbol>
   <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
   <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
@@ -664,7 +686,6 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <span class="role" id="role"></span>
       <button type="button" class="iconbtn admin" id="adminBtn" data-goto="admin" aria-label="Admin" title="Admin"><svg class="ico"><use href="#i-gear"/></svg></button>
       <button type="button" class="iconbtn" id="kontoBtn" hidden aria-label="Mitt konto" title="Mitt konto"><svg class="ico"><use href="#i-user"/></svg></button>
-      <button type="button" class="logout" id="logout" hidden aria-label="Logga ut"><svg class="ico"><use href="#i-out"/></svg><span>Logga ut</span></button>
     </div>
     <a class="mh-text" href="#start" data-goto="start">
       <span class="eyebrow">Väg 13986 · Mellösa, Flens kommun</span>
@@ -686,7 +707,9 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 <main>
 
   <div class="page" id="page-start">
+    <div class="pushbanner" id="pushBanner" hidden></div>
     <section class="panel board" id="reqMgr"></section>
+    <section class="panel minaatg" id="minaAtg" hidden></section>
     <div class="quick">
       <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span>Anmäl fel på vägen<small>Hål, trummor, träd, snö</small></span></button>
       <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span>Lämna en synpunkt<small>Fråga eller förslag till styrelsen</small></span></button>
@@ -857,9 +880,13 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.28</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.29</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.29</b><time>31 okt 2026</time></div><ul>
+          <li>Notiser: medlemmar kan slå på notiser, och styrelsen skickar en notis om en nyhet med knappen Skicka notis.</li>
+          <li>Mina uppgifter på startsidan: den som är ansvarig för en åtgärd ser den och kan bocka av den. Vägansvarig kan också lägga till nya åtgärder.</li>
+          <li>Mitt konto är omgjort: lösenordet byts under Byt lösenord, och notiser slås på och av där. Logga ut finns i Mitt konto.</li></ul></li>
         <li><div><b>2.28</b><time>31 okt 2026</time></div><ul>
           <li>Åtgärdslista under Styrelsen: uppgifter med ansvarig, datum för när de ska vara klara och en bock när de är gjorda. Försenade och snart förfallna markeras med färg.</li></ul></li>
         <li><div><b>2.27</b><time>31 okt 2026</time></div><ul>
@@ -1461,7 +1488,7 @@ function itemCard(kind,it,fields,view){
       ${kind==="moten"?`<button type="button" class="ghost tonews" data-act="tonews">${(site.nyheter||[]).some(n=>n.mote===it.id)?"Uppdatera under Aktuellt":"Lägg upp i Aktuellt"}</button>`:""}
       <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
   }
-  return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row"><button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
+  return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row">${kind==="nyheter"?`${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}<button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis"}</button>`:""}<button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
 }
 const ATT_KINDS=["nyheter","moten"];
 const blobUrl=id=>(window.BLOB_BASE||"/_blob/")+encodeURIComponent(id);
@@ -1819,16 +1846,20 @@ function atgDialog(a){
     <label>Uppgift<input id="aU" required maxlength="200" placeholder="t.ex. Beställa grus till sträcka F" value="${E(a.uppgift||"")}"></label>
     <label>Ansvarig<select id="aA"><option value="">Ingen vald</option>${namn.map(n=>`<option ${n===a.ansvarig?"selected":""}>${E(n)}</option>`).join("")}<option value="__annan" ${annan?"selected":""}>Någon annan…</option></select></label>
     <label id="aAnL" ${annan?"":"hidden"}>Namn<input id="aAn" value="${annan?E(a.ansvarig):""}"></label>
+    <label id="aAeL" ${annan?"":"hidden"}>Mejl (valfritt, så att personen ser uppgiften i appen)<input id="aAe" type="email" value="${annan?E(a.ansvarigEpost||""):""}"></label>
     <label>Klart senast<input id="aD" type="date" value="${E(a.datum||"")}"></label>
     <label>Anteckning (valfritt)<textarea id="aN" rows="3" maxlength="1000">${E(a.notering||"")}</textarea></label>
     <p class="status" id="aMsg"></p>
     <div class="bdlg-btns"><button type="button" id="aOk">${ny?"Lägg till":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
   const g=id=>d.querySelector(id);
-  g("#aA").onchange=()=>{ g("#aAnL").hidden=g("#aA").value!=="__annan"; };
+  g("#aA").onchange=()=>{ g("#aAnL").hidden=g("#aAeL").hidden=g("#aA").value!=="__annan"; };
   g("#aOk").onclick=()=>{ const u=g("#aU").value.trim(); if(!u){ g("#aMsg").textContent="Skriv vad som ska göras."; return; }
-    const ans=g("#aA").value==="__annan"?g("#aAn").value.trim():g("#aA").value;
-    const data={uppgift:u,ansvarig:ans,datum:g("#aD").value,notering:g("#aN").value.trim()};
+    const ann=g("#aA").value==="__annan", ans=ann?g("#aAn").value.trim():g("#aA").value;
+    const pers=[...(site.styrelse||[]),...(site.funktionarer||[])].find(x=>x.namn===ans);
+    const ansE=String(ann?g("#aAe").value:(pers&&pers.epost)||"").trim().toLowerCase();
+    const data={uppgift:u,ansvarig:ans,ansvarigEpost:ansE,datum:g("#aD").value,notering:g("#aN").value.trim()};
+    if(!board){ g("#aOk").disabled=true; window.SB.rpc("lagg_till_atgard",{p_uppgift:u,p_ansvarig:ans,p_ansvarig_epost:ansE,p_datum:data.datum,p_notering:data.notering}).then(({error})=>{ if(error){ g("#aOk").disabled=false; g("#aMsg").textContent="Det gick inte att spara."; return; } d.close(); setMsg("Åtgärden är tillagd."); loadMina(); }); return; }
     if(ny) atg=[...atg,{id:nid(),skapad:today(),klar:false,...data}]; else Object.assign(atg.find(x=>x.id===a.id)||{},data);
     atgSave(); d.close(); setMsg(ny?"Åtgärden är tillagd.":"Åtgärden är sparad."); };
   d.showModal(); g("#aU").focus();
@@ -1847,6 +1878,51 @@ document.addEventListener("change",e=>{
   a.klar=e.target.checked; a.klarDatum=a.klar?today():""; atgSave(); setMsg(a.klar?"Markerad som klar.":"Flyttad tillbaka till listan.");
 });
 
+/* ---------- Mina uppgifter (startsidan): åtgärder där jag är ansvarig eller som jag lagt till ---------- */
+let mina=[], arVag=false;
+async function loadMina(){
+  if(!window.SB) return;
+  try{ const [m,v]=await Promise.all([window.SB.rpc("mina_atgarder"),window.SB.rpc("ar_vagansvarig")]); mina=(m.data||[]); arVag=v.data===true; }catch(e){ return; }
+  renderMina();
+}
+function renderMina(){
+  const box=q("#minaAtg"); if(!box) return;
+  const öppna=mina.filter(a=>!a.klar).sort((a,b)=>String(a.datum||"9999").localeCompare(String(b.datum||"9999")));
+  const kanLagga=arVag&&!board;
+  box.hidden=!öppna.length&&!kanLagga;
+  if(box.hidden){ box.innerHTML=""; return; }
+  box.innerHTML=`<div class="ph"><h2>Mina uppgifter</h2>${kanLagga?`<button type="button" class="ghost small" id="addMinaAtg">+ <span class="lg">Ny åtgärd</span><span class="sm">Ny</span></button>`:""}</div>
+    ${öppna.length?öppna.map(a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
+      const dag=!a.datum?"":st==="sen"?`<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`:`<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
+      return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${a.ansvarig?`<span class="atg-who">${ico("user")}${E(a.ansvarig)}</span>`:""}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
+      :`<p class="hint">Inga öppna uppgifter just nu.</p>`}`;
+}
+document.addEventListener("change",async e=>{
+  if(e.target.dataset.minadone===undefined) return; const id=e.target.closest("[data-mid]").dataset.mid; e.target.disabled=true;
+  const {error}=await window.SB.rpc("markera_min_atgard",{p_id:id,p_klar:true});
+  if(error){ setMsg("Det gick inte att markera uppgiften."); e.target.checked=false; e.target.disabled=false; return; }
+  setMsg("Bra jobbat! Uppgiften är markerad som klar."); loadMina();
+});
+document.addEventListener("click",e=>{ if(e.target.closest("#addMinaAtg")) atgDialog(null); });
+
+/* ---------- ruta om notiser på startsidan ---------- */
+async function pushBanner(){
+  const b=q("#pushBanner"); if(!b||!window.VagPush) return; let nej=""; try{ nej=localStorage.getItem("vag_push_fraga")||""; }catch(e){}
+  if(nej==="nej"){ b.hidden=true; return; }
+  const st=await window.VagPush.status();
+  if(st!=="av"&&st!=="ios"){ b.hidden=true; return; }
+  b.innerHTML = st==="ios"
+    ? `<span class="pb-ico">${ico("phone")}</span><div class="pb-txt"><strong>Vill du få notiser om nyheter?</strong><small>Lägg appen på hemskärmen: tryck på Dela-knappen i Safari och välj <em>Lägg till på hemskärmen</em>. Öppna sedan appen därifrån och slå på notiser under Mitt konto.</small></div><div class="pb-btns"><button type="button" class="ghost small" data-pushno>OK</button></div>`
+    : `<span class="pb-ico">${ico("bell")}</span><div class="pb-txt"><strong>Vill du få en notis när det kommer nyheter?</strong><small>Du kan stänga av det när du vill under Mitt konto.</small></div><div class="pb-btns"><button type="button" class="small" data-pushyes>Slå på notiser</button><button type="button" class="ghost small" data-pushno>Inte nu</button></div>`;
+  b.hidden=false;
+}
+document.addEventListener("click",async e=>{
+  if(e.target.closest("[data-pushno]")){ try{ localStorage.setItem("vag_push_fraga","nej"); }catch(x){} q("#pushBanner").hidden=true; return; }
+  const y=e.target.closest("[data-pushyes]"); if(!y) return; y.disabled=true; y.textContent="Slår på…";
+  try{ await window.VagPush.enable(); q("#pushBanner").innerHTML=`<span class="pb-ico">${ico("bell")}</span><div class="pb-txt"><strong>Notiser är påslagna.</strong><small>Du får en notis när styrelsen lägger upp en nyhet.</small></div><div class="pb-btns"><button type="button" class="ghost small" data-pushno>OK</button></div>`; }
+  catch(err){ q("#pushBanner").querySelector("small").textContent=window.VagPush.fel(err); y.disabled=false; y.textContent="Försök igen"; }
+});
+
 /* board edits on lists */
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b||!board) return;
@@ -1862,6 +1938,16 @@ document.addEventListener("click",e=>{
   const kind=card.dataset.kind, id=card.dataset.id;
   if (b.dataset.act==="edit"){ editing.add(id); renderLists(); }
   else if (b.dataset.act==="done"){ editing.delete(id); renderLists(); }
+  else if (b.dataset.act==="notis"){
+    if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att skicka"; setTimeout(()=>{ if(b.isConnected){ b.classList.remove("armed"); renderLists(); } },5000); return; }
+    b.disabled=true; b.textContent="Skickar…";
+    window.SB.functions.invoke("notiser",{body:{action:"nyhet",id}}).then(async ({data,error})=>{
+      if(error){ const j=error.context&&await error.context.json().catch(()=>null); setMsg((j&&j.fel)||"Det gick inte att skicka notisen."); renderLists(); return; }
+      if(data.ingen){ setMsg("Ingen har slagit på notiser än."); renderLists(); return; }
+      const it=(site.nyheter||[]).find(x=>x.id===id); if(it){ it.notis=today(); saveSite(); }
+      renderLists(); setTimeout(()=>setMsg(`Notisen är skickad till ${data.skickade} ${data.skickade===1?"enhet":"enheter"}.`),900);
+    });
+  }
   else if (b.dataset.act==="tonews"){
     const m=(site.moten||[]).find(x=>x.id===id); if(!m) return;
     if(!m.rubrik){ setMsg("Skriv en rubrik för mötet först."); return; }
@@ -2184,7 +2270,9 @@ renderSite(); renderCases();
     if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
-    if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); },()=>{}); }
+    if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); loadMina(); },()=>{}); }
+    loadMina(); setTimeout(pushBanner,2500);
+    document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMina(); });
     if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderProt(); },()=>{}); }
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{

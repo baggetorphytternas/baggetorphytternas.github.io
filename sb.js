@@ -123,22 +123,62 @@ function loginForm(msg){
   document.getElementById("gEmail").onkeydown=e=>{ if(e.key==="Enter") send(); };
   document.getElementById("gPw").onkeydown=e=>{ if(e.key==="Enter") send(); };
 }
-/* ---------- Mitt konto: välj eller byt lösenord ---------- */
+/* ---------- Push-notiser ---------- */
+const VagPush=(()=>{
+  const ok=()=>"serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const ios=()=>/iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone=()=>window.matchMedia("(display-mode: standalone)").matches || navigator.standalone===true;
+  let regP=null; const reg=()=>regP||(regP=navigator.serviceWorker.register("sw.js",{scope:"./"}).then(()=>navigator.serviceWorker.ready));
+  const u8=s=>{ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="="; const b=atob(s); return Uint8Array.from(b,c=>c.charCodeAt(0)); };
+  async function status(){
+    if(!ok()) return ios()&&!standalone() ? "ios" : "ej";
+    if(Notification.permission==="denied") return "nekad";
+    try{ const r=await reg(); const sub=await r.pushManager.getSubscription(); return sub?"pa":"av"; }catch(e){ return "ej"; }
+  }
+  async function enable(){
+    if(!ok()) throw new Error(ios()&&!standalone()?"ios":"ej");
+    const perm=await Notification.requestPermission(); if(perm!=="granted") throw new Error("nekad");
+    const {data,error}=await sb.functions.invoke("notiser",{body:{action:"nyckel"}}); if(error||!data||!data.publik) throw new Error("server");
+    const r=await reg(); let sub=await r.pushManager.getSubscription();
+    if(sub){ const k=sub.options&&sub.options.applicationServerKey; if(k&&btoa(String.fromCharCode(...new Uint8Array(k)))!==btoa(String.fromCharCode(...u8(data.publik)))){ await sub.unsubscribe(); sub=null; } }
+    if(!sub) sub=await r.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(data.publik)});
+    const j=sub.toJSON();
+    await sb.from("push_prenumerationer").delete().eq("endpoint",j.endpoint);
+    const {error:e2}=await sb.from("push_prenumerationer").insert({endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth}); if(e2) throw new Error("spara");
+    return true;
+  }
+  async function disable(){ try{ const r=await reg(); const sub=await r.pushManager.getSubscription(); if(sub){ await sb.from("push_prenumerationer").delete().eq("endpoint",sub.endpoint); await sub.unsubscribe(); } }catch(e){} }
+  async function test(){ const {data,error}=await sb.functions.invoke("notiser",{body:{action:"test"}}); if(error) throw error; return data; }
+  const fel=e=>({ios:"På iPhone och iPad fungerar notiser bara när appen ligger på hemskärmen. Tryck på Dela-knappen i Safari och välj Lägg till på hemskärmen, öppna appen därifrån och slå på notiser igen.",ej:"Den här webbläsaren kan inte ta emot notiser.",nekad:"Notiser är blockerade för appen i webbläsaren. Tillåt notiser för baggetorphytternas.github.io i webbläsarens inställningar och försök igen."}[e&&e.message]||"Det gick inte att slå på notiser. Försök igen om en stund.");
+  return {ok,status,enable,disable,test,fel,reg};
+})();
+window.VagPush=VagPush;
+
+/* ---------- Mitt konto ---------- */
 function kontoDialog(s,fraga){
   const har=!!(s.user.user_metadata&&s.user.user_metadata.har_losen);
   const d=document.createElement("dialog"); d.className="bdlg kontodlg";
   const R={admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"}[roll]||"";
-  d.innerHTML=`<form method="dialog"><h2>${fraga?"Vill du välja ett lösenord?":"Mitt konto"}</h2>
-    ${fraga?`<p class="hint">Med ett lösenord kan du logga in direkt nästa gång, utan att vänta på ett mejl.</p>`:`<p class="hint">Inloggad som <strong>${s.user.email.replace(/</g,"&lt;")}</strong>${R?" · "+R:""}</p>`}
-    ${!fraga?`<p class="hint">${har?"Du har ett lösenord. Fyll i ett nytt nedan om du vill byta.":"Du har inget lösenord än. Välj ett för att kunna logga in utan mejllänk."}</p>`:""}
-    <input type="email" autocomplete="username" value="${s.user.email.replace(/"/g,"")}" hidden>
-    <label>${har&&!fraga?"Nytt lösenord":"Lösenord"}<input id="kPw1" type="password" autocomplete="new-password" minlength="8" placeholder="Minst 8 tecken"></label>
-    <label>Upprepa lösenordet<input id="kPw2" type="password" autocomplete="new-password"></label>
-    <p class="status" id="kMsg"></p>
-    <div class="bdlg-btns"><button type="button" id="kSave">Spara lösenord</button><button value="close" class="ghost">${fraga?"Inte nu":"Stäng"}</button></div>
-    ${!fraga?`<button type="button" class="linkbtn" id="kOut">Logga ut</button>`:""}</form>`;
+  const H=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const pwForm=`<div class="kpw" id="kPwBox" ${fraga?"":"hidden"}>
+      <input type="email" autocomplete="username" value="${H(s.user.email)}" hidden>
+      <label>${har&&!fraga?"Nytt lösenord":"Lösenord"}<input id="kPw1" type="password" autocomplete="new-password" minlength="8" placeholder="Minst 8 tecken"></label>
+      <label>Upprepa lösenordet<input id="kPw2" type="password" autocomplete="new-password"></label>
+      <p class="status" id="kMsg"></p>
+      <button type="button" id="kSave">Spara lösenord</button></div>`;
+  d.innerHTML = fraga ? `<form method="dialog"><h2>Vill du välja ett lösenord?</h2><p class="hint">Med ett lösenord kan du logga in direkt nästa gång, utan att vänta på ett mejl.</p>${pwForm}<div class="bdlg-btns"><button value="close" class="ghost">Inte nu</button></div></form>`
+  : `<form method="dialog"><h2>Mitt konto</h2>
+    <p class="hint">Inloggad som <strong>${H(s.user.email)}</strong>${R?" · "+R:""}</p>
+    <div class="krows">
+      <div class="krow"><div class="ktxt"><strong>Notiser</strong><small id="kNotTxt">Kontrollerar…</small></div><div class="kbtns" id="kNotBtns"></div></div>
+      <div class="krow"><div class="ktxt"><strong>Lösenord</strong><small>${har?"Du loggar in med mejl och lösenord.":"Du har inget lösenord än och loggar in med mejllänk."}</small></div><div class="kbtns"><button type="button" class="ghost small" id="kPwBtn">${har?"Byt lösenord":"Välj lösenord"}</button></div></div>
+      ${pwForm}
+    </div>
+    <div class="bdlg-btns"><button value="close" class="ghost">Stäng</button></div>
+    <button type="button" class="linkbtn" id="kOut">Logga ut</button></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>{ if(fraga) LS.set("vag_losen_fraga","nej"); d.remove(); });
   const g=id=>d.querySelector(id);
+  if(g("#kPwBtn")) g("#kPwBtn").onclick=()=>{ const box=g("#kPwBox"); box.hidden=!box.hidden; g("#kPwBtn").textContent=box.hidden?(har?"Byt lösenord":"Välj lösenord"):"Avbryt"; if(!box.hidden) g("#kPw1").focus(); };
   g("#kSave").onclick=async()=>{ const a=g("#kPw1").value, b=g("#kPw2").value, m=g("#kMsg");
     if(a.length<8){ m.textContent="Lösenordet måste ha minst 8 tecken."; return; }
     if(a!==b){ m.textContent="Lösenorden är inte likadana."; return; }
@@ -147,9 +187,20 @@ function kontoDialog(s,fraga){
     g("#kSave").disabled=false;
     if(error){ m.textContent = /different from the old/i.test(error.message||"") ? "Det nya lösenordet måste skilja sig från det gamla." : /reauth|recent/i.test(error.message||"") ? "Av säkerhetsskäl behöver du logga in med mejllänk igen innan du kan byta lösenord." : /weak|pwned|leaked/i.test(error.message||"") ? "Lösenordet är för enkelt eller har läckt tidigare. Välj ett annat." : "Det gick inte att spara lösenordet."; return; }
     if(data&&data.user) s.user=data.user; LS.set("vag_mode","pw"); LS.set("vag_email",s.user.email);
-    d.innerHTML=`<form method="dialog"><h2>Klart!</h2><p class="hint">Nästa gång loggar du in med <strong>${s.user.email.replace(/</g,"&lt;")}</strong> och ditt lösenord.</p><div class="bdlg-btns"><button value="ok">OK</button></div></form>`;
+    if(fraga){ d.close(); return; }
+    g("#kPwBox").hidden=true; g("#kPw1").value=""; g("#kPw2").value=""; g("#kPwBtn").textContent="Byt lösenord";
+    g("#kPwBox").previousElementSibling.querySelector("small").textContent="Lösenordet är sparat. Du loggar in med mejl och lösenord.";
   };
   if(g("#kOut")) g("#kOut").onclick=()=>sb.auth.signOut().then(()=>location.reload());
+  const notis=async()=>{ const t=g("#kNotTxt"), bx=g("#kNotBtns"); if(!t) return; const st=await VagPush.status();
+    const txt={pa:"Påslagna på den här enheten. Du får en notis när det kommer nyheter.",av:"Avstängda på den här enheten.",nekad:"Blockerade i webbläsarens inställningar.",ios:"Lägg appen på hemskärmen för att kunna få notiser.",ej:"Den här webbläsaren kan inte ta emot notiser."}[st];
+    t.textContent=txt;
+    bx.innerHTML = st==="pa" ? `<button type="button" class="ghost small" id="kNotTest">Testa</button><button type="button" class="ghost small" id="kNotOff">Stäng av</button>` : (st==="av"||st==="nekad"||st==="ios") ? `<button type="button" class="small" id="kNotOn">Slå på</button>` : "";
+    if(g("#kNotOn")) g("#kNotOn").onclick=async()=>{ g("#kNotOn").disabled=true; t.textContent="Slår på…"; try{ await VagPush.enable(); notis(); }catch(e){ t.textContent=VagPush.fel(e); g("#kNotOn").disabled=false; } };
+    if(g("#kNotOff")) g("#kNotOff").onclick=async()=>{ await VagPush.disable(); notis(); };
+    if(g("#kNotTest")) g("#kNotTest").onclick=async()=>{ t.textContent="Skickar testnotis…"; try{ await VagPush.test(); t.textContent="Testnotisen är skickad. Den bör dyka upp inom några sekunder."; }catch(e){ t.textContent="Det gick inte att skicka testnotisen."; } };
+  };
+  notis();
   d.showModal();
 }
 async function start(s){

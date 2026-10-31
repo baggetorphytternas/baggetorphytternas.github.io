@@ -1544,7 +1544,14 @@ function renderInbox(){
     <span class="status" data-inmsg></span></details>`).join("") : `<p class="empty">${inArch?"Arkivet är tomt.":"Inga mejl i inkorgen."}</p>`;
 }
 async function setMail(id,patch){ const m=inMail.find(x=>x.id===id); if(m) Object.assign(m,patch); updInCount(); try{ await window.SB.from("inkorg").update(patch).eq("id",id); }catch(e){} }
-document.addEventListener("toggle",e=>{ const d=e.target; if(!d.matches||!d.matches("details.mail")||!d.open) return; const m=inMail.find(x=>x.id===d.dataset.mid); if(m&&!m.last){ d.classList.remove("unread"); const b=d.querySelector(".badge.ny"); if(b) b.remove(); setMail(m.id,{last:true}); } },true);
+document.addEventListener("toggle",async e=>{ const d=e.target; if(!d.matches||!d.matches("details.mail")||!d.open) return; const m=inMail.find(x=>x.id===d.dataset.mid); if(!m) return;
+  if(!m.last){ d.classList.remove("unread"); const b=d.querySelector(".badge.ny"); if(b) b.remove(); setMail(m.id,{last:true}); }
+  if(!m.text&&!m.html&&!m.hamtar){ m.hamtar=true; const box=d.querySelector(".mailtext"); box.innerHTML="<em>Hämtar mejlets text…</em>";
+    let res; try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"hamta",inkorg_id:m.id}}); res= error? {fel:(error.context&&await error.context.json().catch(()=>null)||{}).fel||"Kunde inte hämta texten."} : data; }catch(err){ res={fel:"Kunde inte hämta texten."}; }
+    m.hamtar=false;
+    if(res.fel){ box.innerHTML=`<em>${E(res.fel)}</em>`; return; }
+    m.text=res.text||""; m.html=res.html||""; box.textContent=mailText(m)||"Mejlet saknar text."; }
+},true);
 document.addEventListener("click",async e=>{
   if(e.target.closest("#inArchBtn")){ inArch=!inArch; renderInbox(); return; }
   const b=e.target.closest("[data-inreply],[data-inarch],[data-inunread]"); if(!b||!board) return;

@@ -276,9 +276,31 @@ function renderLists(){
   q("#memberList").innerHTML = gl.length? gl.map(([k,ps])=>memCard(k,ps)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
   refreshMemDlg();
 }
+/* Startbildens position: site.startbild.pos = {x,y} i procent (fokuspunkt). */
+let heroDrag=false, heroSaveT=null;
+const heroPos=()=>{ const p=(site.startbild&&site.startbild.pos)||{}; const c=v=>Math.max(0,Math.min(100,Math.round(Number.isFinite(+v)?+v:50))); return {x:c(p.x??50),y:c(p.y??50)}; };
+function heroVisa(x,y,u){
+  const d=q("#heroDot"); if(d){ d.style.left=x+"%"; d.style.top=y+"%"; }
+  ["#hpM","#hpD"].forEach(s=>{ const el=q(s); if(el){ if(u) el.style.backgroundImage=`url("${u}")`; el.style.backgroundPosition=`${x}% ${y}%`; } });
+  const w=q("#welcome"); if(w) w.style.setProperty("--hero-pos",`${x}% ${y}%`);
+}
+function heroSatt(x,y,spara){
+  x=Math.max(0,Math.min(100,Math.round(x))); y=Math.max(0,Math.min(100,Math.round(y)));
+  q("#heroX").value=x; q("#heroY").value=y; heroVisa(x,y);
+  if(spara&&site.startbild){ site.startbild.pos={x,y}; clearTimeout(heroSaveT); heroSaveT=setTimeout(()=>saveSite(),300); }
+}
+document.addEventListener("input",e=>{ if(e.target.id==="heroX"||e.target.id==="heroY") heroSatt(+q("#heroX").value,+q("#heroY").value,true); });
+(()=>{ const f=()=>q("#heroFull");
+  const punkt=ev=>{ const r=q("#heroImg").getBoundingClientRect(); return [(ev.clientX-r.left)/r.width*100,(ev.clientY-r.top)/r.height*100]; };
+  document.addEventListener("pointerdown",ev=>{ const el=f(); if(!el||!el.contains(ev.target)) return; heroDrag=true; el.setPointerCapture&&el.setPointerCapture(ev.pointerId); const [x,y]=punkt(ev); heroSatt(x,y,false); ev.preventDefault(); });
+  document.addEventListener("pointermove",ev=>{ if(!heroDrag) return; const [x,y]=punkt(ev); heroSatt(x,y,false); });
+  document.addEventListener("pointerup",ev=>{ if(!heroDrag) return; heroDrag=false; const [x,y]=punkt(ev); heroSatt(x,y,true); setMsg("Startbildens position är sparad."); });
+})();
 function renderHero(){
   const w=q("#welcome"); if(!w) return; const id=site.startbild&&site.startbild.id&&blobUrl(site.startbild.id)?site.startbild.id:"";
-  w.classList.toggle("has-img",!!id); w.style.setProperty("--hero-img", id?`url("${blobUrl(id)}")`:"none");
+  const pos=heroPos();
+  w.classList.toggle("has-img",!!id); w.style.setProperty("--hero-img", id?`url("${blobUrl(id)}")`:"none"); w.style.setProperty("--hero-pos",`${pos.x}% ${pos.y}%`);
+  const hp=q("#heroPos"); if(hp){ hp.hidden=!id; if(id){ const u=blobUrl(id), im=q("#heroImg"); if(im.getAttribute("src")!==u) im.src=u; if(!heroDrag){ q("#heroX").value=pos.x; q("#heroY").value=pos.y; } heroVisa(pos.x,pos.y,u); } }
   const del=q("#heroDel"); if(del) del.hidden=!id;
   const pv=q("#heroPrev"); if(pv){ pv.classList.toggle("has-img",!!id); pv.style.backgroundImage=id?`url("${blobUrl(id)}")`:""; pv.querySelector("span").hidden=!!id; }
 }

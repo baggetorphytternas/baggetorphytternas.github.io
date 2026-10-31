@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2.46">
+<link rel="stylesheet" href="app.css?v=2.48">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -262,6 +262,12 @@
       <h2>Startbild</h2>
       <p class="hint">Bilden som visas överst i appen på alla sidor. Välj en liggande bild, gärna av vägen eller bygden.</p>
       <div class="heroprev" id="heroPrev"><span>Ingen bild vald. Den gröna standardbakgrunden visas.</span></div>
+      <div class="heropos" id="heroPos" hidden>
+        <p class="hint">Tryck eller dra i bilden där det viktigaste finns. Sidhuvudet visar då den delen av bilden.</p>
+        <div class="herofull" id="heroFull"><img id="heroImg" alt="Startbilden"><span class="herodot" id="heroDot"></span></div>
+        <div class="grid2"><label>Vågrätt<input type="range" id="heroX" min="0" max="100" step="1"></label><label>Lodrätt<input type="range" id="heroY" min="0" max="100" step="1"></label></div>
+        <div class="heroprevs"><div><small>Så här ser det ut på mobil</small><div class="hp hp-m" id="hpM"></div></div><div><small>Så här ser det ut på dator</small><div class="hp hp-d" id="hpD"></div></div></div>
+      </div>
       <div class="row">
         <label class="filebtn herobtn2"><svg class="ico"><use href="#i-file"/></svg><span id="heroLbl">Byt startbild</span><input type="file" accept="image/*" id="heroFile"></label>
         <button type="button" class="danger" id="heroDel" hidden>Ta bort bild</button>
@@ -282,9 +288,11 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.47</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.48</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.48</b><time>31 okt 2026</time></div><ul>
+          <li>Startbildens position går att justera under Admin → Startbild: tryck eller dra i bilden, eller använd reglagen, och se direkt hur det blir på mobil och dator.</li></ul></li>
         <li><div><b>2.47</b><time>31 okt 2026</time></div><ul>
           <li>Kontakt på startsidan öppnar alltid styrelsens ledamöter, oavsett vilken underflik som var öppen senast.</li></ul></li>
         <li><div><b>2.46</b><time>31 okt 2026</time></div><ul>
@@ -429,6 +437,6 @@
 </main>
 
 
-<script src="app.js?v=2.47"></script>
+<script src="app.js?v=2.48"></script>
 </body>
 </html>

@@ -257,6 +257,16 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+#boardList{grid-auto-rows:1fr;align-items:stretch}
+#boardList>.item{height:100%}
+#boardList:has(.item input){grid-auto-rows:auto;align-items:start}
+#boardList:has(.item input)>.item{height:auto}
+#boardList>.item>.row:last-child{margin-top:auto}
+#boardList .person{align-items:flex-start}
+#boardList .person .meta{font-size:1.02rem;font-weight:700;color:var(--accent);letter-spacing:.01em}
+#boardList .person h3{font-size:1.2rem;margin-top:2px}
+#boardList .avatar{width:52px;height:52px;font-size:1.05rem}
+#boardList .contacts{flex-direction:column;align-items:flex-start}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
 .mcard{height:132px;display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
@@ -649,9 +659,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.9</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.10</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.10</b><time>31 okt 2026</time></div><ul>
+          <li>Styrelsens kort är lika stora, och rollen (t.ex. Ordförande) visas större och tydligare.</li></ul></li>
         <li><div><b>2.9</b><time>31 okt 2026</time></div><ul>
           <li>Medlemmar visas som lika stora kort per fastighet. Tryck på ett kort för att se och ändra fastighetens kontaktpersoner.</li></ul></li>
         <li><div><b>2.8</b><time>31 okt 2026</time></div><ul>

@@ -381,6 +381,8 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .masthead .iconbtn:hover,.masthead button.logout:hover,.masthead .iconbtn.on{background:rgba(0,0,0,.5);color:#fff;border-color:rgba(255,255,255,.7)}
 .masthead .role{background:rgba(255,255,255,.18);color:#fff}
 .topbar{position:sticky;top:0;z-index:20}
+/* underflikarna stannar under sidhuvudet när man scrollar */
+.subwrap{position:sticky;top:var(--tb-h,0px);z-index:15;background:var(--bg);margin:-12px 0 0;padding:8px 0;box-shadow:-40px 0 0 var(--bg),40px 0 0 var(--bg)}
 .navbar{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-sm)}
 @media (max-width:760px){
   .mh-in{min-height:150px;padding:10px 14px 16px;gap:10px}
@@ -396,7 +398,7 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .pghead .ph{min-height:38px}
 .ph>button,.ph>.row,.ph>a{margin-left:auto}
 .ph>.row{justify-content:flex-end}
-.subnav{margin-top:-8px;flex-wrap:nowrap;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:560px}
+.subnav{margin-top:0;flex-wrap:nowrap;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:560px}
 .subnav .chipbtn{flex:1;border:none;border-radius:9px;background:transparent;color:var(--muted);padding:9px 8px;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
 .subnav .chipbtn:hover{background:var(--surface);color:var(--ink)}
 .subnav .chipbtn.on,.subnav .chipbtn.on:hover{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
@@ -793,13 +795,13 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div></div>
       <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
     </header>
-    <div class="filters subnav board" role="tablist" aria-label="Styrelsen">
+    <div class="subwrap board"><div class="filters subnav board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick"><span class="lg">Skapa utskick</span><span class="sm">Utskick</span></button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
       <button type="button" class="chipbtn" data-st="prot">Dokument</button>
       <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
-    </div>
+    </div></div>
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
       <div id="boardList" class="cards"></div>
@@ -870,12 +872,12 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <div class="ph"><div class="pagehead"><h1>Dokument</h1></div></div>
       <p class="hint">Föreningens protokoll, stadgar, ekonomi och bra länkar. Alla medlemmar kan läsa.</p>
     </header>
-    <div class="filters subnav" role="tablist" aria-label="Dokument">
+    <div class="subwrap"><div class="filters subnav" role="tablist" aria-label="Dokument">
       <button type="button" class="chipbtn on" data-dk="protokoll">Protokoll</button>
       <button type="button" class="chipbtn" data-dk="stadgar"><span class="lg">Stadgar och beslut</span><span class="sm">Stadgar</span></button>
       <button type="button" class="chipbtn" data-dk="ekonomi">Ekonomi</button>
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
-    </div>
+    </div></div>
     <section id="dk-docs">
       <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
       <p class="hint" id="dkHint"></p>
@@ -946,9 +948,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.33</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.34</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.34</b><time>31 okt 2026</time></div><ul>
+          <li>Underflikarna under Styrelsen och Dokument stannar kvar under sidhuvudet när man scrollar.</li></ul></li>
         <li><div><b>2.33</b><time>31 okt 2026</time></div><ul>
           <li>Ny flik Dokument med Protokoll, Stadgar och beslut, Ekonomi och Länkar. Alla medlemmar kan läsa och styrelsen laddar upp. Filerna ligger i en låst lagringsplats som bara inloggade medlemmar kommer åt.</li>
           <li>Protokollen har flyttat från Möten till Dokument. Ett möte som har ett protokoll visar knappen Läs protokollet.</li>
@@ -1528,6 +1532,8 @@ let site={intro:"",nyheter:[],moten:[],styrelse:[],medlemmar:[]};
 let fel={}, syn={}, siteSaving=false, siteDirty=false, editIntro=false;
 const editing=new Set();
 
+/* sidhuvudets höjd, så att underflikarna kan stanna precis under det */
+(()=>{ const tb=document.querySelector(".topbar"); if(!tb) return; const set=()=>document.documentElement.style.setProperty("--tb-h",tb.offsetHeight+"px"); set(); if(window.ResizeObserver) new ResizeObserver(set).observe(tb); else addEventListener("resize",set); })();
 /* navigation */
 function go(page){
   if ((page==="admin"||page==="verktyg") && !document.body.classList.contains("is-admin")) page="start";

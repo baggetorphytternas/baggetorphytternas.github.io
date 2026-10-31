@@ -324,6 +324,21 @@ body:not(.is-admin) #accessMgr{display:none}
 .atg-who{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--ink)}
 .atg-who .ico{width:14px;height:14px;color:var(--accent)}
 .atg-who.none{color:var(--faint);font-weight:400}
+fieldset.ansv{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px 12px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+fieldset.ansv legend{font-weight:600;font-size:.9rem;padding:0 4px}
+fieldset.ansv legend small{font-weight:400;color:var(--muted)}
+.ansv-list{display:flex;flex-wrap:wrap;gap:6px}
+.ansv-opt{display:inline-flex!important;flex-direction:row!important;align-items:center;gap:0!important;margin:0;cursor:pointer;font-weight:500}
+.ansv-opt input{position:absolute;opacity:0;width:1px;height:1px}
+.ansv-opt span{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);font-size:.88rem;color:var(--ink)}
+.ansv-opt span .ico{width:15px;height:15px;color:var(--muted)}
+.ansv-opt input:checked+span{background:var(--accent);border-color:var(--accent);color:#fff}
+.ansv-opt input:checked+span .ico{color:#fff}
+.ansv-opt input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.ansv-ny{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--surface-2);border-radius:var(--radius-sm)}
+.ansv-ny button{align-self:flex-start}
+#aAnnan{align-self:flex-start}
+.atg-body .meta{flex-wrap:wrap}
 .atg-who.grp{background:var(--accent-soft);color:var(--accent);padding:1px 8px;border-radius:999px}
 .badge.sen{background:var(--danger-soft);color:var(--danger)}
 .atg-check{flex:none;position:relative;width:28px;height:28px;margin-top:1px;cursor:pointer}
@@ -987,9 +1002,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.39</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.40</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.40</b><time>31 okt 2026</time></div><ul>
+          <li>En åtgärd kan nu ha flera ansvariga, både personer och grupper. Alla som är taggade ser åtgärden under Mitt konto → Mina åtgärder och kan bocka av den.</li></ul></li>
         <li><div><b>2.39</b><time>31 okt 2026</time></div><ul>
           <li>Mindre kort för medlemmar, styrelse och funktionärer. På mobilen ligger de två i bredd.</li></ul></li>
         <li><div><b>2.38</b><time>31 okt 2026</time></div><ul>
@@ -2090,39 +2107,55 @@ function renderAtg(){
       : `<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
     return `<div class="item atg ${st}" data-aid="${E(a.id)}"><div class="atg-row">
       <label class="atg-check" title="${a.klar?"Markera som ej klar":"Markera som klar"}"><input type="checkbox" data-atgdone ${a.klar?"checked":""}><span></span></label>
-      <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${a.ansvarig?`<span class="atg-who${a.ansvarigGrupp?" grp":""}">${ico(a.ansvarigGrupp?"users":"user")}${E(a.ansvarig)}</span>`:`<span class="atg-who none">Ingen ansvarig</span>`}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
+      <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${whoChips(a)}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
       <div class="row"><button type="button" class="ghost small" data-atgedit>Ändra</button><button type="button" class="danger" data-atgdel>Ta bort</button></div></div>`; };
   const l=q("#atgList"); if(!l) return;
   l.innerHTML = ö.length ? ö.map(row).join("") : `<p class="empty">${atg.length?"Alla åtgärder är klara. Bra jobbat!":"Inga åtgärder ännu. Tryck på Ny åtgärd för att lägga till."}</p>`;
   q("#atgDoneBox").hidden=!k.length; q("#atgDoneSum").textContent=`Klara (${k.length})`; q("#atgDoneList").innerHTML=k.map(row).join("");
 }
+/* En åtgärd kan ha flera ansvariga: personer och/eller grupper. Äldre åtgärder har ett enda ansvarig-fält. */
+const GRUPPER={styrelse:"Hela styrelsen",funktionarer:"Alla funktionärer"};
+function ansvLista(a){
+  if(Array.isArray(a.ansvariga)) return a.ansvariga;
+  return a.ansvarig?[{namn:a.ansvarig,epost:a.ansvarigEpost||"",grupp:a.ansvarigGrupp||""}]:[];
+}
+const whoChips=a=>{ const l=ansvLista(a); return l.length? l.map(x=>`<span class="atg-who${x.grupp?" grp":""}">${ico(x.grupp?"users":"user")}${E(x.namn||GRUPPER[x.grupp]||"")}</span>`).join("") : `<span class="atg-who none">Ingen ansvarig</span>`; };
 function atgDialog(a){
   const ny=!a; a=a||{};
-  const namn=[...new Set([...(site.styrelse||[]),...(site.funktionarer||[])].map(x=>x.namn).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"sv"));
-  const GRUPPER={styrelse:"Hela styrelsen",funktionarer:"Alla funktionärer"};
-  const annan=a.ansvarig&&!a.ansvarigGrupp&&!namn.includes(a.ansvarig);
+  const pers=[...(site.styrelse||[]),...(site.funktionarer||[])].filter(x=>x.namn);
+  const uniq=[...new Map(pers.map(x=>[x.namn,x])).values()].sort((x,y)=>x.namn.localeCompare(y.namn,"sv"));
+  const vald=ansvLista(a), key=x=>x.grupp?"g:"+x.grupp:"p:"+String(x.namn||"").toLowerCase();
+  const valdK=new Set(vald.map(key));
+  const alla=[...Object.entries(GRUPPER).map(([k,v])=>({namn:v,epost:"",grupp:k})), ...uniq.map(x=>({namn:x.namn,epost:String(x.epost||"").trim().toLowerCase(),grupp:""}))];
+  vald.forEach(x=>{ if(!alla.some(y=>key(y)===key(x))) alla.push({namn:x.namn,epost:x.epost||"",grupp:x.grupp||""}); });
+  const box=x=>`<label class="ansv-opt${x.grupp?" grp":""}"><input type="checkbox" data-ansv='${E(JSON.stringify(x))}' ${valdK.has(key(x))?"checked":""}><span>${ico(x.grupp?"users":"user")}${E(x.namn)}</span></label>`;
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>${ny?"Ny åtgärd":"Ändra åtgärd"}</h2>
     <label>Uppgift<input id="aU" required maxlength="200" placeholder="t.ex. Beställa grus till sträcka F" value="${E(a.uppgift||"")}"></label>
-    <label>Ansvarig<select id="aA"><option value="">Ingen vald</option>
-      <optgroup label="Grupp">${Object.entries(GRUPPER).map(([k,v])=>`<option value="__g:${k}" ${a.ansvarigGrupp===k?"selected":""}>${v}</option>`).join("")}</optgroup>
-      <optgroup label="Person">${namn.map(n=>`<option ${!a.ansvarigGrupp&&n===a.ansvarig?"selected":""}>${E(n)}</option>`).join("")}<option value="__annan" ${annan?"selected":""}>Någon annan…</option></optgroup></select></label>
-    <label id="aAnL" ${annan?"":"hidden"}>Namn<input id="aAn" value="${annan?E(a.ansvarig):""}"></label>
-    <label id="aAeL" ${annan?"":"hidden"}>Mejl (valfritt, så att personen ser uppgiften i appen)<input id="aAe" type="email" value="${annan?E(a.ansvarigEpost||""):""}"></label>
+    <fieldset class="ansv"><legend>Ansvariga <small>(välj en eller flera)</small></legend>
+      <div class="ansv-list" id="aList">${alla.map(box).join("")}</div>
+      <button type="button" class="ghost small" id="aAnnan">+ Någon annan</button>
+      <div class="ansv-ny" id="aNy" hidden>
+        <label>Namn<input id="aAn"></label>
+        <label>Mejl (valfritt, så att personen ser åtgärden i appen)<input id="aAe" type="email"></label>
+        <button type="button" class="small" id="aAnOk">Lägg till</button>
+      </div>
+    </fieldset>
     <label>Klart senast<input id="aD" type="date" value="${E(a.datum||"")}"></label>
     <label>Anteckning (valfritt)<textarea id="aN" rows="3" maxlength="1000">${E(a.notering||"")}</textarea></label>
     <p class="status" id="aMsg"></p>
     <div class="bdlg-btns"><button type="button" id="aOk">${ny?"Lägg till":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
   const g=id=>d.querySelector(id);
-  g("#aA").onchange=()=>{ g("#aAnL").hidden=g("#aAeL").hidden=g("#aA").value!=="__annan"; };
+  g("#aAnnan").onclick=()=>{ g("#aNy").hidden=!g("#aNy").hidden; if(!g("#aNy").hidden) g("#aAn").focus(); };
+  g("#aAnOk").onclick=()=>{ const n=g("#aAn").value.trim(); if(!n){ g("#aAn").focus(); return; }
+    const x={namn:n,epost:g("#aAe").value.trim().toLowerCase(),grupp:""};
+    g("#aList").insertAdjacentHTML("beforeend",box(x)); g("#aList").lastElementChild.querySelector("input").checked=true;
+    g("#aAn").value=""; g("#aAe").value=""; g("#aNy").hidden=true; };
   g("#aOk").onclick=()=>{ const u=g("#aU").value.trim(); if(!u){ g("#aMsg").textContent="Skriv vad som ska göras."; return; }
-    const val=g("#aA").value, grupp=val.startsWith("__g:")?val.slice(4):"";
-    const ann=val==="__annan", ans=grupp?GRUPPER[grupp]:ann?g("#aAn").value.trim():val;
-    const pers=!grupp&&[...(site.styrelse||[]),...(site.funktionarer||[])].find(x=>x.namn===ans);
-    const ansE=grupp?"":String(ann?g("#aAe").value:(pers&&pers.epost)||"").trim().toLowerCase();
-    const data={uppgift:u,ansvarig:ans,ansvarigEpost:ansE,ansvarigGrupp:grupp,datum:g("#aD").value,notering:g("#aN").value.trim()};
-    if(!board){ g("#aOk").disabled=true; window.SB.rpc("lagg_till_atgard_g",{p_uppgift:u,p_ansvarig:ans,p_ansvarig_epost:ansE,p_datum:data.datum,p_notering:data.notering,p_grupp:grupp}).then(({error})=>{ if(error){ g("#aOk").disabled=false; g("#aMsg").textContent="Det gick inte att spara."; return; } d.close(); setMsg("Åtgärden är tillagd."); loadMina(); }); return; }
+    const ansvariga=[...d.querySelectorAll("[data-ansv]:checked")].map(c=>JSON.parse(c.dataset.ansv));
+    const data={uppgift:u,ansvariga,ansvarig:ansvariga.map(x=>x.namn).join(", "),ansvarigEpost:"",ansvarigGrupp:"",datum:g("#aD").value,notering:g("#aN").value.trim()};
+    if(!board){ g("#aOk").disabled=true; window.SB.rpc("lagg_till_atgard_m",{p_uppgift:u,p_ansvariga:ansvariga,p_datum:data.datum,p_notering:data.notering}).then(({error})=>{ if(error){ g("#aOk").disabled=false; g("#aMsg").textContent="Det gick inte att spara."; return; } d.close(); setMsg("Åtgärden är tillagd."); loadMina(); }); return; }
     if(ny) atg=[...atg,{id:nid(),skapad:today(),klar:false,...data}]; else Object.assign(atg.find(x=>x.id===a.id)||{},data);
     atgSave(); d.close(); setMsg(ny?"Åtgärden är tillagd.":"Åtgärden är sparad."); };
   d.showModal(); g("#aU").focus();
@@ -2153,7 +2186,7 @@ function minaRader(){
   const öppna=minaOppna();
   return öppna.length?öppna.map(a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
       const dag=!a.datum?"":st==="sen"?`<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`:`<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
-      return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${a.ansvarig?`<span class="atg-who${a.ansvarigGrupp?" grp":""}">${ico(a.ansvarigGrupp?"users":"user")}${E(a.ansvarig)}</span>`:""}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
+      return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${whoChips(a)}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
     :`<p class="hint">Inga öppna åtgärder just nu.</p>`;
 }
 /* Räknare på Mitt konto-knappen; listan visas under Mitt konto → Mina åtgärder */

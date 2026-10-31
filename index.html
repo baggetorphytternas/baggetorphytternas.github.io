@@ -257,6 +257,35 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.item.atg{gap:10px;padding:14px 16px}
+.item.atg.sen{border-left:4px solid var(--danger)}
+.item.atg.snart{border-left:4px solid var(--warn)}
+.item.atg.klar{opacity:.75}
+.item.atg.klar h3{text-decoration:line-through;text-decoration-color:var(--faint)}
+.atg-row{display:flex;gap:14px;align-items:flex-start}
+.atg-body{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.atg-body h3{font-size:1.05rem}
+.atg-note{color:var(--muted)!important;font-size:.92rem}
+.atg-who{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--ink)}
+.atg-who .ico{width:14px;height:14px;color:var(--accent)}
+.atg-who.none{color:var(--faint);font-weight:400}
+.badge.sen{background:var(--danger-soft);color:var(--danger)}
+.atg-check{flex:none;position:relative;width:28px;height:28px;margin-top:1px;cursor:pointer}
+.atg-check input{position:absolute;inset:0;z-index:1;opacity:0;width:28px;height:28px;margin:0;cursor:pointer}
+.atg-check span{display:block;width:28px;height:28px;border-radius:8px;border:2px solid var(--line-strong);background:var(--surface);transition:background .15s,border-color .15s}
+.atg-check:hover span{border-color:var(--accent)}
+.atg-check input:checked+span{background:var(--accent);border-color:var(--accent)}
+.atg-check input:checked+span::after{content:"";position:absolute;left:10px;top:5px;width:7px;height:13px;border:solid #fff;border-width:0 3px 3px 0;transform:rotate(45deg)}
+.atg-check input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.item.atg>.row{justify-content:flex-end}
+.item.atg>.row button{flex:0 0 auto;min-height:34px}
+[data-atgdel].armed{color:var(--danger);background:var(--danger-soft)}
+.atgdone summary{padding:8px 0}
+.atgdone[open]{gap:12px}
+.subnav{overflow-x:auto;scrollbar-width:none;min-width:0}
+.subnav::-webkit-scrollbar{display:none}
+.subnav .chipbtn{flex:1 0 auto}
+@media (max-width:520px){ .subnav .chipbtn{font-size:.82rem;padding:9px 10px} }
 .gatebox .seg2{margin-top:2px}
 .ginfo{font-size:.92rem}
 .linkbtn{background:none;border:none;padding:4px 0;color:var(--accent);font-weight:600;font-size:.9rem;text-decoration:underline;text-underline-offset:3px;min-height:0!important;align-self:flex-start;text-align:left}
@@ -702,9 +731,10 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </header>
     <div class="filters subnav board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
-      <button type="button" class="chipbtn" data-st="utskick">Skapa utskick</button>
+      <button type="button" class="chipbtn" data-st="utskick"><span class="lg">Skapa utskick</span><span class="sm">Utskick</span></button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
       <button type="button" class="chipbtn" data-st="prot">Protokoll</button>
+      <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
     </div>
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
@@ -746,6 +776,12 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <div class="ph"><h2>Inkorg</h2><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
       <p class="hint" id="inHint">Mejl till föreningens adress hamnar här, till exempel svar på utskick. Bara styrelsen ser inkorgen. Tryck på ett mejl för att läsa och svara.</p>
       <div id="inList" class="list"></div>
+    </section>
+    <section id="st-atg" class="board" hidden>
+      <div class="ph"><h2>Åtgärdslista</h2><button type="button" class="ghost small" id="addAtg">+ <span class="lg">Ny åtgärd</span><span class="sm">Ny</span></button></div>
+      <p class="hint">Styrelsens uppgifter med ansvarig och datum. Bara styrelsen och admin ser listan.</p>
+      <div id="atgList" class="list"></div>
+      <details class="more atgdone" id="atgDoneBox" hidden><summary id="atgDoneSum">Klara</summary><div id="atgDoneList" class="list"></div></details>
     </section>
     <section id="st-prot" class="board" hidden>
       <div class="ph"><h2>Styrelseprotokoll</h2><button type="button" class="ghost small" data-protadd="styrelse">+ <span class="lg">Ladda upp protokoll</span><span class="sm">Ladda upp</span></button></div>
@@ -821,9 +857,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.27</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.28</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.28</b><time>31 okt 2026</time></div><ul>
+          <li>Åtgärdslista under Styrelsen: uppgifter med ansvarig, datum för när de ska vara klara och en bock när de är gjorda. Försenade och snart förfallna markeras med färg.</li></ul></li>
         <li><div><b>2.27</b><time>31 okt 2026</time></div><ul>
           <li>Logga in med lösenord. Första gången används mejllänken, och sedan kan man välja ett lösenord.</li>
           <li>Ny knapp Mitt konto uppe till höger för att välja eller byta lösenord.</li>
@@ -1749,6 +1787,66 @@ document.addEventListener("click",e=>{
   dlg.addEventListener("close",()=>dlg.remove()); dlg.showModal();
 });
 
+/* ---------- åtgärdslista (styrelse/atgarder, bara styrelse och admin) ---------- */
+let atg=[], atgRef=null;
+const kortDatum=d=>{ const t=new Date(d+"T12:00:00"); return isNaN(t)?"":t.toLocaleDateString("sv-SE",{day:"numeric",month:"short"})+(t.getFullYear()!==new Date().getFullYear()?" "+t.getFullYear():""); };
+const dagarKvar=d=>Math.round((new Date(d+"T12:00:00")-new Date(today()+"T12:00:00"))/864e5);
+function atgStatus(a){ if(a.klar) return "klar"; if(!a.datum) return "ingen"; const n=dagarKvar(a.datum); return n<0?"sen":n<=7?"snart":"ok"; }
+function atgSave(){ if(atgRef) atgRef.set({items:atg}).catch(()=>setMsg("Kunde inte spara åtgärdslistan.")); renderAtg(); }
+function renderAtg(){
+  const ö=atg.filter(a=>!a.klar).sort((a,b)=>String(a.datum||"9999").localeCompare(String(b.datum||"9999")));
+  const k=atg.filter(a=>a.klar).sort((a,b)=>String(b.klarDatum||"").localeCompare(String(a.klarDatum||"")));
+  const sen=ö.filter(a=>atgStatus(a)==="sen").length, c=q("#atgCount"); if(c){ c.textContent=sen; c.hidden=!sen; }
+  const row=a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
+    const dag = a.klar ? `<span class="badge klar">Klar ${E(kortDatum(a.klarDatum||today()))}</span>`
+      : !a.datum ? `<span class="badge typ">Inget datum</span>`
+      : st==="sen" ? `<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`
+      : `<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
+    return `<div class="item atg ${st}" data-aid="${E(a.id)}"><div class="atg-row">
+      <label class="atg-check" title="${a.klar?"Markera som ej klar":"Markera som klar"}"><input type="checkbox" data-atgdone ${a.klar?"checked":""}><span></span></label>
+      <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${a.ansvarig?`<span class="atg-who">${ico("user")}${E(a.ansvarig)}</span>`:`<span class="atg-who none">Ingen ansvarig</span>`}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
+      <div class="row"><button type="button" class="ghost small" data-atgedit>Ändra</button><button type="button" class="danger" data-atgdel>Ta bort</button></div></div>`; };
+  const l=q("#atgList"); if(!l) return;
+  l.innerHTML = ö.length ? ö.map(row).join("") : `<p class="empty">${atg.length?"Alla åtgärder är klara. Bra jobbat!":"Inga åtgärder ännu. Tryck på Ny åtgärd för att lägga till."}</p>`;
+  q("#atgDoneBox").hidden=!k.length; q("#atgDoneSum").textContent=`Klara (${k.length})`; q("#atgDoneList").innerHTML=k.map(row).join("");
+}
+function atgDialog(a){
+  const ny=!a; a=a||{};
+  const namn=[...new Set([...(site.styrelse||[]),...(site.funktionarer||[])].map(x=>x.namn).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"sv"));
+  const annan=a.ansvarig&&!namn.includes(a.ansvarig);
+  const d=document.createElement("dialog"); d.className="bdlg";
+  d.innerHTML=`<form method="dialog"><h2>${ny?"Ny åtgärd":"Ändra åtgärd"}</h2>
+    <label>Uppgift<input id="aU" required maxlength="200" placeholder="t.ex. Beställa grus till sträcka F" value="${E(a.uppgift||"")}"></label>
+    <label>Ansvarig<select id="aA"><option value="">Ingen vald</option>${namn.map(n=>`<option ${n===a.ansvarig?"selected":""}>${E(n)}</option>`).join("")}<option value="__annan" ${annan?"selected":""}>Någon annan…</option></select></label>
+    <label id="aAnL" ${annan?"":"hidden"}>Namn<input id="aAn" value="${annan?E(a.ansvarig):""}"></label>
+    <label>Klart senast<input id="aD" type="date" value="${E(a.datum||"")}"></label>
+    <label>Anteckning (valfritt)<textarea id="aN" rows="3" maxlength="1000">${E(a.notering||"")}</textarea></label>
+    <p class="status" id="aMsg"></p>
+    <div class="bdlg-btns"><button type="button" id="aOk">${ny?"Lägg till":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
+  const g=id=>d.querySelector(id);
+  g("#aA").onchange=()=>{ g("#aAnL").hidden=g("#aA").value!=="__annan"; };
+  g("#aOk").onclick=()=>{ const u=g("#aU").value.trim(); if(!u){ g("#aMsg").textContent="Skriv vad som ska göras."; return; }
+    const ans=g("#aA").value==="__annan"?g("#aAn").value.trim():g("#aA").value;
+    const data={uppgift:u,ansvarig:ans,datum:g("#aD").value,notering:g("#aN").value.trim()};
+    if(ny) atg=[...atg,{id:nid(),skapad:today(),klar:false,...data}]; else Object.assign(atg.find(x=>x.id===a.id)||{},data);
+    atgSave(); d.close(); setMsg(ny?"Åtgärden är tillagd.":"Åtgärden är sparad."); };
+  d.showModal(); g("#aU").focus();
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("#addAtg")&&board){ atgDialog(null); return; }
+  const b=e.target.closest("[data-atgedit],[data-atgdel]"); if(!b||!board) return;
+  const a=atg.find(x=>x.id===b.closest("[data-aid]").dataset.aid); if(!a) return;
+  if(b.dataset.atgedit!==undefined){ atgDialog(a); return; }
+  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort"; },4000); return; }
+  atg=atg.filter(x=>x.id!==a.id); atgSave(); setMsg("Åtgärden är borttagen.");
+});
+document.addEventListener("change",e=>{
+  if(e.target.dataset.atgdone===undefined||!board) return;
+  const a=atg.find(x=>x.id===e.target.closest("[data-aid]").dataset.aid); if(!a) return;
+  a.klar=e.target.checked; a.klarDatum=a.klar?today():""; atgSave(); setMsg(a.klar?"Markerad som klar.":"Flyttad tillbaka till listan.");
+});
+
 /* board edits on lists */
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b||!board) return;
@@ -1851,7 +1949,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="prot") renderProt(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderProt(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
@@ -2086,6 +2184,7 @@ renderSite(); renderCases();
     if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
+    if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); },()=>{}); }
     if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderProt(); },()=>{}); }
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{

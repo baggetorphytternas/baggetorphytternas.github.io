@@ -150,7 +150,31 @@ const VagPush=(()=>{
   async function disable(){ try{ const r=await reg(); const sub=await r.pushManager.getSubscription(); if(sub){ await sb.from("push_prenumerationer").delete().eq("endpoint",sub.endpoint); await sub.unsubscribe(); } }catch(e){} }
   async function test(){ const {data,error}=await sb.functions.invoke("notiser",{body:{action:"test"}}); if(error) throw error; return data; }
   const fel=e=>({ios:"På iPhone och iPad fungerar notiser bara när appen ligger på hemskärmen. Tryck på Dela-knappen i Safari och välj Lägg till på hemskärmen, öppna appen därifrån och slå på notiser igen.",ej:"Den här webbläsaren kan inte ta emot notiser.",nekad:"Notiser är blockerade för appen i webbläsaren. Tillåt notiser för baggetorphytternas.github.io i webbläsarens inställningar och försök igen."}[e&&e.message]||"Det gick inte att slå på notiser. Försök igen om en stund.");
-  return {ok,status,enable,disable,test,fel,reg};
+  /* Hjälp: hur man slår på notiser på iPhone, Android och dator */
+  function hjalp(){
+    const ua=navigator.userAgent, def=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1)?"ios":/Android/.test(ua)?"and":"dat";
+    const steg=a=>`<ol class="hsteg">${a.map(x=>`<li>${x}</li>`).join("")}</ol>`;
+    const T={
+      ios:`${steg(["Öppna appen i <b>Safari</b>.","Tryck på <b>Dela-knappen</b> (fyrkanten med en pil uppåt) längst ner.","Välj <b>Lägg till på hemskärmen</b> och tryck <b>Lägg till</b>.","Stäng Safari och öppna appen från <b>ikonen på hemskärmen</b>. Logga in om du behöver.","Tryck på <b>personikonen</b> uppe till höger och sedan <b>Slå på</b> vid Notiser. Välj <b>Tillåt</b>.","Tryck <b>Testa</b>. En notis ska komma inom några sekunder."])}
+        <div class="htips"><strong>Fungerar det inte?</strong><ul><li>Notiser kräver iOS 16.4 eller senare (Inställningar → Allmänt → Om).</li><li>Det fungerar bara när appen är öppnad från hemskärmen, inte inne i Safari.</li><li>Kontrollera Inställningar → Notiser → appen → <b>Tillåt notiser</b>.</li><li>Stäng av Fokus/Stör ej om notisen inte syns.</li></ul></div>`,
+      and:`${steg(["Öppna appen i <b>Chrome</b>.","Tryck på <b>personikonen</b> uppe till höger.","Tryck <b>Slå på</b> vid Notiser och välj <b>Tillåt</b> när telefonen frågar.","Tryck <b>Testa</b>. En notis ska komma inom några sekunder."])}
+        <div class="htips"><strong>Tips</strong><ul><li>Lägg gärna appen på startskärmen: menyn <b>⋮</b> i Chrome → <b>Lägg till på startskärmen</b> (eller <b>Installera app</b>).</li></ul><strong>Fungerar det inte?</strong><ul><li>Tryck på ikonen till vänster om adressen → <b>Behörigheter</b> → <b>Notiser</b> → Tillåt.</li><li>Kontrollera telefonens Inställningar → Appar → Chrome → <b>Aviseringar</b> på.</li><li>Stäng av Stör ej om notisen inte syns.</li></ul></div>`,
+      dat:`${steg(["Öppna appen i Chrome, Edge, Firefox eller Safari.","Klicka på <b>personikonen</b> uppe till höger.","Klicka <b>Slå på</b> vid Notiser och välj <b>Tillåt</b>.","Klicka <b>Testa</b>. En notis ska dyka upp i hörnet av skärmen."])}
+        <div class="htips"><strong>Fungerar det inte?</strong><ul><li>Klicka på <b>hänglåset</b> eller inställningsikonen till vänster om adressen → Notiser → Tillåt.</li><li>Webbläsaren måste vara igång för att notiser ska komma.</li><li>På Mac: Systeminställningar → Notiser → din webbläsare → tillåt notiser.</li><li>På Windows: Inställningar → System → Meddelanden → din webbläsare på.</li></ul></div>`};
+    const d=document.createElement("dialog"); d.className="bdlg hjalpdlg";
+    d.innerHTML=`<form method="dialog"><h2>Så slår du på notiser</h2>
+      <p class="hint">Du får en notis i telefonen eller datorn när styrelsen lägger upp en nyhet. Välj vad du har:</p>
+      <div class="filters subnav" role="tablist" aria-label="Enhet">
+        <button type="button" class="chipbtn" data-h="ios" role="tab">iPhone/iPad</button>
+        <button type="button" class="chipbtn" data-h="and" role="tab">Android</button>
+        <button type="button" class="chipbtn" data-h="dat" role="tab">Dator</button></div>
+      <div class="hbody"></div>
+      <div class="bdlg-btns"><button value="close">Jag förstår</button></div></form>`;
+    const visa=k=>{ d.querySelectorAll("[data-h]").forEach(b=>{ const on=b.dataset.h===k; b.classList.toggle("on",on); b.setAttribute("aria-selected",on); }); d.querySelector(".hbody").innerHTML=T[k]; };
+    d.querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>visa(b.dataset.h));
+    visa(def); document.body.appendChild(d); d.addEventListener("close",()=>d.remove()); d.showModal();
+  }
+  return {ok,status,enable,disable,test,fel,reg,hjalp};
 })();
 window.VagPush=VagPush;
 
@@ -170,7 +194,7 @@ function kontoDialog(s,fraga){
   : `<form method="dialog"><h2>Mitt konto</h2>
     <p class="hint">Inloggad som <strong>${H(s.user.email)}</strong>${R?" · "+R:""}</p>
     <div class="krows">
-      <div class="krow"><div class="ktxt"><strong>Notiser</strong><small id="kNotTxt">Kontrollerar…</small></div><div class="kbtns" id="kNotBtns"></div></div>
+      <div class="krow"><div class="ktxt"><strong class="khead">Notiser <button type="button" class="hjalpbtn" id="kNotHjalp" aria-label="Hjälp med notiser" title="Hur gör jag?">?</button></strong><small id="kNotTxt">Kontrollerar…</small></div><div class="kbtns" id="kNotBtns"></div></div>
       <div class="krow"><div class="ktxt"><strong>Lösenord</strong><small>${har?"Du loggar in med mejl och lösenord.":"Du har inget lösenord än och loggar in med mejllänk."}</small></div><div class="kbtns"><button type="button" class="ghost small" id="kPwBtn">${har?"Byt lösenord":"Välj lösenord"}</button></div></div>
       ${pwForm}
     </div>
@@ -191,6 +215,7 @@ function kontoDialog(s,fraga){
     g("#kPwBox").hidden=true; g("#kPw1").value=""; g("#kPw2").value=""; g("#kPwBtn").textContent="Byt lösenord";
     g("#kPwBox").previousElementSibling.querySelector("small").textContent="Lösenordet är sparat. Du loggar in med mejl och lösenord.";
   };
+  if(g("#kNotHjalp")) g("#kNotHjalp").onclick=()=>VagPush.hjalp();
   if(g("#kOut")) g("#kOut").onclick=()=>sb.auth.signOut().then(()=>location.reload());
   const notis=async()=>{ const t=g("#kNotTxt"), bx=g("#kNotBtns"); if(!t) return; const st=await VagPush.status();
     const txt={pa:"Påslagna på den här enheten. Du får en notis när det kommer nyheter.",av:"Avstängda på den här enheten.",nekad:"Blockerade i webbläsarens inställningar.",ios:"Lägg appen på hemskärmen för att kunna få notiser.",ej:"Den här webbläsaren kan inte ta emot notiser."}[st];
@@ -198,7 +223,7 @@ function kontoDialog(s,fraga){
     bx.innerHTML = st==="pa" ? `<button type="button" class="ghost small" id="kNotTest">Testa</button><button type="button" class="ghost small" id="kNotOff">Stäng av</button>` : (st==="av"||st==="nekad"||st==="ios") ? `<button type="button" class="small" id="kNotOn">Slå på</button>` : "";
     if(g("#kNotOn")) g("#kNotOn").onclick=async()=>{ g("#kNotOn").disabled=true; t.textContent="Slår på…"; try{ await VagPush.enable(); notis(); }catch(e){ t.textContent=VagPush.fel(e); g("#kNotOn").disabled=false; } };
     if(g("#kNotOff")) g("#kNotOff").onclick=async()=>{ await VagPush.disable(); notis(); };
-    if(g("#kNotTest")) g("#kNotTest").onclick=async()=>{ t.textContent="Skickar testnotis…"; try{ await VagPush.test(); t.textContent="Testnotisen är skickad. Den bör dyka upp inom några sekunder."; }catch(e){ t.textContent="Det gick inte att skicka testnotisen."; } };
+    if(g("#kNotTest")) g("#kNotTest").onclick=async()=>{ t.textContent="Skickar testnotis…"; try{ const r=await VagPush.test(); t.textContent = r&&r.skickade ? "Testnotisen är skickad. Den bör dyka upp inom några sekunder. Kommer den inte, tryck på frågetecknet." : "Testnotisen kunde inte levereras. Tryck Stäng av och sedan Slå på igen."; }catch(e){ t.textContent="Det gick inte att skicka testnotisen. Tryck Stäng av och sedan Slå på igen."; } };
   };
   notis();
   d.showModal();

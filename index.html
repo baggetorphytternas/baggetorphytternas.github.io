@@ -555,7 +555,6 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     <section class="welcome">
       <p class="eyebrow">Väg 13986 · Mellösa, Flens kommun</p>
       <h1>Baggetorp Hytternäs vägsamfällighet</h1>
-      <p class="lead">Medlemssidor för vägen mellan Baggetorp, Hytternäs och utfarten vid Stav.</p>
     </section>
     <section class="panel board" id="reqMgr"></section>
     <div class="quick">
@@ -586,7 +585,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
 
   <div class="page" id="page-medlemmar" hidden>
     <section>
-      <div class="ph"><div class="pagehead"><h1>Medlemsregister</h1></div><button type="button" class="ghost small board" id="addMember">+ Lägg till medlem</button></div>
+      <div class="ph"><div class="pagehead"><h1>Medlemsregister</h1></div><div class="row"><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg>Adresslista (PDF)</button><button type="button" class="ghost small board" id="addMember">+ Lägg till medlem</button></div></div>
       <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Ändrade uppgifter? Meddela styrelsen under Fel och synpunkter.</p>
       <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn eller fastighet"></label>
       <div id="memberList" class="cards"></div>
@@ -688,9 +687,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.15</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.16</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.16</b><time>31 okt 2026</time></div><ul>
+          <li>Knappen Adresslista (PDF) under Medlemmar skapar en utskriftsvänlig lista med fastigheter, kontaktpersoner, adress, telefon och mejl.</li>
+          <li>Undertexten i rubriken på startsidan är borttagen.</li></ul></li>
         <li><div><b>2.15</b><time>31 okt 2026</time></div><ul>
           <li>Valet Öppna i min egen mejlapp är borttaget från Skapa utskick.</li></ul></li>
         <li><div><b>2.14</b><time>31 okt 2026</time></div><ul>
@@ -1410,6 +1412,38 @@ async function pickBoardMember(){
   });
   dlg.showModal();
 }
+
+/* address list as PDF */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("#memPdf"); if(!b||!board) return;
+  try{
+    if(!window.jspdf) throw new Error("lib");
+    const T=t=>String(t??"").replace(/\u00a0/g," ").replace(/\u2212/g,"-");
+    const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"mm",format:"a4",orientation:"landscape"});
+    const W=297, M=14, green=[31,92,65], ink=[23,34,28], muted=[95,107,100];
+    const datum=new Date().toLocaleDateString("sv-SE",{year:"numeric",month:"long",day:"numeric"});
+    doc.setFillColor(...green); doc.rect(0,0,W,30,"F");
+    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T("Baggetorp Hytternäs vägsamfällighet · väg 13986"),M,11);
+    doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text(T("Adresslista"),M,22);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T("Utskriven "+datum),W-M,22,{align:"right"});
+    const groups=new Map(); (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
+    const keys=[...groups.keys()].sort((a,b)=>a===""?1:b===""?-1:a.localeCompare(b,"sv",{numeric:true}));
+    const body=[], grp=[]; keys.forEach((k,gi)=>groups.get(k).forEach((m,i)=>{ body.push([i===0?(k||"Fastighet saknas"):"",m.namn||"",m.adress||"",m.telefon||"",m.epost||""].map(T)); grp.push(gi); }));
+    doc.autoTable({head:[["Fastighet","Namn","Adress","Telefon","E-post"]],body,startY:38,margin:{left:M,right:M,bottom:16},theme:"grid",
+      styles:{font:"helvetica",fontSize:9.5,cellPadding:2,textColor:ink,lineColor:[214,220,212],lineWidth:0.2,overflow:"linebreak"},
+      headStyles:{fillColor:green,textColor:255,fontStyle:"bold"},
+      didParseCell:d=>{ if(d.section==="body") d.cell.styles.fillColor = grp[d.row.index]%2 ? [244,245,241] : [255,255,255]; },
+      columnStyles:{0:{fontStyle:"bold",cellWidth:46},1:{cellWidth:52},2:{cellWidth:62},3:{cellWidth:36}}});
+    const n=(site.medlemmar||[]).length, f=keys.filter(k=>k).length;
+    let y=doc.lastAutoTable.finalY+6; doc.setFontSize(9); doc.setTextColor(...muted);
+    doc.text(T(`${f} fastigheter, ${n} kontaktpersoner. Uppgifterna är till för vägföreningens arbete. Dela inte listan vidare.`),M,Math.min(y,195));
+    const pages=doc.internal.getNumberOfPages();
+    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(T("Baggetorp Hytternäs vägsamfällighet · Adresslista "+datum+" · sida "+i+" av "+pages),M,203); }
+    const dl=await claude.use("downloads"); if(!dl) throw new Error("dl");
+    await dl.save({filename:"Adresslista-Baggetorp-Hytternas-"+new Date().toISOString().slice(0,10)+".pdf",data:doc.output("blob")});
+    setMsg("Adresslistan är skapad.");
+  }catch(err){ setMsg("Kunde inte skapa PDF:en."); }
+});
 
 /* board edits on lists */
 document.addEventListener("click",e=>{

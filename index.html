@@ -290,6 +290,7 @@ body:not(.is-admin) #accessMgr{display:none}
 .atg-who{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--ink)}
 .atg-who .ico{width:14px;height:14px;color:var(--accent)}
 .atg-who.none{color:var(--faint);font-weight:400}
+.atg-who.grp{background:var(--accent-soft);color:var(--accent);padding:1px 8px;border-radius:999px}
 .badge.sen{background:var(--danger-soft);color:var(--danger)}
 .atg-check{flex:none;position:relative;width:28px;height:28px;margin-top:1px;cursor:pointer}
 .atg-check input{position:absolute;inset:0;z-index:1;opacity:0;width:28px;height:28px;margin:0;cursor:pointer}
@@ -888,9 +889,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.30</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.31</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.31</b><time>31 okt 2026</time></div><ul>
+          <li>I åtgärdslistan kan man tagga en grupp som ansvarig, Hela styrelsen eller Alla funktionärer. Uppgiften syns då under Mina uppgifter för alla i gruppen.</li></ul></li>
         <li><div><b>2.30</b><time>31 okt 2026</time></div><ul>
           <li>Startbilden byts och tas bort under Admin, med förhandsvisning. Knapparna ligger inte längre på bilden.</li></ul></li>
         <li><div><b>2.29</b><time>31 okt 2026</time></div><ul>
@@ -1842,7 +1845,7 @@ function renderAtg(){
       : `<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
     return `<div class="item atg ${st}" data-aid="${E(a.id)}"><div class="atg-row">
       <label class="atg-check" title="${a.klar?"Markera som ej klar":"Markera som klar"}"><input type="checkbox" data-atgdone ${a.klar?"checked":""}><span></span></label>
-      <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${a.ansvarig?`<span class="atg-who">${ico("user")}${E(a.ansvarig)}</span>`:`<span class="atg-who none">Ingen ansvarig</span>`}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
+      <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${a.ansvarig?`<span class="atg-who${a.ansvarigGrupp?" grp":""}">${ico(a.ansvarigGrupp?"users":"user")}${E(a.ansvarig)}</span>`:`<span class="atg-who none">Ingen ansvarig</span>`}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
       <div class="row"><button type="button" class="ghost small" data-atgedit>Ändra</button><button type="button" class="danger" data-atgdel>Ta bort</button></div></div>`; };
   const l=q("#atgList"); if(!l) return;
   l.innerHTML = ö.length ? ö.map(row).join("") : `<p class="empty">${atg.length?"Alla åtgärder är klara. Bra jobbat!":"Inga åtgärder ännu. Tryck på Ny åtgärd för att lägga till."}</p>`;
@@ -1851,11 +1854,14 @@ function renderAtg(){
 function atgDialog(a){
   const ny=!a; a=a||{};
   const namn=[...new Set([...(site.styrelse||[]),...(site.funktionarer||[])].map(x=>x.namn).filter(Boolean))].sort((x,y)=>x.localeCompare(y,"sv"));
-  const annan=a.ansvarig&&!namn.includes(a.ansvarig);
+  const GRUPPER={styrelse:"Hela styrelsen",funktionarer:"Alla funktionärer"};
+  const annan=a.ansvarig&&!a.ansvarigGrupp&&!namn.includes(a.ansvarig);
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>${ny?"Ny åtgärd":"Ändra åtgärd"}</h2>
     <label>Uppgift<input id="aU" required maxlength="200" placeholder="t.ex. Beställa grus till sträcka F" value="${E(a.uppgift||"")}"></label>
-    <label>Ansvarig<select id="aA"><option value="">Ingen vald</option>${namn.map(n=>`<option ${n===a.ansvarig?"selected":""}>${E(n)}</option>`).join("")}<option value="__annan" ${annan?"selected":""}>Någon annan…</option></select></label>
+    <label>Ansvarig<select id="aA"><option value="">Ingen vald</option>
+      <optgroup label="Grupp">${Object.entries(GRUPPER).map(([k,v])=>`<option value="__g:${k}" ${a.ansvarigGrupp===k?"selected":""}>${v}</option>`).join("")}</optgroup>
+      <optgroup label="Person">${namn.map(n=>`<option ${!a.ansvarigGrupp&&n===a.ansvarig?"selected":""}>${E(n)}</option>`).join("")}<option value="__annan" ${annan?"selected":""}>Någon annan…</option></optgroup></select></label>
     <label id="aAnL" ${annan?"":"hidden"}>Namn<input id="aAn" value="${annan?E(a.ansvarig):""}"></label>
     <label id="aAeL" ${annan?"":"hidden"}>Mejl (valfritt, så att personen ser uppgiften i appen)<input id="aAe" type="email" value="${annan?E(a.ansvarigEpost||""):""}"></label>
     <label>Klart senast<input id="aD" type="date" value="${E(a.datum||"")}"></label>
@@ -1866,11 +1872,12 @@ function atgDialog(a){
   const g=id=>d.querySelector(id);
   g("#aA").onchange=()=>{ g("#aAnL").hidden=g("#aAeL").hidden=g("#aA").value!=="__annan"; };
   g("#aOk").onclick=()=>{ const u=g("#aU").value.trim(); if(!u){ g("#aMsg").textContent="Skriv vad som ska göras."; return; }
-    const ann=g("#aA").value==="__annan", ans=ann?g("#aAn").value.trim():g("#aA").value;
-    const pers=[...(site.styrelse||[]),...(site.funktionarer||[])].find(x=>x.namn===ans);
-    const ansE=String(ann?g("#aAe").value:(pers&&pers.epost)||"").trim().toLowerCase();
-    const data={uppgift:u,ansvarig:ans,ansvarigEpost:ansE,datum:g("#aD").value,notering:g("#aN").value.trim()};
-    if(!board){ g("#aOk").disabled=true; window.SB.rpc("lagg_till_atgard",{p_uppgift:u,p_ansvarig:ans,p_ansvarig_epost:ansE,p_datum:data.datum,p_notering:data.notering}).then(({error})=>{ if(error){ g("#aOk").disabled=false; g("#aMsg").textContent="Det gick inte att spara."; return; } d.close(); setMsg("Åtgärden är tillagd."); loadMina(); }); return; }
+    const val=g("#aA").value, grupp=val.startsWith("__g:")?val.slice(4):"";
+    const ann=val==="__annan", ans=grupp?GRUPPER[grupp]:ann?g("#aAn").value.trim():val;
+    const pers=!grupp&&[...(site.styrelse||[]),...(site.funktionarer||[])].find(x=>x.namn===ans);
+    const ansE=grupp?"":String(ann?g("#aAe").value:(pers&&pers.epost)||"").trim().toLowerCase();
+    const data={uppgift:u,ansvarig:ans,ansvarigEpost:ansE,ansvarigGrupp:grupp,datum:g("#aD").value,notering:g("#aN").value.trim()};
+    if(!board){ g("#aOk").disabled=true; window.SB.rpc("lagg_till_atgard_g",{p_uppgift:u,p_ansvarig:ans,p_ansvarig_epost:ansE,p_datum:data.datum,p_notering:data.notering,p_grupp:grupp}).then(({error})=>{ if(error){ g("#aOk").disabled=false; g("#aMsg").textContent="Det gick inte att spara."; return; } d.close(); setMsg("Åtgärden är tillagd."); loadMina(); }); return; }
     if(ny) atg=[...atg,{id:nid(),skapad:today(),klar:false,...data}]; else Object.assign(atg.find(x=>x.id===a.id)||{},data);
     atgSave(); d.close(); setMsg(ny?"Åtgärden är tillagd.":"Åtgärden är sparad."); };
   d.showModal(); g("#aU").focus();
@@ -1905,7 +1912,7 @@ function renderMina(){
   box.innerHTML=`<div class="ph"><h2>Mina uppgifter</h2>${kanLagga?`<button type="button" class="ghost small" id="addMinaAtg">+ <span class="lg">Ny åtgärd</span><span class="sm">Ny</span></button>`:""}</div>
     ${öppna.length?öppna.map(a=>{ const st=atgStatus(a), n=a.datum?dagarKvar(a.datum):null;
       const dag=!a.datum?"":st==="sen"?`<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`:`<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
-      return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${a.ansvarig?`<span class="atg-who">${ico("user")}${E(a.ansvarig)}</span>`:""}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
+      return `<div class="minarow ${st}" data-mid="${E(a.id)}"><label class="atg-check" title="Markera som klar"><input type="checkbox" data-minadone><span></span></label><div class="atg-body"><strong>${E(a.uppgift)}</strong><div class="meta">${a.ansvarig?`<span class="atg-who${a.ansvarigGrupp?" grp":""}">${ico(a.ansvarigGrupp?"users":"user")}${E(a.ansvarig)}</span>`:""}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>`; }).join("")
       :`<p class="hint">Inga öppna uppgifter just nu.</p>`}`;
 }
 document.addEventListener("change",async e=>{

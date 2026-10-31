@@ -73,7 +73,7 @@
     <div class="subwrap"><div class="filters subnav" aria-label="Snabbval">
       <button type="button" class="chipbtn" data-goto="arenden" data-ctype="fel"><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span></button>
       <button type="button" class="chipbtn" data-goto="arenden" data-ctype="syn"><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span></button>
-      <button type="button" class="chipbtn" data-goto="styrelse"><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span></button>
+      <button type="button" class="chipbtn" data-goto="styrelse" data-stab="led"><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span></button>
     </div></div>
     <div class="pushbanner" id="pushBanner" hidden></div>
     <section class="panel board" id="reqMgr"></section>
@@ -282,9 +282,11 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.46</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.47</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.47</b><time>31 okt 2026</time></div><ul>
+          <li>Kontakt på startsidan öppnar alltid styrelsens ledamöter, oavsett vilken underflik som var öppen senast.</li></ul></li>
         <li><div><b>2.46</b><time>31 okt 2026</time></div><ul>
           <li>Medlemsregistret ligger i en egen databastabell med en rad per kontakt. Två personer som sparar samtidigt kan inte längre skriva över varandras ändringar.</li>
           <li>Ändringslogg: admin ser vem som ändrade vad och när (Admin → Säkerhetskopia och historik).</li>
@@ -427,6 +429,6 @@
 </main>
 
 
-<script src="app.js?v=2.46"></script>
+<script src="app.js?v=2.47"></script>
 </body>
 </html>

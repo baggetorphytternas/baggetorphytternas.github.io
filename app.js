@@ -29,7 +29,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button,a"); if(!t) return;
   if (t.classList.contains("navtab")){ go(t.dataset.page); window.scrollTo({top:0}); return; }
   if (t.dataset.ctype){ const r=document.querySelector(`input[name=ctype][value="${t.dataset.ctype}"]`); if(r&&!r.checked){ r.checked=true; r.dispatchEvent(new Event("change",{bubbles:true})); } }
-  if (t.dataset.goto){ go(t.dataset.goto); window.scrollTo({top:0}); if(t.dataset.ctype){ const f=document.getElementById("caseTitle"); if(f&&matchMedia("(pointer:fine)").matches) f.focus({preventScroll:true}); } return; }
+  if (t.dataset.goto){ go(t.dataset.goto); if(t.dataset.stab){ const sb=document.querySelector(`.subnav [data-st="${t.dataset.stab}"]`); if(sb) sb.click(); } window.scrollTo({top:0}); if(t.dataset.ctype){ const f=document.getElementById("caseTitle"); if(f&&matchMedia("(pointer:fine)").matches) f.focus({preventScroll:true}); } return; }
 });
 const start=(location.hash||"").slice(1); if (document.getElementById("page-"+start)) go(start);
 

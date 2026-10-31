@@ -499,6 +499,8 @@ details.mail[open]{gap:10px}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
 .mc-top{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
 .mc-top strong{font-size:1.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-bet{font-weight:600;font-size:.8rem;color:var(--muted);margin-left:4px}
+.mhead .mbet{display:block}
 .mc-top small{color:var(--muted);font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mc-bot{display:flex;align-items:center;gap:10px;min-width:0}
 .avs{display:flex;flex:none}
@@ -808,7 +810,7 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Du ansvarar själv för att dina uppgifter stämmer. Tryck på Mina uppgifter för att ändra dem.</p>
     </header>
     <section>
-      <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn eller fastighet"></label>
+      <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
       <div id="memberList" class="cards"></div>
     </section>
   </div>
@@ -971,9 +973,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.37</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.38</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.38</b><time>31 okt 2026</time></div><ul>
+          <li>Fastigheter har nu två fält: fastighetens namn (t.ex. Stavberga) och fastighetsbeteckning (t.ex. Stav 1:5). Beteckningen visas på korten, går att söka på och finns med i adresslistan.</li></ul></li>
         <li><div><b>2.37</b><time>31 okt 2026</time></div><ul>
           <li>Anmäl fel, Synpunkt och Kontakt är nu små flikar som ligger fast precis under sidhuvudet på startsidan.</li></ul></li>
         <li><div><b>2.36</b><time>31 okt 2026</time></div><ul>
@@ -1684,7 +1688,7 @@ document.addEventListener("click",async e=>{
 const NEWS_F=[["datum","Datum","date"],["rubrik","Rubrik"],["text","Text","area"]];
 const MEET_F=[["datum","Datum","date"],["rubrik","Rubrik, t.ex. Årsstämma 2027"],["plats","Plats och tid"],["text","Kallelse eller sammanfattning","area"],["lank","Länk till protokoll eller kallelse"]];
 const BOARD_F=[["namn","Namn"],["roll","Roll, t.ex. ordförande"],["fastighet","Fastighet"],["telefon","Telefon"],["epost","Mejl"]];
-const MEM_F=[["fastighet","Fastighet"],["namn","Namn"],["telefon","Telefon","tel"],["epost","Mejl","email"],["adress","Adress"]];
+const MEM_F=[["fastighet","Fastighetens namn"],["beteckning","Fastighetsbeteckning"],["namn","Namn"],["telefon","Telefon","tel"],["epost","Mejl","email"],["adress","Adress"]];
 const ico=n=>`<svg class="ico" aria-hidden="true"><use href="#i-${n}"/></svg>`;
 const contact=it=>`${it.telefon?`<a class="cbtn" href="tel:${E(it.telefon.replace(/\s/g,""))}">${ico("phone")}${E(it.telefon)}</a>`:""}${it.epost?`<a class="cbtn" href="mailto:${E(it.epost)}">${ico("mail")}${E(it.epost)}</a>`:""}`;
 const initials=n=>{ const w=String(n||"").trim().split(/\s+/).filter(Boolean); return E(((w[0]||"?")[0]+(w.length>1?w[w.length-1][0]:"")).toUpperCase()); };
@@ -1692,12 +1696,14 @@ const person=(top,name,sub,it,av)=>`<div class="person">${av||`<span class="avat
 const memView=it=>person(E(it.fastighet||"Fastighet saknas"),it.namn||"Namn ej ifyllt",it.adress,it);
 /* compact card per fastighet; tap to open all contact persons in a dialog */
 let memGroups=new Map();
+/* Fastighetens namn (t.ex. Stavberga) och beteckning (t.ex. Stav 1:5). Beteckningen visas bara om den skiljer sig från namnet. */
+const betOf=ps=>{ const b=String((ps.find(m=>m.beteckning)||{}).beteckning||"").trim(), f=String(ps[0].fastighet||"").trim(); return b&&b!==f?b:""; };
 function memCard(k,ps){
-  const adr=(ps.find(m=>m.adress)||{}).adress, named=ps.filter(m=>m.namn);
+  const adr=(ps.find(m=>m.adress)||{}).adress, named=ps.filter(m=>m.namn), bet=betOf(ps);
   const av=named.slice(0,3).map(m=>`<span class="avatar">${initials(m.namn)}</span>`).join("")+(named.length>3?`<span class="avatar more">+${named.length-3}</span>`:"");
   return `<button type="button" class="mcard" data-mopen="${E(k)}">
     <span class="avs">${av||'<span class="avatar">?</span>'}</span>
-    <span class="mc-top"><strong>${E(ps[0].fastighet||"Fastighet saknas")}</strong><small>${named.length?E(named.map(m=>m.namn).join(", ")):"Ingen kontakt ifylld"}</small></span>
+    <span class="mc-top"><strong>${E(ps[0].fastighet||"Fastighet saknas")}${bet?` <span class="mc-bet">${E(bet)}</span>`:""}</strong><small>${named.length?E(named.map(m=>m.namn).join(", ")):"Ingen kontakt ifylld"}</small></span>
     <svg class="ico bc-pil" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>`;
 }
 function memDlg(){ let d=q("#memDlg"); if(!d){ d=document.createElement("dialog"); d.id="memDlg"; d.className="bdlg mdlg"; q("#page-medlemmar").appendChild(d);
@@ -1709,12 +1715,12 @@ function refreshMemDlg(force){ const d=q("#memDlg"); if(!d||(!d.open&&!force)) r
 document.addEventListener("click",e=>{ const c=e.target.closest("[data-mopen]"); if(c) showMemGroup(c.dataset.mopen); });
 /* one group with all its contact persons */
 function memGroup(ps){
-  const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress;
+  const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress, bet=betOf(ps);
   const rows=ps.map(it=>{
     if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
     return `<div class="item sub" data-kind="medlemmar" data-id="${it.id}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
   }).join("");
-  return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${adr?`<span class="meta">${E(adr)}</span>`:""}</div><span class="badge typ">${ps.length} ${ps.length===1?"kontakt":"kontakter"}</span></div>${rows}
+  return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div><span class="badge typ">${ps.length} ${ps.length===1?"kontakt":"kontakter"}</span></div>${rows}
     ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
 }
 const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;
@@ -1765,7 +1771,7 @@ function renderLists(){
   const groups=new Map();
   (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim().toLowerCase(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
   const gl=[...groups.entries()].sort((a,b)=>a[0]===""?1:b[0]===""?-1:a[0].localeCompare(b[0],"sv",{numeric:true}))
-    .filter(([k,ps])=>!qv||ps.some(m=>(m.fastighet+" "+m.namn+" "+(m.adress||"")).toLowerCase().includes(qv)||editing.has(m.id)));
+    .filter(([k,ps])=>!qv||ps.some(m=>(m.fastighet+" "+(m.beteckning||"")+" "+m.namn+" "+(m.adress||"")).toLowerCase().includes(qv)||editing.has(m.id)));
   memGroups=groups;
   q("#memberList").innerHTML = gl.length? gl.map(([k,ps])=>memCard(k,ps)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
   refreshMemDlg();
@@ -1860,7 +1866,7 @@ document.addEventListener("click",async e=>{
     doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T("Utskriven "+datum),W-M,22,{align:"right"});
     const groups=new Map(); (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
     const keys=[...groups.keys()].sort((a,b)=>a===""?1:b===""?-1:a.localeCompare(b,"sv",{numeric:true}));
-    const body=[], grp=[]; keys.forEach((k,gi)=>groups.get(k).forEach((m,i)=>{ body.push([i===0?(k||"Fastighet saknas"):"",m.namn||"",m.adress||"",m.telefon||"",m.epost||""].map(T)); grp.push(gi); }));
+    const body=[], grp=[]; keys.forEach((k,gi)=>groups.get(k).forEach((m,i)=>{ const bt=String((groups.get(k).find(x=>x.beteckning)||{}).beteckning||"").trim(); body.push([i===0?((k||"Fastighet saknas")+(bt&&bt!==k?"\n"+bt:"")):"",m.namn||"",m.adress||"",m.telefon||"",m.epost||""].map(T)); grp.push(gi); }));
     doc.autoTable({head:[["Fastighet","Namn","Adress","Telefon","E-post"]],body,startY:38,margin:{left:M,right:M,bottom:16},theme:"grid",
       styles:{font:"helvetica",fontSize:9.5,cellPadding:2,textColor:ink,lineColor:[214,220,212],lineWidth:0.2,overflow:"linebreak"},
       headStyles:{fillColor:green,textColor:255,fontStyle:"bold"},
@@ -2158,7 +2164,7 @@ async function kontaktDialog(){
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>Mina uppgifter</h2>
     <p class="hint">${m?`Det här står om dig i medlemsregistret${m.fastighet?` för <strong>${E(m.fastighet)}</strong>`:""}. Grannar och styrelsen ser uppgifterna.`:"Du finns inte i medlemsregistret än. Välj din fastighet och fyll i dina uppgifter."}</p>
-    ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>`<option>${E(f)}</option>`).join("")}</select></label>`}
+    ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>{ const bt=((site.medlemmar||[]).find(x=>x.fastighet===f&&x.beteckning)||{}).beteckning; return `<option value="${E(f)}">${E(f)}${bt&&bt!==f?" ("+E(bt)+")":""}</option>`; }).join("")}</select></label>`}
     <label>Namn<input id="kuN" required autocomplete="name" value="${m?E(m.namn||""):""}"></label>
     <label>Telefon<input id="kuT" type="tel" inputmode="tel" autocomplete="tel" value="${m?E(m.telefon||""):""}"></label>
     <label>Adress<input id="kuA" autocomplete="street-address" value="${m?E(m.adress||""):""}"></label>
@@ -2229,12 +2235,15 @@ document.addEventListener("click",e=>{
   if (b.id==="addFunk"){ pickBoardMember("funktionarer"); return; }
   const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
-  if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
-  if (b.id==="addMember"){ const it={id:nid(),fastighet:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); showMemGroup(""); return; }
+  if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,beteckning:first.beteckning||"",namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+  if (b.id==="addMember"){ const it={id:nid(),fastighet:"",beteckning:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); showMemGroup(""); return; }
   const card=b.closest(".item[data-kind]"); if(!card) return;
   const kind=card.dataset.kind, id=card.dataset.id;
   if (b.dataset.act==="edit"){ editing.add(id); renderLists(); }
-  else if (b.dataset.act==="done"){ editing.delete(id); renderLists(); }
+  else if (b.dataset.act==="done"){
+    if(kind==="medlemmar"){ const it=(site.medlemmar||[]).find(x=>x.id===id); if(it){ const k=String(it.fastighet||"").trim().toLowerCase(), bt=String(it.beteckning||"").trim();
+      (site.medlemmar||[]).forEach(x=>{ if(x!==it&&String(x.fastighet||"").trim().toLowerCase()===k&&k) x.beteckning=bt; }); saveSite(); } }
+    editing.delete(id); renderLists(); }
   else if (b.dataset.act==="notis"){
     if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att skicka"; setTimeout(()=>{ if(b.isConnected){ b.classList.remove("armed"); renderLists(); } },5000); return; }
     b.disabled=true; b.textContent="Skickar…";

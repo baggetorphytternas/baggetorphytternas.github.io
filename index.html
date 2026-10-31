@@ -159,6 +159,15 @@ button.danger:hover{background:var(--danger-soft);border-color:var(--danger-soft
 .tile span:last-child{display:flex;flex-direction:column;gap:2px}
 .tile small{font-weight:400;color:var(--muted);font-size:.85rem}
 .tile .sm{display:none}
+/* snabbval som små flikar fast under sidhuvudet */
+.quickwrap .quick{display:flex!important;gap:6px!important;overflow-x:auto;scrollbar-width:none;grid-template-columns:none!important}
+.quickwrap .quick::-webkit-scrollbar{display:none}
+.quickwrap .tile{flex:0 0 auto;flex-direction:row!important;min-height:0!important;padding:6px 12px 6px 6px!important;gap:8px!important;border-radius:999px;box-shadow:none;font-size:.88rem!important;text-align:left!important}
+.quickwrap .tile .tico{width:28px!important;height:28px!important;border-radius:999px!important}
+.quickwrap .tile .tico .ico{width:16px!important;height:16px!important}
+.quickwrap .tile small,.quickwrap .tile .lg{display:none!important}
+.quickwrap .tile .sm{display:inline!important}
+@media (max-width:760px){ .quickwrap .tile{flex:1 1 0;justify-content:center;padding:6px 8px 6px 6px!important;gap:6px!important} }
 @media (max-width:760px){
   .quick{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
   .tile{flex-direction:column;justify-content:center;text-align:center;gap:6px;padding:10px 6px;min-height:0;font-size:.85rem}
@@ -765,13 +774,13 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 <main>
 
   <div class="page" id="page-start">
-    <div class="pushbanner" id="pushBanner" hidden></div>
-    <section class="panel board" id="reqMgr"></section>
-    <div class="quick">
+    <div class="subwrap quickwrap"><div class="quick">
       <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span><small>Hål, trummor, träd, snö</small></span></button>
       <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span><small>Fråga eller förslag till styrelsen</small></span></button>
-      <button type="button" class="tile" data-goto="styrelse"><span class="tico"><svg class="ico"><use href="#i-phone"/></svg></span><span><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakta</span><small>Telefon och mejl</small></span></button>
-    </div>
+      <button type="button" class="tile" data-goto="styrelse"><span class="tico"><svg class="ico"><use href="#i-phone"/></svg></span><span><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span><small>Telefon och mejl</small></span></button>
+    </div></div>
+    <div class="pushbanner" id="pushBanner" hidden></div>
+    <section class="panel board" id="reqMgr"></section>
     <div class="startgrid">
       <div class="col">
         <section>
@@ -962,9 +971,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.36</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.37</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.37</b><time>31 okt 2026</time></div><ul>
+          <li>Anmäl fel, Synpunkt och Kontakt är nu små flikar som ligger fast precis under sidhuvudet på startsidan.</li></ul></li>
         <li><div><b>2.36</b><time>31 okt 2026</time></div><ul>
           <li>Varje medlem kan själv ändra sina uppgifter (namn, telefon och adress) via Mitt konto eller knappen Mina uppgifter under Medlemmar. Den som inte finns i registret kan lägga till sig på sin fastighet. Man kan bara ändra sina egna uppgifter.</li>
           <li>Mina åtgärder har flyttat från startsidan till Mitt konto. En siffra på personikonen visar hur många som är öppna.</li>

@@ -251,6 +251,11 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.acc-row em{font-style:normal;font-size:.8rem;font-weight:600;margin-top:2px}
+.acc-row em.seen{color:var(--ok)}
+.acc-row em.never{color:var(--warn)}
+.acc-sum{margin:0;font-size:.92rem;color:var(--muted)}
+.acc-sum strong{color:var(--ink)}
 #reqMgr{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-soft),var(--shadow)}
 #reqMgr h2{display:flex;align-items:center;gap:8px}
 .count{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--warn);color:#fff;font-size:.8rem;font-weight:700}
@@ -606,9 +611,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.3</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.4</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.4</b><time>31 okt 2026</time></div><ul>
+          <li>Under Inloggning och behörighet syns nu vilka som har loggat in och när senast, och hur många av alla som har kommit igång.</li></ul></li>
         <li><div><b>2.3</b><time>31 okt 2026</time></div><ul>
           <li>Nya medlemmar kan be om tillgång: den som loggar in med en okänd mejladress fyller i namn och fastighet och skickar en förfrågan.</li>
           <li>Väntande förfrågningar visas överst på startsidan för admin och styrelse, med knapparna Godkänn och Avslå.</li>

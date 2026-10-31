@@ -153,6 +153,9 @@ async function accessMgr(){
   const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   async function render(msg){
     const {data}=await sb.from("roller").select("*").order("roll").order("email");
+    const st={}; try{ const r=await sb.rpc("inloggningsstatus"); (r.data||[]).forEach(x=>st[x.email]=x.senast_inloggad); }catch(e){}
+    const when=t=>{ if(!t) return `<em class="never">Har inte loggat in ännu</em>`; const d=new Date(t); return `<em class="seen">Senast inloggad ${d.toLocaleDateString("sv-SE",{day:"numeric",month:"short",year:"numeric"})} ${d.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})}</em>`; };
+    const aktiva=(data||[]).filter(r=>st[r.email]).length;
     box.innerHTML=`<h2>Inloggning och behörighet</h2>
      <p class="hint">Bara adresser i listan kan logga in. Medlemmen går till sidans adress, skriver sin mejladress och får en inloggningslänk.</p>
      <div class="acc-add"><input id="aEmail" type="email" inputmode="email" placeholder="mejladress"><input id="aNamn" placeholder="namn (valfritt)">
@@ -160,7 +163,8 @@ async function accessMgr(){
       <button type="button" id="aAdd">Lägg till</button></div>
      <button type="button" class="ghost small" id="aSync">Lägg till alla mejladresser från medlemsregistret som medlemmar</button>
      <p class="status" id="aMsg">${msg||""}</p>
-     <div class="acc-list">${(data||[]).map(r=>`<div class="acc-row"><span><strong>${E(r.namn||r.email)}</strong><small>${E(r.email)}</small></span>
+     <p class="acc-sum"><strong>${aktiva} av ${(data||[]).length}</strong> har loggat in minst en gång.</p>
+     <div class="acc-list">${(data||[]).map(r=>`<div class="acc-row"><span><strong>${E(r.namn||r.email)}</strong><small>${E(r.email)}</small>${when(st[r.email])}</span>
       <select data-aroll="${E(r.email)}">${Object.entries(ROLL).map(([k,v])=>`<option value="${k}" ${k===r.roll?"selected":""}>${v}</option>`).join("")}</select>
       <button type="button" class="danger" data-adel="${E(r.email)}" aria-label="Ta bort">✕</button></div>`).join("")}</div>`;
     box.querySelector("#aAdd").onclick=async()=>{ const email=box.querySelector("#aEmail").value.trim().toLowerCase(); if(!/^\S+@\S+\.\S+$/.test(email)) return render("Skriv en giltig mejladress.");

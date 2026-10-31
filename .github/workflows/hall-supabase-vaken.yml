@@ -1,0 +1,38 @@
+# Håller Supabase-projektet aktivt så att gratisplanen inte pausar det efter 7 dagar utan trafik.
+# Körs varje dag: gör en vanlig läsfråga mot databasen med appens publika nyckel (samma som i sb.js).
+# Raden-säkerheten gör att svaret är tomt för en utloggad besökare, men frågan räknas som aktivitet.
+# GitHub stänger av schemalagda jobb i repon utan aktivitet på 60 dagar, därför gör jobbet en tom
+# commit om det senaste bidraget är äldre än 45 dagar.
+name: Håll Supabase vaken
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fråga databasen
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /tmp/svar.txt -w "%{http_code}" \
+              "https://xhoexctuopvragyqwofs.supabase.co/rest/v1/docs?select=path&limit=1" \
+              -H "apikey: sb_publishable_BqABNxP7VA8mG-_-K6voQw_JsTR2yQv")
+            echo "Svar: $code $(head -c 200 /tmp/svar.txt)"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::warning::Supabase svarade inte som väntat. Kontrollera projektet i Supabase."
+          exit 1
+      - uses: actions/checkout@v4
+      - name: Håll repot aktivt
+        run: |
+          senast=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - senast )) -gt $((45*86400)) ]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git commit --allow-empty -m "Håll schemalagda jobb aktiva"
+            git push
+          fi

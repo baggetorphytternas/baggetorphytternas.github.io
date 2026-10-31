@@ -657,11 +657,20 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
         <button type="button" class="biglink" id="pdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span><strong>Skapa PDF för medlemmar</strong><small>Förslaget med karta och alla fastigheter</small></span></button>
       </div>
     </section>
+    <section class="panel" id="mailSet">
+      <h2>Föreningens mejl</h2>
+      <p class="hint">Skriv in föreningens vanliga mejladress. Utskick från appen skickas i föreningens namn, och när medlemmar svarar hamnar svaren i den här brevlådan. Inga lösenord eller andra inställningar behövs.</p>
+      <label for="mEpost">Föreningens mejladress<input id="mEpost" type="email" inputmode="email" autocomplete="off" placeholder="t.ex. styrelsen@forening.se"></label>
+      <div class="row"><button type="button" id="mSave">Spara</button><span class="status" id="mMsg"></span></div>
+      <p class="sender" id="mStatus">Kontrollerar…</p>
+    </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.10</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.11</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.11</b><time>31 okt 2026</time></div><ul>
+          <li>Ny ruta Föreningens mejl på adminsidan: admin skriver bara in föreningens adress. Utskick skickas i föreningens namn och svar går till den adressen.</li></ul></li>
         <li><div><b>2.10</b><time>31 okt 2026</time></div><ul>
           <li>Styrelsens kort är lika stora, och rollen (t.ex. Ordförande) visas större och tydligare.</li></ul></li>
         <li><div><b>2.9</b><time>31 okt 2026</time></div><ul>
@@ -1322,7 +1331,7 @@ function renderLists(){
   q("#memberList").innerHTML = gl.length? gl.map(([k,ps])=>memCard(k,ps)).join("") : `<p class="empty">${qv?"Ingen träff.":"Inga medlemmar inlagda ännu."}</p>`;
   refreshMemDlg();
 }
-function renderSite(){ renderIntro(); renderLists(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
+function renderSite(){ renderIntro(); renderLists(); renderMailSet(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
 /* add a board member: pick a person from the member register and give them a board role */
 const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
@@ -1416,10 +1425,30 @@ function lsGet(k){ try{ return localStorage.getItem(k)||""; }catch(e){ return ""
 function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 /* Föreningens egen mejl: skickas av serverfunktionen skicka-utskick */
 let mailCfg=null;
+async function loadMailCfg(force){
+  if(mailCfg&&!force) return mailCfg;
+  try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"status"}}); mailCfg = error? {konfigurerad:false,fel:true} : data; }catch(e){ mailCfg={konfigurerad:false,fel:true}; }
+  return mailCfg;
+}
+async function renderMailSet(force){
+  const inp=q("#mEpost"); if(!inp||!document.body.classList.contains("is-admin")) return;
+  if(document.activeElement!==inp) inp.value=(site.installningar&&site.installningar.epost)||"";
+  const c=await loadMailCfg(force), st=q("#mStatus"), svar=(site.installningar&&site.installningar.epost)||"";
+  if(c.konfigurerad){ st.className="sender"; st.innerHTML=`Utskick skickas från <strong>${E(c.namn)}</strong> &lt;${E(c.fran)}&gt;.<br>${svar?`Svar från medlemmar går till <strong>${E(svar)}</strong>.`:"Skriv in föreningens adress ovan så att svar från medlemmar kommer fram."}`; }
+  else { st.className="sender warn"; st.textContent = c.fel ? "Kunde inte kontrollera mejltjänsten just nu." : "Mejltjänsten är inte kopplad ännu. Det görs en gång av den som driver appen. Föreningens adress kan sparas redan nu."; }
+}
+document.addEventListener("click",async e=>{
+  if(!e.target.closest("#mSave")) return;
+  const v=q("#mEpost").value.trim().toLowerCase(), m=q("#mMsg");
+  if(v && !/^[^\s@<>",]+@[^\s@<>",]+\.[^\s@<>",]+$/.test(v)){ m.textContent="Skriv en giltig mejladress."; return; }
+  site.installningar={...(site.installningar||{}),epost:v}; saveSite(); m.textContent= v?"Sparat.":"Adressen är borttagen.";
+  setTimeout(()=>renderMailSet(true),1500);
+});
 async function renderFrom(){
   const info=q("#uFromInfo");
   if(!mailCfg){ try{ const {data,error}=await window.SB.functions.invoke("skicka-utskick",{body:{action:"status"}}); mailCfg = error? {konfigurerad:false,fel:true} : data; }catch(e){ mailCfg={konfigurerad:false,fel:true}; } }
-  if(mailCfg.konfigurerad){ info.className="sender"; info.innerHTML=`Skickas från <strong>${E(mailCfg.namn||"föreningen")}</strong> &lt;${E(mailCfg.fran)}&gt;. Svar hamnar i föreningens inkorg.`; }
+  const svar=(site.installningar&&site.installningar.epost)||mailCfg.svar_till;
+  if(mailCfg.konfigurerad){ info.className="sender"; info.innerHTML=`Skickas i namnet <strong>${E(mailCfg.namn||"föreningen")}</strong>.${svar?` Svar går till <strong>${E(svar)}</strong>.`:" Admin har inte angett någon svarsadress än."}`; }
   else { info.className="sender warn"; info.innerHTML = mailCfg.fel ? "Kunde inte nå föreningens mejl just nu. Försök igen om en stund, eller använd Andra sätt att skicka." : "Föreningens mejl är inte inställd ännu, så det går inte att skicka härifrån. Använd Andra sätt att skicka tills vidare."; }
   updSend();
 }

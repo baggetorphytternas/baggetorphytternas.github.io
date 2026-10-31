@@ -257,6 +257,18 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+/* Sidhuvud: rubrik vänster, sidans knappar höger, förklaring under. Samma på alla sidor. */
+.pghead{display:flex;flex-direction:column;gap:6px}
+.pghead .ph{min-height:38px}
+.ph>button,.ph>.row,.ph>a{margin-left:auto}
+.ph>.row{justify-content:flex-end}
+.subnav{margin-top:-8px;flex-wrap:nowrap;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;max-width:560px}
+.subnav .chipbtn{flex:1;border:none;border-radius:9px;background:transparent;color:var(--muted);padding:9px 8px;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.subnav .chipbtn:hover{background:var(--surface);color:var(--ink)}
+.subnav .chipbtn.on,.subnav .chipbtn.on:hover{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.sm{display:none}
+@media (max-width:520px){ .lg{display:none} .sm{display:inline} }
+@media (max-width:760px){ .ph>.row{flex-wrap:wrap} }
 .navtab:active,.chipbtn:active,.tab:active,.iconbtn:active,.mcard:active,.tile:active{transform:none}
 .welcome.has-img{background:linear-gradient(180deg,rgba(8,28,18,.08) 0%,rgba(8,28,18,.25) 40%,rgba(8,28,18,.7) 100%),var(--hero-img) center/cover no-repeat,#1f5c41;min-height:200px;justify-content:flex-end}
 .welcome.has-img::after{display:none}
@@ -442,9 +454,8 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
 /* Desktop and large tablets: use the width */
 @media (min-width:1000px){
   #page-arenden:not([hidden]){display:grid;grid-template-columns:minmax(340px,400px) minmax(0,1fr);gap:24px;align-items:start}
-  #page-arenden>.pagehead{grid-column:1/-1}
+  #page-arenden>.pghead{grid-column:1/-1}
   #page-arenden>#caseForm{position:sticky;top:calc(var(--bar-h) + 64px)}
-  #meetList{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));align-items:start}
   #st-utskick{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:24px;row-gap:12px;align-items:start}
   #st-utskick>.panel{grid-row:1/span 2}
   #st-utskick>.ph{grid-column:2;grid-row:1}
@@ -615,23 +626,28 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
   </div>
 
   <div class="page" id="page-medlemmar" hidden>
-    <section>
-      <div class="ph"><div class="pagehead"><h1>Medlemsregister</h1></div><div class="row"><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg>Adresslista (PDF)</button><button type="button" class="ghost small board" id="addMember">+ Lägg till medlem</button></div></div>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small board" id="memPdf"><svg class="ico"><use href="#i-file"/></svg><span class="lg">Adresslista (PDF)</span><span class="sm">PDF</span></button><button type="button" class="ghost small board" id="addMember">+ <span class="lg">Lägg till medlem</span><span class="sm">Ny medlem</span></button></div></div>
       <p class="hint">Kontaktuppgifter till fastighetsägarna längs vägen. Uppgifterna är till för vägföreningens arbete och för att grannar ska kunna nå varandra. Ändrade uppgifter? Meddela styrelsen under Fel och synpunkter.</p>
+    </header>
+    <section>
       <label for="memSearch" class="search">Sök<input id="memSearch" type="search" placeholder="Namn eller fastighet"></label>
       <div id="memberList" class="cards"></div>
     </section>
   </div>
 
   <div class="page" id="page-styrelse" hidden>
-    <div class="filters board" role="tablist" aria-label="Styrelsen">
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div></div>
+      <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
+    </header>
+    <div class="filters subnav board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick">Skapa utskick</button>
       <button type="button" class="chipbtn" data-st="inkorg">Inkorg <span class="count" id="inCount" hidden></span></button>
     </div>
     <section id="st-led">
-      <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div><button type="button" class="ghost small board" id="addBoard">+ Lägg till ledamot</button></div>
-      <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
+      <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
       <div id="boardList" class="cards"></div>
     </section>
     <section id="st-utskick" class="board" hidden>
@@ -662,27 +678,32 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
       <div id="uLog" class="list"></div>
     </section>
     <section id="st-inkorg" class="board" hidden>
-      <div class="ph"><div class="pagehead"><h1>Inkorg</h1></div><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
+      <div class="ph"><h2>Inkorg</h2><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
       <p class="hint" id="inHint">Mejl till föreningens adress hamnar här, till exempel svar på utskick. Bara styrelsen ser inkorgen. Tryck på ett mejl för att läsa och svara.</p>
       <div id="inList" class="list"></div>
     </section>
   </div>
 
   <div class="page" id="page-moten" hidden>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Möten</h1></div><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
+      <p class="hint">Kallelser, årsstämmor och protokoll.</p>
+    </header>
     <section>
-      <div class="ph"><div class="pagehead"><h1>Möten och protokoll</h1></div><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
-      <p class="hint">Kallelser, datum för årsstämma och protokoll.</p>
       <div id="meetList" class="list"></div>
     </section>
   </div>
 
   <div class="page" id="page-arenden" hidden>
-    <div class="pagehead"><h1>Fel och synpunkter</h1></div>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Fel och synpunkter</h1></div></div>
+      <p class="hint">Anmäl fel på vägen eller skicka en fråga till styrelsen. Här ser du också hur ärendena går.</p>
+    </header>
     <section class="panel" id="caseForm">
       <h2>Anmäl fel eller lämna synpunkt</h2>
       <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
         <label class="opt"><input type="radio" name="ctype" value="fel" checked><span>Fel på vägen</span></label>
-        <label class="opt"><input type="radio" name="ctype" value="syn"><span>Synpunkt eller fråga</span></label>
+        <label class="opt"><input type="radio" name="ctype" value="syn"><span><span class="lg">Synpunkt eller fråga</span><span class="sm">Fråga/synpunkt</span></span></label>
       </div>
       <p class="hint" id="caseHint"></p>
       <label for="caseTitle"><span id="caseTitleLbl">Var</span><input id="caseTitle"></label>
@@ -701,9 +722,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
   </div>
 
   <div class="page" id="page-admin" hidden>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Admin</h1></div></div>
+      <p class="hint">Inställningar och verktyg som bara admin ser.</p>
+    </header>
     <section class="panel">
-      <h2>Admin</h2>
-      <p class="hint">Verktyg som bara du som admin ser.</p>
+      <h2>Verktyg</h2>
       <div class="adminlinks">
         <button type="button" class="biglink" data-goto="verktyg"><span class="tico"><svg class="ico"><use href="#i-chart"/></svg></span><span><strong>Verktyg för andelstal</strong><small>Ändra fastigheter, delsträckor, schablonvärden och belopp</small></span></button>
         <button type="button" class="biglink" id="pdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span><strong>Skapa PDF för medlemmar</strong><small>Förslaget med karta och alla fastigheter</small></span></button>
@@ -718,9 +742,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.18</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.19</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.19</b><time>31 okt 2026</time></div><ul>
+          <li>Enhetlig placering på alla sidor: rubrik till vänster, sidans knappar till höger och förklarande text under. Underflikar ligger under rubriken.</li>
+          <li>Admin har fått en egen sidrubrik, och möten visas i full bredd som övriga listor.</li></ul></li>
         <li><div><b>2.18</b><time>31 okt 2026</time></div><ul>
           <li>Styrelsen kan byta startbild med knappen Byt startbild på välkomstrutan.</li>
           <li>Flikarna rör sig inte längre när man klickar på dem.</li></ul></li>
@@ -781,8 +808,10 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
   </div>
 
   <div class="page" id="page-verktyg" hidden>
+  <header class="pghead">
   <div class="ph"><div class="pagehead"><h1>Verktyg för andelstal</h1></div><button type="button" class="ghost small" data-goto="admin">← Tillbaka till Admin</button></div>
   <p class="hint">Varje fastighets andel räknas med Lantmäteriets tonkilometermetod: fastighetens trafik per år gånger hur lång sträcka av vägen den kör på ut till Stav.</p>
+  </header>
   <p class="notice" id="readonly" hidden>Bara admin kan ändra uppgifterna om andelstal och vägsträckning.</p>
 
   <section>

@@ -257,6 +257,12 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
 #reqMgr:empty{display:none}
+.urensa{justify-content:flex-end;margin-top:-6px}
+#uClear.armed{color:var(--danger);border-color:var(--danger)}
+.iconbtn{width:38px;height:38px;padding:0;border-radius:50%;background:transparent;color:var(--muted);border:1px solid var(--line)}
+.iconbtn:hover{background:var(--surface-2);color:var(--ink);border-color:var(--line-strong)}
+.iconbtn.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.iconbtn .ico{width:20px;height:20px}
 details.mail summary h3{font-size:1.02rem}
 details.mail.unread{border-left:4px solid var(--warn)}
 details.mail.unread summary h3{font-weight:800}
@@ -530,6 +536,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     <a class="brand" href="#start" data-goto="start"><img src="icon.png" alt=""><span><strong>Baggetorp Hytternäs</strong><small>Vägsamfällighet · väg 13986</small></span></a>
     <div class="hero-actions">
       <span class="role" id="role"></span>
+      <button type="button" class="iconbtn admin" id="adminBtn" data-goto="admin" aria-label="Admin" title="Admin"><svg class="ico"><use href="#i-gear"/></svg></button>
       <button type="button" class="logout" id="logout" hidden aria-label="Logga ut"><svg class="ico"><use href="#i-out"/></svg><span>Logga ut</span></button>
     </div>
   </div>
@@ -539,7 +546,6 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span><span class="navcount" id="navInCount" hidden></span></button>
     <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span></button>
     <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span></button>
-    <button type="button" role="tab" class="navtab admin" data-page="admin"><svg class="ico"><use href="#i-gear"/></svg><span>Admin</span></button>
   </nav>
 </header>
 <span class="status" id="status" role="status" aria-live="polite">Laddar…</span>
@@ -605,6 +611,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
         <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
         <label for="uAmne">Ämne<input id="uAmne"></label>
         <label for="uText">Meddelande<textarea id="uText" rows="9"></textarea></label>
+        <div class="row urensa"><button type="button" class="ghost small" id="uClear">Rensa</button></div>
         <div class="ph"><strong>Mottagare</strong><button type="button" class="ghost small" id="uAll">Markera alla</button></div>
         <div id="uRcpt" class="rcpt"></div>
         <label class="check"><input type="checkbox" id="uNews">Lägg också upp meddelandet under Aktuellt</label>
@@ -681,9 +688,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.13</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.14</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.14</b><time>31 okt 2026</time></div><ul>
+          <li>Admin nås med kugghjulet uppe till höger bredvid Logga ut, i stället för en egen flik i menyn.</li>
+          <li>Knappen Rensa i Skapa utskick tömmer ämne och meddelande.</li></ul></li>
         <li><div><b>2.13</b><time>31 okt 2026</time></div><ul>
           <li>Sidan hoppar inte längre i sidled när man byter flik.</li>
           <li>Inkorgen hämtar mejlets text när man öppnar det.</li></ul></li>
@@ -1208,6 +1218,7 @@ function go(page){
   document.querySelectorAll(".navtab").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.page===(page==="verktyg"?"admin":page))));
   document.querySelectorAll(".page").forEach(p=>p.hidden=p.id!=="page-"+page);
   const ab=document.querySelector('.navtab[aria-selected="true"]'); if(ab&&ab.scrollIntoView) ab.scrollIntoView({block:"nearest",inline:"nearest"});
+  const ag=document.getElementById("adminBtn"); if(ag) ag.classList.toggle("on",page==="admin"||page==="verktyg");
   try{ history.replaceState(null,"","#"+page); }catch(e){}
 }
 document.addEventListener("click",e=>{
@@ -1431,6 +1442,13 @@ const UTEMPL={
 };
 let uTouched=false;
 function uFill(){ const t=UTEMPL[q("#uTyp").value]; if(!uTouched||!q("#uText").value.trim()){ q("#uAmne").value=t.amne; q("#uText").value=t.text; uTouched=false; } }
+document.addEventListener("click",e=>{
+  const b=e.target.closest("#uClear"); if(!b) return;
+  const has=q("#uAmne").value.trim()||q("#uText").value.trim();
+  if(has && !b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att rensa"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Rensa"; },4000); return; }
+  b.classList.remove("armed"); b.textContent="Rensa";
+  q("#uAmne").value=""; q("#uText").value=""; q("#uNews").checked=false; uTouched=true; q("#uMsg").textContent=""; q("#uAmne").focus();
+});
 q("#uTyp").addEventListener("change",()=>{ if(uTouched && q("#uText").value.trim() && !confirm("Ersätta texten med mallen?")) return; uTouched=false; uFill(); });
 ["#uAmne","#uText"].forEach(s=>q(s).addEventListener("input",()=>{uTouched=true;}));
 uFill();
@@ -1682,7 +1700,7 @@ renderSite(); renderCases();
     if (U){ owner=(await U.isOwner())===true; board=owner||(await U.canEdit())===true; const cw=await U.can("data.write"); canWrite = cw!==false; me=await U.id(); }
     document.body.classList.toggle("is-board",board);
     if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
-    q("#role").textContent = owner? "Admin" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
+    q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{

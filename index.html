@@ -159,15 +159,6 @@ button.danger:hover{background:var(--danger-soft);border-color:var(--danger-soft
 .tile span:last-child{display:flex;flex-direction:column;gap:2px}
 .tile small{font-weight:400;color:var(--muted);font-size:.85rem}
 .tile .sm{display:none}
-/* snabbval som små flikar fast under sidhuvudet */
-.quickwrap .quick{display:flex!important;gap:6px!important;overflow-x:auto;scrollbar-width:none;grid-template-columns:none!important}
-.quickwrap .quick::-webkit-scrollbar{display:none}
-.quickwrap .tile{flex:0 0 auto;flex-direction:row!important;min-height:0!important;padding:6px 12px 6px 6px!important;gap:8px!important;border-radius:999px;box-shadow:none;font-size:.88rem!important;text-align:left!important}
-.quickwrap .tile .tico{width:28px!important;height:28px!important;border-radius:999px!important}
-.quickwrap .tile .tico .ico{width:16px!important;height:16px!important}
-.quickwrap .tile small,.quickwrap .tile .lg{display:none!important}
-.quickwrap .tile .sm{display:inline!important}
-@media (max-width:760px){ .quickwrap .tile{flex:1 1 0;justify-content:center;padding:6px 8px 6px 6px!important;gap:6px!important} }
 @media (max-width:760px){
   .quick{grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
   .tile{flex-direction:column;justify-content:center;text-align:center;gap:6px;padding:10px 6px;min-height:0;font-size:.85rem}
@@ -421,7 +412,7 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .masthead .role{background:rgba(255,255,255,.18);color:#fff}
 .topbar{position:sticky;top:0;z-index:20}
 /* underflikarna stannar under sidhuvudet när man scrollar */
-.subwrap{position:sticky;top:var(--tb-h,0px);z-index:15;background:var(--bg);margin:-12px 0 0;padding:8px 0;box-shadow:-40px 0 0 var(--bg),40px 0 0 var(--bg)}
+.subwrap{position:sticky;top:var(--tb-h,0px);z-index:15;background:var(--bg);margin:-12px 0 8px;padding:8px 0;box-shadow:-40px 0 0 var(--bg),40px 0 0 var(--bg)}
 .navbar{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-sm)}
 @media (max-width:760px){
   .mh-in{min-height:150px;padding:10px 14px 16px;gap:10px}
@@ -434,6 +425,7 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 @media (max-width:960px) and (max-height:500px) and (orientation:landscape){ .mh-in{min-height:96px} .mh-title{font-size:1.2rem} .masthead .eyebrow{display:none} }
 /* Sidhuvud: rubrik vänster, sidans knappar höger, förklaring under. Samma på alla sidor. */
 .pghead{display:flex;flex-direction:column;gap:6px}
+.page>.subwrap{margin-bottom:-12px}
 .pghead .ph{min-height:38px}
 .ph>button,.ph>.row,.ph>a{margin-left:auto}
 .ph>.row{justify-content:flex-end}
@@ -811,10 +803,10 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
 <main>
 
   <div class="page" id="page-start">
-    <div class="subwrap quickwrap"><div class="quick">
-      <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span><small>Hål, trummor, träd, snö</small></span></button>
-      <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span><small>Fråga eller förslag till styrelsen</small></span></button>
-      <button type="button" class="tile" data-goto="styrelse"><span class="tico"><svg class="ico"><use href="#i-phone"/></svg></span><span><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span><small>Telefon och mejl</small></span></button>
+    <div class="subwrap"><div class="filters subnav" aria-label="Snabbval">
+      <button type="button" class="chipbtn" data-goto="arenden" data-ctype="fel"><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span></button>
+      <button type="button" class="chipbtn" data-goto="arenden" data-ctype="syn"><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span></button>
+      <button type="button" class="chipbtn" data-goto="styrelse"><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span></button>
     </div></div>
     <div class="pushbanner" id="pushBanner" hidden></div>
     <section class="panel board" id="reqMgr"></section>
@@ -851,10 +843,6 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   </div>
 
   <div class="page" id="page-styrelse" hidden>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div></div>
-      <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
-    </header>
     <div class="subwrap board"><div class="filters subnav board" role="tablist" aria-label="Styrelsen">
       <button type="button" class="chipbtn on" data-st="led">Ledamöter</button>
       <button type="button" class="chipbtn" data-st="utskick"><span class="lg">Skapa utskick</span><span class="sm">Utskick</span></button>
@@ -862,6 +850,10 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
       <button type="button" class="chipbtn" data-st="prot">Dokument</button>
       <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
     </div></div>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div></div>
+      <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
+    </header>
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
       <div id="boardList" class="cards"></div>
@@ -928,16 +920,16 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
   </div>
 
   <div class="page" id="page-dokument" hidden>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Dokument</h1></div></div>
-      <p class="hint">Föreningens protokoll, stadgar, ekonomi och bra länkar. Alla medlemmar kan läsa.</p>
-    </header>
     <div class="subwrap"><div class="filters subnav" role="tablist" aria-label="Dokument">
       <button type="button" class="chipbtn on" data-dk="protokoll">Protokoll</button>
       <button type="button" class="chipbtn" data-dk="stadgar"><span class="lg">Stadgar och beslut</span><span class="sm">Stadgar</span></button>
       <button type="button" class="chipbtn" data-dk="ekonomi">Ekonomi</button>
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
     </div></div>
+    <header class="pghead">
+      <div class="ph"><div class="pagehead"><h1>Dokument</h1></div></div>
+      <p class="hint">Föreningens protokoll, stadgar, ekonomi och bra länkar. Alla medlemmar kan läsa.</p>
+    </header>
     <section id="dk-docs">
       <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
       <p class="hint" id="dkHint"></p>
@@ -1008,9 +1000,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.42</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.43</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.43</b><time>31 okt 2026</time></div><ul>
+          <li>Underflikarna ligger nu alltid precis under sidhuvudet, ovanför sidans rubrik, och ser likadana ut på alla sidor (Start, Styrelsen och Dokument).</li></ul></li>
         <li><div><b>2.42</b><time>31 okt 2026</time></div><ul>
           <li>Ny nivå Superadmin med full tillgång. Superadmin kan inte ändras eller tas bort av någon annan, och bara superadmin kan utse eller ta bort admins. Vanliga admins hanterar medlemmar och styrelse.</li></ul></li>
         <li><div><b>2.41</b><time>31 okt 2026</time></div><ul>

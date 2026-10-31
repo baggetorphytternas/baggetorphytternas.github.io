@@ -616,9 +616,11 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.5</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.6</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.6</b><time>31 okt 2026</time></div><ul>
+          <li>På sidan Styrelsen väljer man ny ledamot ur en rullista med medlemmarna och anger roll. Admin kan samtidigt ge personen behörigheten Styrelse i appen.</li></ul></li>
         <li><div><b>2.5</b><time>31 okt 2026</time></div><ul>
           <li>När admin ger någon rollen Styrelse frågar appen vilken roll personen har i styrelsen (t.ex. ordförande eller kassör) och lägger in personen under fliken Styrelsen direkt.</li></ul></li>
         <li><div><b>2.4</b><time>31 okt 2026</time></div><ul>
@@ -1238,12 +1240,57 @@ function renderLists(){
 }
 function renderSite(){ renderIntro(); renderLists(); if(!q("#st-utskick").hidden){ renderRcpt(); renderULog(); renderFrom(); } }
 
+/* add a board member: pick a person from the member register and give them a board role */
+const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Ledamot","Suppleant"];
+async function pickBoardMember(){
+  const lc=x=>String(x||"").trim().toLowerCase();
+  const people=[]; const seen=new Set();
+  (site.medlemmar||[]).forEach(m=>{ if(!m.namn&&!m.epost) return; const k=lc(m.epost)||("n:"+lc(m.namn)+lc(m.fastighet)); if(seen.has(k)) return; seen.add(k); people.push({namn:m.namn||m.epost,epost:m.epost||"",telefon:m.telefon||"",fastighet:m.fastighet||""}); });
+  try{ const {data}=await window.SB.from("roller").select("email,namn"); (data||[]).forEach(r=>{ if(seen.has(lc(r.email))) return; seen.add(lc(r.email)); people.push({namn:r.namn||r.email,epost:r.email,telefon:"",fastighet:""}); }); }catch(e){}
+  people.sort((a,b)=>a.namn.localeCompare(b.namn,"sv"));
+  const isAdmin=document.body.classList.contains("is-admin");
+  const dlg=document.createElement("dialog"); dlg.className="bdlg";
+  dlg.innerHTML=`<form method="dialog"><h2>Lägg till i styrelsen</h2>
+    <label>Person<select id="pPers"><option value="">Välj person…</option>${people.map((p,i)=>`<option value="${i}">${E(p.namn)}${p.fastighet?" – "+E(p.fastighet):p.epost&&p.epost!==p.namn?" – "+E(p.epost):""}</option>`).join("")}<option value="ny">Någon som inte finns i listan…</option></select></label>
+    <label>Roll i styrelsen<select id="pRoll">${STYR_ROLLER.map(r=>`<option ${r==="Ledamot"?"selected":""}>${r}</option>`).join("")}<option value="">Annan roll…</option></select></label>
+    <label id="pAnnanL" hidden>Annan roll<input id="pAnnan" placeholder="t.ex. Vägansvarig"></label>
+    ${isAdmin?`<label class="check" id="pAccL"><input type="checkbox" id="pAcc" checked>Ge personen behörigheten Styrelse i appen</label>`:""}
+    <p class="hint" id="pInfo"></p>
+    <div class="bdlg-btns"><button value="ok" id="pOk" disabled>Lägg till</button><button value="skip" class="ghost">Avbryt</button></div></form>`;
+  document.body.appendChild(dlg);
+  const g=id=>dlg.querySelector(id);
+  const upd=()=>{ const v=g("#pPers").value, p=people[v]; g("#pOk").disabled=!v;
+    const cur=p&&(site.styrelse||[]).find(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
+    g("#pInfo").textContent = v==="ny" ? "Du får fylla i namn och kontaktuppgifter själv på nästa steg." : cur ? `${p.namn} finns redan i styrelsen som ${cur.roll||"ledamot"}. Rollen uppdateras.` : (p&&!p.epost&&isAdmin) ? "Personen saknar mejladress i registret och kan därför inte få behörighet att logga in." : "";
+    if(g("#pAccL")) g("#pAccL").hidden = v==="ny" || !(p&&p.epost); };
+  g("#pPers").onchange=upd; g("#pRoll").onchange=()=>{ g("#pAnnanL").hidden=g("#pRoll").value!==""; }; upd();
+  dlg.addEventListener("close",async()=>{
+    const v=g("#pPers").value, p=people[v], roll=g("#pRoll").value||g("#pAnnan").value.trim()||"Ledamot", acc=g("#pAcc")&&g("#pAcc").checked;
+    const ok=dlg.returnValue==="ok"; dlg.remove(); if(!ok||!v) return;
+    if(v==="ny"){ const it={id:nid(),namn:"",roll,fastighet:"",telefon:"",epost:""}; site.styrelse=[...(site.styrelse||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+    const list=site.styrelse||[]; const i=list.findIndex(x=>(p.epost&&lc(x.epost)===lc(p.epost))||lc(x.namn)===lc(p.namn));
+    const it={namn:p.namn,roll,fastighet:p.fastighet,telefon:p.telefon,epost:p.epost};
+    if(i>=0) list[i]={...list[i],...Object.fromEntries(Object.entries(it).filter(([k,x])=>x||k==="roll"))}; else list.push({id:nid(),...it});
+    site.styrelse=list; renderLists(); saveSite();
+    let msg=`${p.namn} är tillagd i styrelsen som ${roll}.`;
+    if(isAdmin&&acc&&p.epost){ try{
+      const email=lc(p.epost); const {data}=await window.SB.from("roller").select("roll").eq("email",email);
+      const now=data&&data[0]&&data[0].roll;
+      if(now==="admin") msg+=" Personen är redan admin och behåller det.";
+      else if(now!=="styrelse"){ const {error}=await window.SB.from("roller").upsert({email,roll:"styrelse",namn:p.namn}); msg+= error?" Behörigheten kunde inte sparas.":" Personen har nu behörigheten Styrelse."; }
+    }catch(e){ msg+=" Behörigheten kunde inte sparas."; } }
+    setTimeout(()=>setMsg(msg),700);
+  });
+  dlg.showModal();
+}
+
 /* board edits on lists */
 document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b||!board) return;
   if (b.dataset.edit==="intro"){ editIntro=!editIntro; q("#introText").value=site.intro||""; renderIntro(); return; }
   if (b.id==="introSave"){ site.intro=q("#introText").value; editIntro=false; renderIntro(); saveSite(); return; }
-  const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoard:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
+  if (b.id==="addBoard"){ pickBoardMember(); return; }
+  const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   if (b.id==="addMember"){ const it={id:nid(),fastighet:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   const card=b.closest(".item[data-kind]"); if(!card) return;

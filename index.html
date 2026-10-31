@@ -411,7 +411,8 @@ dialog.sentdlg::backdrop{background:rgba(10,30,20,.55)}
 .masthead .iconbtn:hover,.masthead button.logout:hover,.masthead .iconbtn.on{background:rgba(0,0,0,.5);color:#fff;border-color:rgba(255,255,255,.7)}
 .masthead .role{background:rgba(255,255,255,.18);color:#fff}
 .topbar{position:sticky;top:0;z-index:20}
-/* underflikarna stannar under sidhuvudet när man scrollar */
+/* UNDERFLIKAR – samma mönster på alla sidor: <div class="subwrap"><div class="filters subnav">…chipbtn…</div></div>
+   som första element i .page, före .pghead. Inga ikoner. De stannar under sidhuvudet när man scrollar. */
 .subwrap{position:sticky;top:var(--tb-h,0px);z-index:15;background:var(--bg);margin:-12px 0 8px;padding:8px 0;box-shadow:-40px 0 0 var(--bg),40px 0 0 var(--bg)}
 .navbar{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:var(--shadow-sm)}
 @media (max-width:760px){

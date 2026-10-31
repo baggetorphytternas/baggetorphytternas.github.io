@@ -509,6 +509,11 @@ details.mail[open]{gap:10px}
 .bdlg-person .person h3{font-size:1.25rem}
 .bdlg-person .avatar{width:56px;height:56px}
 .bdlg-person .contacts{flex-direction:column;align-items:stretch;margin-top:12px}
+.adminrad{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+.adminrad>div,.adminrad{min-width:0}
+.adminrad strong{display:block}
+.adminrad small{display:block;color:var(--muted);font-size:.85rem}
+.adminrad button.armed{background:var(--warn);border-color:var(--warn);color:#fff}
 #memberList{grid-template-columns:repeat(auto-fill,minmax(250px,1fr));align-items:stretch}
 .mcard{height:72px;display:flex;flex-direction:row;align-items:center;gap:12px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);font-weight:400;min-width:0}
 .mcard:hover{background:var(--surface);border-color:var(--accent);color:var(--ink)}
@@ -1002,9 +1007,11 @@ body.gated main,body.gated .appbar,body.gated .topbar,body.gated #status{display
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.40</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.41</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.41</b><time>31 okt 2026</time></div><ul>
+          <li>Admin kan ge en styrelseledamot adminbehörighet direkt från ledamotens kort under Styrelsen (Gör till admin / Ta bort admin). Det måste alltid finnas minst en admin.</li></ul></li>
         <li><div><b>2.40</b><time>31 okt 2026</time></div><ul>
           <li>En åtgärd kan nu ha flera ansvariga, både personer och grupper. Alla som är taggade ser åtgärden under Mitt konto → Mina åtgärder och kan bocka av den.</li></ul></li>
         <li><div><b>2.39</b><time>31 okt 2026</time></div><ul>
@@ -1786,7 +1793,32 @@ document.addEventListener("click",e=>{
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
   const ed=d.querySelector("#bpEdit"); if(ed) ed.onclick=()=>{ d.close(); editing.add(it.id); renderLists(); const el=document.querySelector(`.item[data-id="${it.id}"]`); if(el) el.scrollIntoView({block:"center"}); };
   d.showModal();
+  if(kind==="styrelse"&&document.body.classList.contains("is-admin")) adminRad(d,it);
 });
+/* Admin kan ge en styrelseledamot adminbehörighet direkt från ledamotens kort */
+async function adminRad(d,it){
+  const ep=String(it.epost||"").trim().toLowerCase(), form=d.querySelector("form"), btns=d.querySelector(".bdlg-btns");
+  const box=document.createElement("div"); box.className="adminrad"; btns.before(box);
+  if(!ep){ box.innerHTML=`<strong>Adminbehörighet</strong><small>Lägg in en mejladress för ledamoten (Ändra) för att kunna ge adminbehörighet.</small>`; return; }
+  const {data:rad,error}=await window.SB.from("roller").select("email,roll").eq("email",ep).maybeSingle();
+  let cur=rad;
+  if(error){ box.innerHTML=`<strong>Adminbehörighet</strong><small>Kunde inte läsa behörigheten.</small>`; return; }
+  const jag=String(minEpost||(await minEpostH())||"").toLowerCase()===ep;
+  const visa=()=>{ const r=(cur&&cur.roll)||"";
+    box.innerHTML=`<div><strong>Adminbehörighet</strong><small>${r==="admin"?"Har admin: full tillgång till allt, även inloggningar och behörigheter.":r?"Har behörigheten "+(r==="styrelse"?"Styrelse":"Medlem")+".":"Kan inte logga in än. Mejladressen saknas i inloggningslistan."}</small></div>
+      <button type="button" class="${r==="admin"?"ghost":""} small" id="bpAdm">${r==="admin"?"Ta bort admin":"Gör till admin"}</button>`;
+    box.querySelector("#bpAdm").onclick=async ev=>{ const b=ev.currentTarget, ny=r==="admin"?"styrelse":"admin";
+      if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent=ny==="admin"?"Tryck igen för att bekräfta":"Tryck igen för att ta bort"; return; }
+      if(ny!=="admin"){ const {count}=await window.SB.from("roller").select("email",{count:"exact",head:true}).eq("roll","admin"); if((count||0)<=1){ setMsg("Det måste finnas minst en admin."); visa(); return; } }
+      b.disabled=true;
+      const {error:e2}=await window.SB.from("roller").upsert({email:ep,roll:ny,namn:it.namn||""});
+      if(e2){ setMsg("Kunde inte spara behörigheten."); visa(); return; }
+      cur={email:ep,roll:ny}; setMsg(ny==="admin"?`${it.namn||ep} är nu admin.`:`${it.namn||ep} har nu behörigheten Styrelse.`);
+      if(jag&&ny!=="admin"){ setTimeout(()=>location.reload(),1200); }
+      visa(); };
+  };
+  visa();
+}
 const boardView=it=>person(E(it.roll||"Ledamot"),it.namn||"Namn saknas",it.fastighet,it,rollIkon(it.roll));
 function renderLists(){
   const news=sorted(site.nyheter,true);

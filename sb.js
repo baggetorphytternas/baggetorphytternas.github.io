@@ -62,11 +62,36 @@ window.claude={ use:async(name)=>{ await ready; if(!roll) return null;
 /* ---------- login screen ---------- */
 function gate(html){ let g=document.getElementById("gate"); if(!g){ g=document.createElement("div"); g.id="gate"; document.body.appendChild(g); } g.innerHTML=html; document.body.classList.add("gated"); }
 function ungate(){ const g=document.getElementById("gate"); if(g) g.remove(); document.body.classList.remove("gated"); }
+const LS={get:k=>{try{return localStorage.getItem(k)||"";}catch(e){return "";}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
 function loginForm(msg){
   gate(`<div class="gatebox"><p class="eyebrow">Väg 13986 · Mellösa, Flens kommun</p><h1>Baggetorp Hytternäs vägsamfällighet</h1>
-   <p>Skriv din mejladress så skickar vi en inloggningslänk. Inget lösenord behövs. Är du ny får du be om tillgång efter inloggningen.</p>
-   <label for="gEmail">Din mejladress<input id="gEmail" type="email" inputmode="email" autocomplete="email" placeholder="namn@exempel.se"></label>
-   <button type="button" id="gSend">Skicka inloggningslänk</button><p class="gmsg" id="gMsg">${msg||""}</p></div>`);
+   <div class="seg2" role="radiogroup" aria-label="Sätt att logga in">
+     <label class="opt"><input type="radio" name="gMode" value="pw"><span>Lösenord</span></label>
+     <label class="opt"><input type="radio" name="gMode" value="link"><span>Mejllänk</span></label>
+   </div>
+   <p class="ginfo" id="gInfo"></p>
+   <label for="gEmail">Din mejladress<input id="gEmail" type="email" inputmode="email" autocomplete="username email" placeholder="namn@exempel.se" value="${LS.get("vag_email").replace(/"/g,"")}"></label>
+   <label for="gPw" id="gPwL">Lösenord<input id="gPw" type="password" autocomplete="current-password"></label>
+   <button type="button" id="gSend">Logga in</button><p class="gmsg" id="gMsg">${msg||""}</p>
+   <button type="button" class="linkbtn" id="gForgot">Inget lösenord än, eller glömt det? Få en inloggningslänk</button></div>`);
+  const mode=()=>document.querySelector('input[name=gMode]:checked').value;
+  const setMode=m=>{ document.querySelector(`input[name=gMode][value="${m}"]`).checked=true; LS.set("vag_mode",m);
+    const pw=m==="pw"; document.getElementById("gPwL").hidden=!pw; document.getElementById("gForgot").hidden=!pw;
+    document.getElementById("gInfo").textContent = pw ? "Logga in med din mejladress och ditt lösenord." : "Vi skickar en inloggningslänk till din mejl. Använd den första gången, eller om du har glömt ditt lösenord. Är du ny får du be om tillgång efter inloggningen.";
+    const b=document.getElementById("gSend"); if(pw){ b.disabled=false; b.textContent="Logga in"; } else if(!b.disabled) b.textContent="Skicka inloggningslänk"; document.getElementById("gMsg").textContent=""; };
+  setMode(LS.get("vag_mode")||"pw");
+  document.querySelectorAll('input[name=gMode]').forEach(r=>r.onchange=()=>setMode(r.value));
+  document.getElementById("gForgot").onclick=()=>{ setMode("link"); document.getElementById("gEmail").focus(); };
+  const pwLogin=async()=>{ const email=document.getElementById("gEmail").value.trim().toLowerCase(), password=document.getElementById("gPw").value, m=document.getElementById("gMsg"), b=document.getElementById("gSend");
+    if(!/^\S+@\S+\.\S+$/.test(email)){ m.textContent="Skriv en giltig mejladress."; return; }
+    if(!password){ m.textContent="Skriv ditt lösenord."; return; }
+    b.disabled=true; b.textContent="Loggar in…"; m.textContent="";
+    const {error}=await sb.auth.signInWithPassword({email,password});
+    if(!error){ LS.set("vag_email",email); location.reload(); return; }
+    b.disabled=false; b.textContent="Logga in";
+    m.innerHTML = /invalid login credentials/i.test(error.message||"") ? "<strong>Fel mejladress eller lösenord.</strong> Har du inte valt något lösenord än? Logga in med <em>Mejllänk</em> första gången och välj ett lösenord då."
+      : /not confirmed/i.test(error.message||"") ? "Din mejladress är inte bekräftad än. Logga in med <em>Mejllänk</em>."
+      : "Det gick inte att logga in just nu. Försök igen om en stund."; };
   let busy=false, timer=null;
   const popup=(email,igen)=>{ const old=document.getElementById("sentDlg"); if(old) old.remove();
     const d=document.createElement("dialog"); d.id="sentDlg"; d.className="sentdlg";
@@ -82,20 +107,50 @@ function loginForm(msg){
       <button value="ok" autofocus>OK, jag förstår</button></form>`;
     document.body.appendChild(d); d.addEventListener("close",()=>d.remove()); d.showModal(); };
   const lock=(sek)=>{ const b=document.getElementById("gSend"); clearInterval(timer); let n=sek;
-    const tick=()=>{ if(n<=0){ clearInterval(timer); b.disabled=false; b.textContent="Skicka ny länk"; return; } b.disabled=true; b.textContent=`Skicka ny länk om ${n} s`; n--; };
+    const tick=()=>{ if(n<=0){ clearInterval(timer); b.disabled=false; b.textContent= mode()==="pw" ? "Logga in" : "Skicka ny länk"; return; } if(mode()==="pw"){ clearInterval(timer); b.disabled=false; b.textContent="Logga in"; return; } b.disabled=true; b.textContent=`Skicka ny länk om ${n} s`; n--; };
     tick(); timer=setInterval(tick,1000); };
-  const send=async()=>{ if(busy) return; const email=document.getElementById("gEmail").value.trim().toLowerCase(); const m=document.getElementById("gMsg");
+  const send=async()=>{ if(mode()==="pw") return pwLogin(); if(busy) return; const email=document.getElementById("gEmail").value.trim().toLowerCase(); const m=document.getElementById("gMsg");
     if(!/^\S+@\S+\.\S+$/.test(email)){ m.textContent="Skriv en giltig mejladress."; return; }
     busy=true; document.getElementById("gSend").disabled=true; m.textContent="Skickar…";
     const {error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
     busy=false;
-    if(!error){ m.innerHTML=`<strong>Länken är skickad till ${email.replace(/</g,"&lt;")}.</strong> Öppna mejlet från <strong>bhvf@vagappen.se</strong> och tryck på länken. Titta i skräpposten om det inte syns inom ett par minuter.`; lock(60); popup(email,false); return; }
+    if(!error){ LS.set("vag_email",email); m.innerHTML=`<strong>Länken är skickad till ${email.replace(/</g,"&lt;")}.</strong> Öppna mejlet från <strong>bhvf@vagappen.se</strong> och tryck på länken. Titta i skräpposten om det inte syns inom ett par minuter.`; lock(60); popup(email,false); return; }
     const sek=Number((String(error.message||"").match(/after (\d+) seconds/)||[])[1]);
     if(error.status===429 && sek>=0 && String(error.message).includes("seconds")){ m.innerHTML=`<strong>Länken är redan skickad.</strong> Titta i inkorgen och i skräpposten efter ett mejl från bhvf@vagappen.se.`; lock(Math.max(sek,5)); popup(email,true); return; }
     if(error.status===429){ m.textContent="Många försöker logga in just nu. Vänta några minuter och försök igen."; document.getElementById("gSend").disabled=false; return; }
     m.textContent="Det gick inte att skicka länken. Kontrollera adressen och försök igen om en stund."; document.getElementById("gSend").disabled=false; };
   document.getElementById("gSend").onclick=send;
   document.getElementById("gEmail").onkeydown=e=>{ if(e.key==="Enter") send(); };
+  document.getElementById("gPw").onkeydown=e=>{ if(e.key==="Enter") send(); };
+}
+/* ---------- Mitt konto: välj eller byt lösenord ---------- */
+function kontoDialog(s,fraga){
+  const har=!!(s.user.user_metadata&&s.user.user_metadata.har_losen);
+  const d=document.createElement("dialog"); d.className="bdlg kontodlg";
+  const R={admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"}[roll]||"";
+  d.innerHTML=`<form method="dialog"><h2>${fraga?"Vill du välja ett lösenord?":"Mitt konto"}</h2>
+    ${fraga?`<p class="hint">Med ett lösenord kan du logga in direkt nästa gång, utan att vänta på ett mejl.</p>`:`<p class="hint">Inloggad som <strong>${s.user.email.replace(/</g,"&lt;")}</strong>${R?" · "+R:""}</p>`}
+    ${!fraga?`<p class="hint">${har?"Du har ett lösenord. Fyll i ett nytt nedan om du vill byta.":"Du har inget lösenord än. Välj ett för att kunna logga in utan mejllänk."}</p>`:""}
+    <input type="email" autocomplete="username" value="${s.user.email.replace(/"/g,"")}" hidden>
+    <label>${har&&!fraga?"Nytt lösenord":"Lösenord"}<input id="kPw1" type="password" autocomplete="new-password" minlength="8" placeholder="Minst 8 tecken"></label>
+    <label>Upprepa lösenordet<input id="kPw2" type="password" autocomplete="new-password"></label>
+    <p class="status" id="kMsg"></p>
+    <div class="bdlg-btns"><button type="button" id="kSave">Spara lösenord</button><button value="close" class="ghost">${fraga?"Inte nu":"Stäng"}</button></div>
+    ${!fraga?`<button type="button" class="linkbtn" id="kOut">Logga ut</button>`:""}</form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>{ if(fraga) LS.set("vag_losen_fraga","nej"); d.remove(); });
+  const g=id=>d.querySelector(id);
+  g("#kSave").onclick=async()=>{ const a=g("#kPw1").value, b=g("#kPw2").value, m=g("#kMsg");
+    if(a.length<8){ m.textContent="Lösenordet måste ha minst 8 tecken."; return; }
+    if(a!==b){ m.textContent="Lösenorden är inte likadana."; return; }
+    g("#kSave").disabled=true; m.textContent="Sparar…";
+    const {data,error}=await sb.auth.updateUser({password:a,data:{har_losen:true}});
+    g("#kSave").disabled=false;
+    if(error){ m.textContent = /different from the old/i.test(error.message||"") ? "Det nya lösenordet måste skilja sig från det gamla." : /reauth|recent/i.test(error.message||"") ? "Av säkerhetsskäl behöver du logga in med mejllänk igen innan du kan byta lösenord." : /weak|pwned|leaked/i.test(error.message||"") ? "Lösenordet är för enkelt eller har läckt tidigare. Välj ett annat." : "Det gick inte att spara lösenordet."; return; }
+    if(data&&data.user) s.user=data.user; LS.set("vag_mode","pw"); LS.set("vag_email",s.user.email);
+    d.innerHTML=`<form method="dialog"><h2>Klart!</h2><p class="hint">Nästa gång loggar du in med <strong>${s.user.email.replace(/</g,"&lt;")}</strong> och ditt lösenord.</p><div class="bdlg-btns"><button value="ok">OK</button></div></form>`;
+  };
+  if(g("#kOut")) g("#kOut").onclick=()=>sb.auth.signOut().then(()=>location.reload());
+  d.showModal();
 }
 async function start(s){
   if (document.readyState==="loading") await new Promise(r=>document.addEventListener("DOMContentLoaded",r,{once:true}));
@@ -106,6 +161,8 @@ async function start(s){
   try{ await loadAll(); }catch(e){}
   realtime(); ungate(); readyRes();
   const out=document.getElementById("logout"); if(out){ out.hidden=false; out.onclick=()=>sb.auth.signOut().then(()=>location.reload()); }
+  const kb=document.getElementById("kontoBtn"); if(kb){ kb.hidden=false; kb.onclick=()=>kontoDialog(session,false); }
+  if(!(s.user.user_metadata&&s.user.user_metadata.har_losen) && LS.get("vag_losen_fraga")!=="nej") setTimeout(()=>kontoDialog(session,true),1200);
   const who=document.getElementById("who"); if(who) who.textContent=s.user.email;
   if(roll==="admin") accessMgr();
   if(roll==="admin"||roll==="styrelse") requestsMgr();

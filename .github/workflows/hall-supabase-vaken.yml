@@ -26,7 +26,7 @@ jobs:
           done
           echo "::warning::Supabase svarade inte som väntat. Kontrollera projektet i Supabase."
           exit 1
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Håll repot aktivt
         run: |
           senast=$(git log -1 --format=%ct)

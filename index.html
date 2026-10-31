@@ -250,6 +250,20 @@ details.item[open] summary{padding-bottom:8px;border-bottom:1px solid var(--line
 #accessMgr{display:flex;flex-direction:column;gap:12px}
 body:not(.is-admin) #accessMgr{display:none}
 #accessMgr:empty{display:none}
+#reqMgr:empty{display:none}
+#reqMgr{border-color:var(--warn);box-shadow:0 0 0 3px var(--warn-soft),var(--shadow)}
+#reqMgr h2{display:flex;align-items:center;gap:8px}
+.count{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:var(--warn);color:#fff;font-size:.8rem;font-weight:700}
+.req-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius-sm);overflow:hidden}
+.req{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.req:last-child{border-bottom:none}
+.req-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 240px}
+.req-info small{color:var(--muted);word-break:break-all}
+.req-info p{margin:4px 0 0;font-size:.92rem;white-space:pre-wrap}
+.req-btns{display:flex;gap:8px;flex-wrap:wrap}
+.req-btns button{min-height:42px}
+.details-gap{margin-top:8px}
+.gatebox textarea{padding:12px 14px}
 .ver{font-size:.85rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:4px 12px;border-radius:999px}
 .changelog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .changelog>li{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
@@ -473,6 +487,7 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
       <h1>Baggetorp Hytternäs vägsamfällighet</h1>
       <p class="lead">Medlemssidor för vägen mellan Baggetorp, Hytternäs och utfarten vid Stav.</p>
     </section>
+    <section class="panel board" id="reqMgr"></section>
     <div class="quick">
       <button type="button" class="tile warn" data-goto="arenden" data-ctype="fel"><span class="tico"><svg class="ico"><use href="#i-alert"/></svg></span><span>Anmäl fel på vägen<small>Hål, trummor, träd, snö</small></span></button>
       <button type="button" class="tile" data-goto="arenden" data-ctype="syn"><span class="tico"><svg class="ico"><use href="#i-chat"/></svg></span><span>Lämna en synpunkt<small>Fråga eller förslag till styrelsen</small></span></button>
@@ -591,9 +606,13 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.2</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.3</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.3</b><time>31 okt 2026</time></div><ul>
+          <li>Nya medlemmar kan be om tillgång: den som loggar in med en okänd mejladress fyller i namn och fastighet och skickar en förfrågan.</li>
+          <li>Väntande förfrågningar visas överst på startsidan för admin och styrelse, med knapparna Godkänn och Avslå.</li>
+          <li>Både admin och styrelse kan godkänna nya medlemmar. Ändra roller och ta bort personer kan fortfarande bara admin.</li></ul></li>
         <li><div><b>2.2</b><time>31 okt 2026</time></div><ul>
           <li>Alltid ljust färgschema så att texten är lätt att läsa, även när datorn eller telefonen använder mörkt läge.</li>
           <li>Starkare kontrast på grå hjälptexter.</li>

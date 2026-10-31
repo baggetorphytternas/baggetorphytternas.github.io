@@ -80,15 +80,71 @@ async function start(s){
   session=s;
   if(!s){ loginForm(); return; }
   const {data}=await sb.rpc("min_roll"); roll=data||null;
-  if(!roll){ gate(`<div class="gatebox"><h1>Ingen behörighet ännu</h1><p>Du är inloggad som <strong>${s.user.email.replace(/</g,"&lt;")}</strong>, men adressen är inte inbjuden till vägföreningens sidor. Kontakta styrelsen så lägger de till dig.</p><button type="button" id="gOut" class="ghost">Logga ut</button></div>`); document.getElementById("gOut").onclick=()=>sb.auth.signOut().then(()=>location.reload()); return; }
+  if(!roll){ requestAccess(s); return; }
   try{ await loadAll(); }catch(e){}
   realtime(); ungate(); readyRes();
   const out=document.getElementById("logout"); if(out){ out.hidden=false; out.onclick=()=>sb.auth.signOut().then(()=>location.reload()); }
   const who=document.getElementById("who"); if(who) who.textContent=s.user.email;
   if(roll==="admin") accessMgr();
+  if(roll==="admin"||roll==="styrelse") requestsMgr();
 }
 let started=false;
 sb.auth.onAuthStateChange((ev,s)=>{ if(!started && (ev==="INITIAL_SESSION"||ev==="SIGNED_IN")){ started=true; start(s); if(location.hash.includes("access_token")) history.replaceState(null,"",location.pathname); } });
+
+/* ---------- request access (logged in, but not yet approved) ---------- */
+const H=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function requestAccess(s){
+  const email=H(s.user.email);
+  const out=()=>{ const b=document.getElementById("gOut"); if(b) b.onclick=()=>sb.auth.signOut().then(()=>location.reload()); };
+  const {data:status}=await sb.rpc("min_ansokan");
+  if(status==="vantar"){
+    gate(`<div class="gatebox"><p class="eyebrow">Väntar på godkännande</p><h1>Tack, din förfrågan är skickad</h1>
+     <p>Styrelsen har fått din förfrågan om tillgång för <strong>${email}</strong>. När den är godkänd kommer du in direkt här, utan ny inloggningslänk. Ladda om sidan senare.</p>
+     <button type="button" id="gReload">Kontrollera igen</button><button type="button" id="gOut" class="ghost">Logga ut</button></div>`);
+    document.getElementById("gReload").onclick=()=>location.reload(); out(); return;
+  }
+  if(status==="avslagen"){
+    gate(`<div class="gatebox"><h1>Ingen behörighet</h1><p>Din förfrågan om tillgång för <strong>${email}</strong> har inte godkänts. Kontakta styrelsen om du tror att det är fel.</p><button type="button" id="gOut" class="ghost">Logga ut</button></div>`); out(); return;
+  }
+  gate(`<div class="gatebox"><p class="eyebrow">Inloggad som ${email}</p><h1>Be om tillgång</h1>
+   <p>Din mejladress finns inte bland vägföreningens medlemmar ännu. Skicka en förfrågan, så godkänner styrelsen dig.</p>
+   <label for="rNamn">Ditt namn<input id="rNamn" autocomplete="name" maxlength="120"></label>
+   <label for="rFast">Fastighet eller adress längs vägen<input id="rFast" placeholder="t.ex. Hytternäs 1:5" maxlength="120"></label>
+   <label for="rMedd">Meddelande till styrelsen (valfritt)<textarea id="rMedd" rows="3" maxlength="1000"></textarea></label>
+   <button type="button" id="rSend">Skicka förfrågan</button><button type="button" id="gOut" class="ghost">Logga ut</button><p class="gmsg" id="rMsg"></p></div>`);
+  out();
+  document.getElementById("rSend").onclick=async()=>{
+    const namn=document.getElementById("rNamn").value.trim(), fast=document.getElementById("rFast").value.trim(), m=document.getElementById("rMsg");
+    if(!namn||!fast){ m.textContent="Fyll i namn och fastighet."; return; }
+    m.textContent="Skickar…";
+    const {error}=await sb.rpc("begar_tillgang",{p_namn:namn,p_fastighet:fast,p_meddelande:document.getElementById("rMedd").value.trim()});
+    if(error){ m.textContent="Det gick inte att skicka. Försök igen om en stund."; return; }
+    requestAccess(s);
+  };
+}
+
+/* ---------- pending requests (admin and styrelse) ---------- */
+async function requestsMgr(){
+  const box=document.getElementById("reqMgr"); if(!box) return;
+  async function render(msg){
+    const {data,error}=await sb.from("ansokningar").select("*").order("skapad");
+    if(error){ box.innerHTML=""; return; }
+    const v=(data||[]).filter(r=>r.status==="vantar"), nej=(data||[]).filter(r=>r.status==="avslagen");
+    if(!v.length&&!nej.length&&!msg){ box.innerHTML=""; return; }
+    const d=t=>new Date(t).toLocaleDateString("sv-SE",{day:"numeric",month:"short"});
+    box.innerHTML=`<div class="ph"><h2>Vill bli medlemmar${v.length?` <span class="count">${v.length}</span>`:""}</h2></div>
+     <p class="hint">De här personerna har loggat in och bett om tillgång. Godkänner du får de rollen Medlem och kommer in direkt.</p>
+     ${msg?`<p class="status">${H(msg)}</p>`:""}
+     ${v.length?`<div class="req-list">${v.map(r=>`<div class="req"><div class="req-info"><strong>${H(r.namn||r.email)}</strong><small>${H(r.email)}</small>${r.fastighet?`<span>${H(r.fastighet)}</span>`:""}${r.meddelande?`<p>${H(r.meddelande)}</p>`:""}<small>Skickad ${d(r.skapad)}</small></div>
+       <div class="req-btns"><button type="button" data-rok="${H(r.email)}">Godkänn</button><button type="button" class="ghost" data-rno="${H(r.email)}">Avslå</button></div></div>`).join("")}</div>`:`<p class="empty">Inga nya förfrågningar.</p>`}
+     ${nej.length?`<details class="more"><summary>Avslagna (${nej.length})</summary><div class="req-list">${nej.map(r=>`<div class="req"><div class="req-info"><strong>${H(r.namn||r.email)}</strong><small>${H(r.email)}</small></div><div class="req-btns"><button type="button" class="ghost small" data-rok="${H(r.email)}">Godkänn ändå</button><button type="button" class="danger" data-rdel="${H(r.email)}">Ta bort</button></div></div>`).join("")}</div></details>`:""}`;
+    box.querySelectorAll("[data-rok]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const {error}=await sb.rpc("godkann_ansokan",{p_email:b.dataset.rok}); render(error?"Kunde inte godkänna.":b.dataset.rok+" är godkänd och kan nu logga in."); });
+    box.querySelectorAll("[data-rno]").forEach(b=>b.onclick=async()=>{ if(b.textContent!=="Säker?"){ b.textContent="Säker?"; return; } const {error}=await sb.rpc("avsla_ansokan",{p_email:b.dataset.rno}); render(error?"Kunde inte avslå.":"Förfrågan avslagen."); });
+    box.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(b.textContent!=="Säker?"){ b.textContent="Säker?"; return; } const {error}=await sb.rpc("ta_bort_ansokan",{p_email:b.dataset.rdel}); render(error?"Kunde inte ta bort.":"Borttagen. Personen kan skicka en ny förfrågan."); });
+  }
+  render();
+  setInterval(()=>{ if(document.visibilityState==="visible" && !box.contains(document.activeElement)) render(); },60000);
+}
 
 /* ---------- access management (admin) ---------- */
 const ROLL={admin:"Admin",styrelse:"Styrelse",medlem:"Medlem"};

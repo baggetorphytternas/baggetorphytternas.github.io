@@ -38,7 +38,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-y:scroll;scrollbar-gutter:stable}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
 h1,h2,h3{text-wrap:balance;margin:0;letter-spacing:-.01em}
 h1{font-family:var(--display);font-weight:600;font-size:1.9rem;line-height:1.15}
@@ -681,9 +681,12 @@ body.gated main,body.gated .appbar,body.gated #status{display:none}
     </section>
     <section class="panel" id="accessMgr"></section>
     <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.12</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.13</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.13</b><time>31 okt 2026</time></div><ul>
+          <li>Sidan hoppar inte längre i sidled när man byter flik.</li>
+          <li>Inkorgen hämtar mejlets text när man öppnar det.</li></ul></li>
         <li><div><b>2.12</b><time>31 okt 2026</time></div><ul>
           <li>Inkorg för styrelsen under Styrelsen: mejl till föreningens adress på vagappen.se hamnar här och kan besvaras direkt i appen.</li>
           <li>Antal olästa mejl visas på fliken Styrelsen.</li></ul></li>

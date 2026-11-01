@@ -440,7 +440,8 @@ let sprot=[], sprotRef=null, dkKat="protokoll";
 const isPdf=f=>f&&(/\.pdf$/i.test(f.namn||"")||f.typ==="application/pdf");
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-dk]"); if(!t) return; dkKat=t.dataset.dk;
   document.querySelectorAll("[data-dk]").forEach(x=>x.classList.toggle("on",x===t)); try{ t.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(x){}
-  q("#dk-docs").hidden=dkKat==="lankar"; q("#dk-lankar").hidden=dkKat!=="lankar"; renderDok(); });
+  q("#dk-docs").hidden=dkKat==="lankar"||dkKat==="andelstal"; q("#dk-lankar").hidden=dkKat!=="lankar"; q("#dk-andelstal").hidden=dkKat!=="andelstal";
+  const dn=q(".dknote"); if(dn) dn.hidden=dkKat==="andelstal"; if(dkKat==="andelstal") renderAndelstal(); else renderDok(); });
 function dokRows(list,kind){
   if(!list.length) return `<p class="empty">Inga dokument uppladdade ännu.</p>`;
   return sorted(list,true).map(p=>`<div class="item prot" data-pid="${E(p.id)}" data-pkind="${kind}">
@@ -1183,6 +1184,7 @@ renderSite(); renderCases();
     loadMina(); setTimeout(pushBanner,2500);
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMina(); });
     if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderDok(); },()=>{}); }
+    andelRef=DB.doc("vag/andelstal"); andelRef.onSnapshot(sn=>{ andelstal=sn.exists?JSON.parse(JSON.stringify(sn.data())):null; renderAndelstal(); renderAndelAdmin(); },()=>{});
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{
       if (snap.metadata&&snap.metadata.hasPendingWrites) return;
@@ -1237,5 +1239,89 @@ async function renderLogg(){
 }
 document.addEventListener("click",e=>{ if(e.target.closest("#adminBtn")||e.target.closest('[data-goto="admin"]')) setTimeout(renderLogg,100); });
 if(location.hash==="#admin") setTimeout(renderLogg,2500);
+
+/* ---------- Andelstal: export till det fristående verktyget, inläsning av resultatet och visning för medlemmar.
+   Publicerat resultat ligger i docs "vag/andelstal" (alla medlemmar läser, bara admin skriver). Projektet sparas i "vag/projekt". ---------- */
+let andelstal=null, andelRef=null, andelKarta=null, andelNy=null;
+const fmtP=x=>Number(x||0).toLocaleString("sv-SE",{minimumFractionDigits:1,maximumFractionDigits:1})+" %";
+const fmtKm=x=>Number(x||0).toLocaleString("sv-SE",{minimumFractionDigits:2,maximumFractionDigits:2})+" km";
+const dagFmt=iso=>{ const t=new Date(iso); return isNaN(t)?"":t.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"}); };
+function sparaFil(namn,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=namn; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
+function laddaLeaflet(){ if(window.L) return Promise.resolve(); if(laddaLeaflet.p) return laddaLeaflet.p;
+  laddaLeaflet.p=new Promise((res,rej)=>{ const l=document.createElement("link"); l.rel="stylesheet"; l.href="leaflet/leaflet.css"; document.head.appendChild(l);
+    const sc=document.createElement("script"); sc.src="leaflet/leaflet.js"; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+  return laddaLeaflet.p; }
+const KFARG=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
+function renderAndelstal(){
+  const el=q("#andelInnehall"); if(!el) return;
+  const a=andelstal, wrap=q("#andelKartaWrap");
+  if (!a||!Array.isArray(a.resultat)||!a.resultat.length){ el.innerHTML=`<p class="empty">Inga andelstal är publicerade ännu.</p>`; wrap.hidden=true; return; }
+  const rows=[...a.resultat].sort((x,y)=>(y.andel||0)-(x.andel||0)), seg=Array.isArray(a.segments)?a.segments:[];
+  el.innerHTML=`<p class="hint">Beräknade med Lantmäteriets tonkilometermetod (PM 2025)${a.publicerad?`, publicerade ${E(dagFmt(a.publicerad))}`:""}. Andelen bygger på fastighetens trafik och hur lång del av vägen den använder.</p>
+    <div class="panel scroll"><table class="tbl andeltbl"><thead><tr><th>Fastighet</th><th class="num">Väglängd</th><th class="num">Andel</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td><b>${E(r.namn||"")}</b>${r.beteckning&&r.beteckning!==r.namn?`<br><small>${E(r.beteckning)}</small>`:""}${r.typ?`<br><small>${E(r.typ)}</small>`:""}</td><td class="num">${r.km!=null?fmtKm(r.km):"–"}${(r.delstrackor||[]).length?`<br><small>${E(r.delstrackor.join(", "))}</small>`:""}</td><td class="num"><b>${fmtP(r.andel)}</b></td></tr>`).join("")}</tbody>
+    <tfoot><tr><td>Totalt</td><td></td><td class="num">${fmtP(rows.reduce((s,r)=>s+Number(r.andel||0),0))}</td></tr></tfoot></table></div>
+    ${seg.length?`<h2 style="margin-top:16px">Vägen och delsträckorna</h2><div class="panel scroll"><table class="tbl"><thead><tr><th>Delsträcka</th><th>Mellan</th><th class="num">Längd</th></tr></thead><tbody>${seg.map(g=>`<tr><td><b>${E(g.id)}</b></td><td>${E(g.namn||"")}</td><td class="num">${Number(g.m||0).toLocaleString("sv-SE")} m</td></tr>`).join("")}</tbody></table></div>`:""}`;
+  const harGeo=seg.some(g=>Array.isArray(g.geo)&&g.geo.length>1);
+  wrap.hidden=!harGeo; if(!harGeo||q("#dk-andelstal").hidden) return;
+  laddaLeaflet().then(()=>{
+    if (!andelKarta){ andelKarta=L.map("andelKarta",{scrollWheelZoom:false}); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bidragsgivare</a>'}).addTo(andelKarta); andelKarta._lager=L.layerGroup().addTo(andelKarta); }
+    const lg=andelKarta._lager; lg.clearLayers(); const b=L.latLngBounds([]);
+    seg.forEach((g,i)=>{ if(!Array.isArray(g.geo)||g.geo.length<2) return; g.geo.forEach(p=>b.extend(p));
+      L.polyline(g.geo,{color:KFARG[i%KFARG.length],weight:6,opacity:.85}).addTo(lg).bindTooltip(E(g.id),{permanent:true,direction:"center",className:"kseg"}); });
+    (a.punkter||[]).forEach(p=>{ if(!Array.isArray(p.ll)) return; b.extend(p.ll);
+      L.marker(p.ll,{icon:L.divIcon({className:"kpunkt "+(p.typ==="utfart"?"utfart":"ansl"),html:`<span>${E(p.namn||"")}</span>`,iconSize:null}),interactive:false}).addTo(lg); });
+    andelKarta.invalidateSize(); if(b.isValid()) andelKarta.fitBounds(b.pad(0.12));
+  }).catch(()=>{ wrap.hidden=true; });
+}
+function renderAndelAdmin(){
+  const el=q("#andelAdmin"); if(!el) return;
+  el.innerHTML = andelstal&&Array.isArray(andelstal.resultat) ? `<p class="hint">Publicerat ${E(dagFmt(andelstal.publicerad))}: ${andelstal.resultat.length} fastigheter.</p><div class="row"><button type="button" class="danger" id="andelTaBort">Ta bort publicerade andelstal</button></div>` : `<p class="hint">Inga andelstal är publicerade.</p>`;
+}
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("#andelExport,#andelTidigare,#andelLas,#andelPubl,#andelAvbryt,#andelTaBort"); if(!b||!document.body.classList.contains("is-admin")) return;
+  if (b.id==="andelExport"){
+    const m=new Map(); (site.medlemmar||[]).forEach(r=>{ const n=String(r.fastighet||"").trim(), bet=String(r.beteckning||"").trim(); const k=(n||bet).toLowerCase(); if(!k) return; const x=m.get(k)||{namn:n||bet,beteckning:""}; if(bet&&!x.beteckning) x.beteckning=bet; m.set(k,x); });
+    const lista=[...m.values()].sort((x,y)=>x.namn.localeCompare(y.namn,"sv"));
+    const forening=(q(".mh-title")||{}).textContent||"";
+    sparaFil("fastigheter-till-andelstalsverktyget.json",new Blob([JSON.stringify({format:"andelstal-fastigheter",version:1,forening:forening.trim(),fastigheter:lista},null,1)],{type:"application/json"}));
+    return;
+  }
+  if (b.id==="andelTidigare"){
+    try{ let sn=await DB.doc("vag/projekt").get(); let d=sn.exists?sn.data():null; let proj=d&&d.format==="andelstal-projekt"?d:null;
+      if (!proj){ sn=await DB.doc("vag/config").get(); const c=sn.exists?JSON.parse(JSON.stringify(sn.data())):null; if(!c){ alert("Det finns inget sparat arbete."); return; }
+        if(!c.karta||!(c.karta.vagar||[]).length) c.manuell=true; proj={format:"andelstal-projekt",version:1,sparad:new Date().toISOString(),data:c}; }
+      sparaFil("andelstal-tidigare-arbete.json",new Blob([JSON.stringify(proj,null,1)],{type:"application/json"}));
+    }catch(err){ alert("Kunde inte hämta det sparade arbetet."); }
+    return;
+  }
+  if (b.id==="andelLas"){ q("#andelFil").click(); return; }
+  if (b.id==="andelAvbryt"){ andelNy=null; q("#andelForhands").innerHTML=""; return; }
+  if (b.id==="andelPubl"&&andelNy){
+    const p=andelNy, d=p.data||{}, props=d.props||[], pn=id=>(props.find(x=>x.id===id)||{}).namn||"";
+    const pub={publicerad:new Date().toISOString(), forening:p.forening||"", utfart:p.utfart||"",
+      resultat:p.resultat.map(r=>({namn:String(r.namn||""),beteckning:String(r.beteckning||""),typ:String(r.typ||""),andel:Number(r.andel)||0,km:r.km==null?null:Number(r.km),delstrackor:(r.delstrackor||[]).map(String)})),
+      segments:(d.segments||[]).map(g=>({id:String(g.id),namn:String(g.namn||""),m:Number(g.m)||0,...(Array.isArray(g.geo)?{geo:g.geo}:{})})),
+      punkter:((d.karta&&d.karta.punkter)||[]).filter(x=>x.typ==="utfart"||(x.galler||"route")==="route").map(x=>({typ:x.typ,namn:x.typ==="utfart"?"Utfart":pn(x.prop),ll:x.ll}))};
+    b.disabled=true;
+    try{ await andelRef.set(pub); await DB.doc("vag/projekt").set(JSON.parse(JSON.stringify(p))); andelNy=null; q("#andelForhands").innerHTML=`<p class="notice">Andelstalen är publicerade. Medlemmarna ser dem under Dokument → Andelstal.</p>`; }
+    catch(err){ b.disabled=false; q("#andelForhands").insertAdjacentHTML("beforeend",`<p class="notice">Kunde inte spara. Försök igen.</p>`); }
+    return;
+  }
+  if (b.id==="andelTaBort"){ if(!confirm("Ta bort de publicerade andelstalen? Medlemmarna ser dem då inte längre.")) return; try{ await andelRef.delete(); }catch(err){ alert("Kunde inte ta bort."); } return; }
+});
+document.addEventListener("change",e=>{
+  if (e.target.id!=="andelFil"||!e.target.files[0]) return;
+  const fr=new FileReader(); fr.onload=()=>{
+    let p=null; try{ p=JSON.parse(fr.result); }catch(err){}
+    const el=q("#andelForhands");
+    if (!p||p.format!=="andelstal-projekt"||!Array.isArray(p.resultat)){ el.innerHTML=`<p class="notice">Filen är inget projekt från andelstalsverktyget. Spara projektet i verktyget (steg 5) och försök igen.</p>`; return; }
+    andelNy=p; const sum=p.resultat.reduce((s,r)=>s+Number(r.andel||0),0), seg=((p.data||{}).segments||[]).length, utan=p.resultat.filter(r=>!(Number(r.andel)>0));
+    el.innerHTML=`<div class="panel" style="margin-top:12px"><h3>${E(p.forening||"Andelstal")}</h3>
+      <p class="hint">Sparat ${E(dagFmt(p.sparad))}: ${p.resultat.length} fastigheter, summa ${fmtP(sum)}, ${seg} delsträckor.</p>
+      ${utan.length?`<p class="notice">Andel 0 för ${E(utan.map(r=>r.namn).join(", "))}. Kontrollera i verktyget innan du publicerar.</p>`:""}
+      <div class="row"><button type="button" id="andelPubl">Publicera för medlemmar</button><button type="button" class="ghost" id="andelAvbryt">Avbryt</button></div></div>`;
+  }; fr.readAsText(e.target.files[0]); e.target.value="";
+});
 })();
 

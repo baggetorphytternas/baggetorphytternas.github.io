@@ -57,7 +57,7 @@ const pnamn=id=>{ const p=state.props.find(x=>x.id===id); return p ? (p.namn||"N
 function gallerText(pt){
   if (pt.typ==="utfart") return "Utfart till "+utfartOf();
   const p=state.props.find(x=>x.id===pt.prop); const g=pt.galler||"route";
-  if (g==="route") return pnamn(pt.prop)+(p&&typOf(p)==="jord"?": gården (bostad och företagsutfart)":": anslutning");
+  if (g==="route") return pnamn(pt.prop);
   if (g==="skog") return pnamn(pt.prop)+": skogen";
   if (g.startsWith("sk:")){ const s=p&&skiften(p).find(x=>x.id===g.slice(3)); return pnamn(pt.prop)+": "+(s?(s.namn||"skifte"):"skifte"); }
   return pnamn(pt.prop);
@@ -135,169 +135,175 @@ function forslag(){
 function tillampa(f){
   state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo}));
   state.props.forEach(p=>{ const r=f.routes.get(p.id)||{};
-    p.route=r.route||[]; p.skogRoute=r.skog||[];
+    p.route=r.route||[]; p.skogRoute=p.skogEgen?(r.skog||[]):[];
     skiften(p).forEach(s=>{ const v=r["sk:"+s.id]; s.route=v||[]; });
     delete p.inreRoute; });
-  scheduleSave(); renderAll();
+  scheduleSave();
 }
 
 /* ---------- karta ---------- */
-let map=null, lager=null, lagerHl=null, mode="visa", ritar=null, valtVisa="", sistaForslag=null;
+let map=null, lager=null, lagerHl=null, mode="visa", ritar=null, steg="", aktivt="";
 const FARG=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
 const ikon=(cls,txt)=>L.divIcon({className:"kpunkt "+cls, html:`<span>${esc(txt)}</span>`, iconSize:null});
+const kartlage=()=>!state.manuell;
 function initKarta(){
-  if (map) { map.invalidateSize(); return; }
-  const el=document.getElementById("karta"); if(!el||el.offsetParent===null) return;
-  map=L.map(el,{zoomControl:true, doubleClickZoom:true});
+  const el=document.getElementById("karta");
+  if (map){ setTimeout(()=>map.invalidateSize(),30); return; }
+  if (!el||el.offsetParent===null) return;
+  map=L.map(el,{zoomControl:true});
   const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bidragsgivare</a>'});
   const topo=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:17,subdomains:"abc",attribution:'Karta: © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), data © OpenStreetMap-bidragsgivare'});
   osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
-  map.on("click",klick); map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
+  map.on("click",klick);
+  map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
   passa(); rita();
 }
-function passa(){ const k=KS(), b=L.latLngBounds([]);
+function passa(){ if(!map) return; const k=KS(), b=L.latLngBounds([]);
   k.vagar.forEach(v=>(v.pts||[]).forEach(p=>b.extend(p))); k.punkter.forEach(p=>b.extend(p.ll)); state.segments.forEach(g=>(g.geo||[]).forEach(p=>b.extend(p)));
   if (b.isValid()) map.fitBounds(b.pad(0.15),{maxZoom:17}); else map.setView([62.5,16],5); }
 function snap(latlng){
   const k=KS(), P=map.latLngToContainerPoint(latlng); let best=null;
-  k.vagar.forEach(v=>(v.pts||[]).forEach(p=>{ const d=P.distanceTo(map.latLngToContainerPoint(p)); if(d<14&&(!best||d<best.d)) best={d,ll:p,typ:"hörn"}; }));
-  if (ritar) ritar.pts.forEach(p=>{ const d=P.distanceTo(map.latLngToContainerPoint(p)); if(d<14&&(!best||d<best.d)) best={d,ll:p,typ:"hörn"}; });
+  const hörn=p=>{ const d=P.distanceTo(map.latLngToContainerPoint(p)); if(d<14&&(!best||d<best.d)) best={d,ll:p,typ:"hörn"}; };
+  k.vagar.forEach(v=>(v.pts||[]).forEach(hörn)); if (ritar) ritar.pts.forEach(hörn);
   if (best) return best;
   k.vagar.forEach(v=>{ const p=v.pts||[]; for(let i=0;i+1<p.length;i++){ const r=proj([latlng.lat,latlng.lng],p[i],p[i+1]); const d=P.distanceTo(map.latLngToContainerPoint(r.pt)); if(d<14&&(!best||d<best.d)) best={d,ll:r.pt,typ:"linje",v,i}; } });
   return best;
 }
 function klick(e){
-  if (readOnly) return;
   const ll=[r6(e.latlng.lat),r6(e.latlng.lng)];
   if (mode==="vag"){
     const s=snap(e.latlng); let p=ll;
-    if (s){ p=[r6(s.ll[0]),r6(s.ll[1])]; if(s.typ==="linje"){ s.v.pts.splice(s.i+1,0,p); } }
-    if (!ritar){ ritar={id:uid(),pts:[p]}; } else { const last=ritar.pts[ritar.pts.length-1]; if(hav(last,p)<0.5) return; ritar.pts.push(p); }
+    if (s){ p=[r6(s.ll[0]),r6(s.ll[1])]; if(s.typ==="linje") s.v.pts.splice(s.i+1,0,p); }
+    if (!ritar) ritar={id:uid(),pts:[p]}; else { const last=ritar.pts[ritar.pts.length-1]; if(hav(last,p)<0.5) return; ritar.pts.push(p); }
     rita(); return;
   }
-  if (mode==="punkt"){
-    const val=$("#kartPunktVal").value; if(!val){ hjalp("Välj först vad punkten gäller."); return; }
-    satPunkt(val, ll); return;
+  if (mode==="utfart"){ satPunkt("utfart",ll); return; }
+  if (mode==="ansl"){
+    if (!KS().vagar.length){ visaHjalp("Rita vägen i steg 3 först."); return; }
+    if (!aktivt){ visaHjalp("Välj först en fastighet i listan under kartan."); return; }
+    satPunkt(aktivt,ll); return;
   }
 }
 function satPunkt(val,ll){
   const k=KS(); let pt;
   if (val==="utfart") pt={id:uid(),typ:"utfart",ll};
   else { const [prop,galler]=val.split("|"); k.punkter=k.punkter.filter(x=>!(x.prop===prop&&(x.galler||"route")===galler)); pt={id:uid(),typ:"anslutning",prop,galler,ll}; }
-  /* Lägg punkten på närmaste väg om den ligger nära. */
   let best=null; k.vagar.forEach(v=>{ const p=v.pts||[]; for(let i=0;i+1<p.length;i++){ const r=proj(ll,p[i],p[i+1]); if(!best||r.d<best.d) best=r; } });
-  if (best&&best.d<60) pt.ll=[r6(best.pt[0]),r6(best.pt[1])];
-  k.punkter.push(pt); scheduleSave(); rita(); renderLista();
-  const sel=$("#kartPunktVal"); if(sel&&val!=="utfart"){ const i=sel.selectedIndex; if(i+1<sel.options.length) sel.selectedIndex=i+1; }
+  if (best&&best.d<80) pt.ll=[r6(best.pt[0]),r6(best.pt[1])];
+  k.punkter.push(pt);
+  if (val!=="utfart"){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
+  andrat();
 }
 function avslutaLinje(){
-  if (ritar && ritar.pts.length>=2){ KS().vagar.push(ritar); scheduleSave(); }
-  ritar=null; rita(); renderLista();
+  if (ritar && ritar.pts.length>=2) KS().vagar.push(ritar);
+  ritar=null; andrat();
 }
-function hjalp(t){ const h=$("#kartHjalp"); if(h) h.textContent=t; }
+/* Efter varje ändring på kartan räknas delsträckor och vägval om, om de inte anges för hand. */
+let senaste=null;
+function andrat(){
+  natCache=null;
+  if (kartlage()){ const f=forslag(); senaste=f; if(!f.fel) tillampa(f); }
+  scheduleSave(); renderAll();
+}
+function visaHjalp(t){ const h=document.getElementById("kartHjalp"), a=document.getElementById("anslAktiv"); const el=steg==="ansl"?a:h; if(el){ el.hidden=!t; el.textContent=t||""; } }
 const HJALP={
-  visa:"Tryck på en punkt eller delsträcka för att se uppgifter. Välj en fastighet nedanför kartan för att se vilken väg den kör.",
-  vag:"Tryck längs vägen för att rita den. Börja eller sluta på en befintlig linje så hänger vägnätet ihop i korsningarna. Dubbeltryck eller tryck Klar när linjen är färdig. Rita varje gren som en egen linje.",
-  punkt:"Välj vad punkten gäller och tryck där fastigheten ansluter till vägen. Punkten läggs på närmaste väg. Nästa val i listan väljs automatiskt.",
-  flytta:"Dra i punkter och i vägens hörn för att flytta dem.",
+  vag:"Tryck längs vägen. Tryck Klar med linjen när du är framme. Börja nästa gren på den väg den går ut från.",
+  utfart:"Tryck där vägen ansluter till allmän väg.",
+  flytta:"Dra i punkter och i vägens hörn (vita ringar) för att flytta dem.",
   radera:"Tryck på en punkt, ett hörn eller en väglinje för att ta bort den."
 };
 function satMode(m){
   if (mode==="vag"&&m!=="vag") avslutaLinje();
   mode=m; document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",b.dataset.km===m));
-  const pv=document.getElementById("kartPunktRad"); if(pv) pv.hidden=m!=="punkt";
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=m!=="vag";
-  if (map){ (m==="vag"||m==="punkt")?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",m==="vag"||m==="punkt"); }
-  hjalp(HJALP[m]||""); rita();
+  if (map){ ["vag","utfart","ansl"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl"].includes(m)); }
+  if (steg==="vag") visaHjalp(HJALP[m]||"");
+  rita();
 }
 function rita(){
   if (!map) return; lager.clearLayers(); lagerHl.clearLayers();
-  const k=KS(), harGeo=state.segments.some(g=>g.geo&&g.geo.length>1);
-  /* Delsträckor från senaste beräkningen, annars de ritade linjerna. */
-  if (harGeo && mode!=="vag" && mode!=="flytta" && mode!=="radera"){
+  const k=KS(), redigerar=["vag","flytta","radera"].includes(mode), harGeo=!state.manuell&&state.segments.some(g=>g.geo&&g.geo.length>1);
+  if (harGeo && !redigerar){
     state.segments.forEach((g,i)=>{ if(!g.geo||g.geo.length<2) return;
-      const l=L.polyline(g.geo,{color:FARG[i%FARG.length],weight:6,opacity:.85}).addTo(lager);
+      const pek=mode==="visa";
+      const l=L.polyline(g.geo,{color:FARG[i%FARG.length],weight:6,opacity:.85,interactive:pek}).addTo(lager);
       l.bindTooltip(esc(g.id),{permanent:true,direction:"center",className:"kseg"});
-      l.bindPopup(`<b>${esc(g.id)}</b> ${esc(g.namn||"")}<br>${fmt(num(g.m))} m`); });
+      if (pek) l.bindPopup(`<b>Delsträcka ${esc(g.id)}</b><br>${esc(g.namn||"")}<br>${fmt(num(g.m))} m`,{autoPan:false}); });
   } else {
-    k.vagar.forEach(v=>{ const l=L.polyline(v.pts,{color:"#475569",weight:5,opacity:.8}).addTo(lager);
-      if (mode==="radera") l.on("click",ev=>{ L.DomEvent.stop(ev); if(confirm("Ta bort den här väglinjen?")){ k.vagar=k.vagar.filter(x=>x!==v); scheduleSave(); rita(); renderLista(); } }); });
+    k.vagar.forEach(v=>{ const l=L.polyline(v.pts,{color:"#475569",weight:6,opacity:.8,interactive:mode==="radera"}).addTo(lager);
+      if (mode==="radera") l.on("click",ev=>{ L.DomEvent.stop(ev); if(confirm("Ta bort den här väglinjen?")){ k.vagar=k.vagar.filter(x=>x!==v); andrat(); } }); });
   }
   if (ritar){ L.polyline(ritar.pts,{color:"#dc2626",weight:4,dashArray:"6 6"}).addTo(lager); ritar.pts.forEach(p=>L.circleMarker(p,{radius:4,color:"#dc2626"}).addTo(lager)); }
   if (mode==="flytta"||mode==="radera"){
     const sett=new Set();
-    k.vagar.forEach(v=>(v.pts||[]).forEach((p,i)=>{ const key=p.join(","); if(sett.has(key)) return; sett.add(key);
+    k.vagar.forEach(v=>(v.pts||[]).forEach(p=>{ const key=p.join(","); if(sett.has(key)) return; sett.add(key);
       const m=L.marker(p,{icon:L.divIcon({className:"khorn",iconSize:[14,14]}),draggable:mode==="flytta"}).addTo(lager);
-      m.on("dragend",()=>{ const q=m.getLatLng(), np=[r6(q.lat),r6(q.lng)]; k.vagar.forEach(w=>{ w.pts=w.pts.map(x=>x.join(",")===key?np:x); }); scheduleSave(); rita(); renderLista(); });
-      if (mode==="radera") m.on("click",()=>{ k.vagar.forEach(w=>{ w.pts=w.pts.filter(x=>x.join(",")!==key); }); k.vagar=k.vagar.filter(w=>w.pts.length>=2); scheduleSave(); rita(); renderLista(); }); }));
+      m.on("dragend",()=>{ const q=m.getLatLng(), np=[r6(q.lat),r6(q.lng)]; k.vagar.forEach(w=>{ w.pts=w.pts.map(x=>x.join(",")===key?np:x); }); andrat(); });
+      if (mode==="radera") m.on("click",()=>{ k.vagar.forEach(w=>{ w.pts=w.pts.filter(x=>x.join(",")!==key); }); k.vagar=k.vagar.filter(w=>w.pts.length>=2); andrat(); }); }));
   }
-  k.punkter.forEach(pt=>{
-    const ut=pt.typ==="utfart", g=pt.galler||"route";
-    const cls=ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl";
-    const txt=ut?"Utfart":pnamn(pt.prop)+(g==="skog"?" skog":g.startsWith("sk:")?" skifte":"");
-    const m=L.marker(pt.ll,{icon:ikon(cls,txt),draggable:mode==="flytta"&&!readOnly,zIndexOffset:ut?1000:500}).addTo(lager);
-    m.bindPopup(()=>`<b>${esc(gallerText(pt))}</b><br>${esc(swText(pt.ll))} (SWEREF 99 TM)<br>${fmt(pt.ll[0],5)}, ${fmt(pt.ll[1],5)} (WGS 84)${avstText(pt)}`);
-    m.on("dragend",()=>{ const q=m.getLatLng(); pt.ll=[r6(q.lat),r6(q.lng)]; scheduleSave(); renderLista(); });
-    if (mode==="radera") m.on("click",()=>{ KS().punkter=KS().punkter.filter(x=>x!==pt); scheduleSave(); rita(); renderLista(); });
+  const vis=steg==="vag" ? k.punkter.filter(p=>p.typ==="utfart") : k.punkter;
+  vis.forEach(pt=>{
+    const ut=pt.typ==="utfart", g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
+    const cls=(ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");
+    const txt=ut?"Utfart":gallerText(pt);
+    const m=L.marker(pt.ll,{icon:ikon(cls,txt),draggable:mode==="flytta"||(steg==="ansl"&&!ut),zIndexOffset:ut?1000:500}).addTo(lager);
+    if (mode==="visa") m.bindPopup(()=>`<b>${esc(gallerText(pt))}</b><br>${esc(swText(pt.ll))} (SWEREF 99 TM)${avstText(pt)}`,{autoPan:false});
+    m.on("dragend",()=>{ const q=m.getLatLng(); pt.ll=[r6(q.lat),r6(q.lng)]; andrat(); });
+    if (mode==="radera") m.on("click",()=>{ KS().punkter=KS().punkter.filter(x=>x!==pt); andrat(); });
   });
-  visaVag();
+  /* Vald fastighets väg markeras. */
+  const p=aktivt&&state.props.find(x=>x.id===aktivt.split("|")[0]);
+  if (p && steg==="ansl"){ const ids=new Set([...(p.route||[])]); state.segments.forEach(g=>{ if(ids.has(g.id)&&g.geo) L.polyline(g.geo,{color:"#facc15",weight:12,opacity:.55}).addTo(lagerHl); }); }
 }
 let natCache=null;
 function avstand(){ if(natCache) return natCache; const G=natverk(), utf=KS().punkter.filter(p=>p.typ==="utfart").map(p=>G.pnod.get(p.id)).filter(Boolean); natCache={G,D:utf.length?dijkstra(G,utf):null}; setTimeout(()=>natCache=null,0); return natCache; }
-function avstText(pt){ const {G,D}=avstand(), n=G.pnod.get(pt.id); if(!n||!D||pt.typ==="utfart") return ""; const d=D.dist.get(n); return isFinite(d)?`<br>${fmt(d/1000,3)} km längs vägen till utfarten`:"<br>Ingen väg till någon utfart"; }
-function visaVag(){
-  if (!map) return; lagerHl.clearLayers(); if(!valtVisa) return;
-  const p=state.props.find(x=>x.id===valtVisa); if(!p) return;
-  const ids=new Set([...(p.route||[]),...(p.skogRoute||[])]);
-  state.segments.forEach(g=>{ if(ids.has(g.id)&&g.geo) L.polyline(g.geo,{color:"#facc15",weight:12,opacity:.6}).addTo(lagerHl); });
-  skiften(p).forEach(s=>(s.route||[]).forEach(id=>{ const g=state.segments.find(x=>x.id===id); if(g&&g.geo) L.polyline(g.geo,{color:"#22c55e",weight:12,opacity:.45}).addTo(lagerHl); }));
-}
-function punktVal(){
-  const o=[`<option value="">Välj vad punkten gäller …</option>`,`<option value="utfart">Utfart till ${esc(utfartOf())}</option>`];
+function avstText(pt){ if(pt.typ==="utfart") return ""; const {G,D}=avstand(), n=G.pnod.get(pt.id); if(!n||!D) return ""; const d=D.dist.get(n); return isFinite(d)?`<br>${fmt(d/1000,3)} km längs vägen till ${esc(utfartOf())}`:"<br>Ingen väg till utfarten"; }
+/* Vad som ska sättas ut: en punkt per fastighet, plus skog och skiften som nås från ett annat ställe. */
+function mal(){
+  const k=KS(), ut=[];
   [...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv")).forEach(p=>{ const t=typOf(p); if(t==="annan") return;
-    o.push(`<option value="${p.id}|route">${esc(p.namn||"Namnlös")}${t==="jord"?": gården":""}</option>`);
-    if (["kombi","jord","skog"].includes(t)&&t!=="skog") o.push(`<option value="${p.id}|skog">${esc(p.namn||"Namnlös")}: skogen (om den nås en annan väg)</option>`);
-    if (t==="jord") skiften(p).filter(s=>s.plats&&s.plats!=="bc").forEach(s=>o.push(`<option value="${p.id}|sk:${s.id}">${esc(p.namn||"Namnlös")}: ${esc(s.namn||"skifte")}</option>`)); });
-  return o.join("");
+    const has=g=>k.punkter.find(x=>x.prop===p.id&&(x.galler||"route")===g);
+    ut.push({val:p.id+"|route", p, namn:p.namn||"Namnlös", del:"", pt:has("route")});
+    if (["kombi","jord","skog"].includes(t)&&p.skogEgen) ut.push({val:p.id+"|skog", p, namn:p.namn||"Namnlös", del:"skogen", pt:has("skog")});
+    if (t==="jord") skiften(p).filter(s=>s.plats&&s.plats!=="bc").forEach(s=>ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:s.namn||"skifte", pt:has("sk:"+s.id)}));
+  });
+  ut.forEach(m=>m.satt=!!m.pt); return ut;
 }
+window.kartaStatus=p=>{ const pt=KS().punkter.find(x=>x.prop===p.id&&(x.galler||"route")==="route"); if(!pt) return {satt:false};
+  const {G,D}=avstand(), n=G.pnod.get(pt.id), d=n&&D?D.dist.get(n):NaN; return {satt:true, km:isFinite(d)?d/1000:0}; };
 function renderLista(){
-  const el=document.getElementById("kartLista"); if(!el) return;
-  const k=KS(), {G,D}=avstand();
-  const sel=document.getElementById("kartPunktVal"); if(sel){ const v=sel.value; sel.innerHTML=punktVal(); sel.value=v; }
-  const vs=document.getElementById("kartVisa"); if(vs){ vs.innerHTML=`<option value="">Ingen</option>`+[...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv")).map(p=>`<option value="${p.id}">${esc(p.namn||"Namnlös")}</option>`).join(""); vs.value=valtVisa; }
-  const totM=k.vagar.reduce((s,v)=>s+(v.pts||[]).reduce((t,p,i,a)=>i?t+hav(a[i-1],p):t,0),0);
-  const rader=k.punkter.map(pt=>{ const n=G.pnod.get(pt.id), d=n&&D?D.dist.get(n):NaN;
-    return `<li><div><b>${esc(gallerText(pt))}</b><small>${esc(swText(pt.ll))}${pt.typ!=="utfart"?(isFinite(d)?` · ${fmt(d/1000,3)} km till utfarten`:" · ingen väg till utfart"):""}</small></div>
-      <span class="row"><button type="button" class="ghost small" data-kvisa="${pt.id}">Visa</button>${readOnly?"":`<button type="button" class="ghost small admin" data-kdel="${pt.id}">Ta bort</button>`}</span></li>`; });
-  const saknar=state.props.filter(p=>typOf(p)!=="annan"&&!k.punkter.some(x=>x.prop===p.id&&(x.galler||"route")==="route"));
-  el.innerHTML=`<p class="hint">Ritad väg ${fmt(Math.round(totM))} m i ${k.vagar.length} ${k.vagar.length===1?"linje":"linjer"}. ${k.punkter.filter(p=>p.typ==="utfart").length} utfart, ${k.punkter.filter(p=>p.typ!=="utfart").length} anslutningspunkter.</p>
-    ${saknar.length&&!readOnly?`<p class="notice">Saknar anslutningspunkt: ${esc(saknar.map(p=>p.namn||"Namnlös").join(", "))}.</p>`:""}
-    ${rader.length?`<ul class="kpunkter">${rader.join("")}</ul>`:""}`;
-}
-function renderForslag(f){
-  const el=document.getElementById("kartForslag"); if(!el) return;
-  if (!f){ el.innerHTML=""; return; }
-  if (f.fel){ el.innerHTML=`<p class="notice">${esc(f.fel)}</p>`; return; }
-  const km=ids=>(ids||[]).reduce((s,id)=>{ const g=f.segs.find(x=>x.id===id); return s+(g?g.m:0); },0)/1000;
-  const rows=state.props.filter(p=>typOf(p)!=="annan").map(p=>{ const r=f.routes.get(p.id)||{};
-    return `<tr><td>${esc(p.namn||"Namnlös")}</td><td class="num">${fmt(segKm(p.route),3)} km</td><td class="num"><b>${fmt(km(r.route),3)} km</b></td><td>${esc((r.route||[]).join(", "))}</td></tr>`; }).join("");
-  el.innerHTML=`<div class="panel kforslag"><h3>Förslag från kartan</h3>
-    <p class="hint">${f.segs.length} delsträckor, sammanlagt ${fmt(f.segs.reduce((s,g)=>s+g.m,0))} m. A ligger närmast utfarten. Längderna är mätta längs de ritade linjerna.</p>
-    ${f.varn.map(v=>`<p class="notice">${esc(v)}</p>`).join("")}
-    <div class="scroll"><table class="tbl"><thead><tr><th>Fastighet</th><th class="num">Väglängd nu</th><th class="num">Enligt kartan</th><th>Delsträckor</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <div class="scroll"><table class="tbl"><thead><tr><th>Delsträcka</th><th>Mellan</th><th class="num">Meter</th></tr></thead><tbody>${f.segs.map(g=>`<tr><td>${esc(g.id)}</td><td>${esc(g.namn)}</td><td class="num">${fmt(g.m)}</td></tr>`).join("")}</tbody></table></div>
-    <p class="hint">När du använder förslaget ersätts delsträckorna och fastigheternas vägval. Skogens och skiftenas vägar räknas också fram om de har egna punkter.</p>
-    <div class="row"><button type="button" id="kartTillampa">Använd förslaget</button><button type="button" class="ghost" id="kartAvbryt">Avbryt</button></div></div>`;
+  const el=document.getElementById("anslLista");
+  if (el){
+    const m=mal(), {G,D}=avstand(), klara=m.filter(x=>x.satt).length;
+    if (!aktivt || !m.some(x=>x.val===aktivt)) aktivt=(m.find(x=>!x.satt)||{}).val||"";
+    el.innerHTML = !KS().vagar.length ? `<p class="notice">Rita vägen och sätt ut utfarten i steg 3 först.</p>`
+      : !m.length ? `<p class="empty">Inga fastigheter ännu. Lägg in dem i steg 2.</p>`
+      : `<p class="hint">${klara} av ${m.length} utsatta.</p><div class="anslrader">${m.map(x=>{ const n=x.pt&&G.pnod.get(x.pt.id), d=n&&D?D.dist.get(n):NaN;
+        return `<div class="anslrad${x.val===aktivt?" on":""}${x.satt?" klar":""}"><button type="button" class="anslval" data-mal="${esc(x.val)}"><strong>${esc(x.namn)}${x.del?` – ${esc(x.del)}`:""}</strong><small>${x.satt?(isFinite(d)?`Utsatt · ${fmt(d/1000,3)} km till ${esc(utfartOf())}`:"Utsatt · hittar ingen väg till utfarten"):(x.val===aktivt?"Tryck på kartan nu":"Inte utsatt")}</small></button>
+          ${x.satt?`<button type="button" class="ghost small" data-maldel="${esc(x.val)}">Ta bort</button>`:""}</div>`; }).join("")}</div>`;
+    const a=document.getElementById("anslAktiv");
+    if (a && steg==="ansl"){ const x=m.find(y=>y.val===aktivt); a.hidden=!x; a.textContent=x?`Tryck på kartan där ${x.namn}${x.del?` (${x.del})`:""} ansluter till vägen.`:""; if(!x&&m.length&&klara===m.length){ a.hidden=false; a.textContent="Alla är utsatta. Gå vidare till Resultat."; } }
+  }
+  const si=document.getElementById("segInfo"), k=KS();
+  if (si){
+    const tot=state.segments.reduce((s,g)=>s+num(g.m),0), f=senaste||(kartlage()&&k.vagar.length?forslag():null);
+    si.innerHTML = state.manuell ? "Du anger delsträckorna och fastigheternas vägval för hand. Längderna mäter du själv, till exempel på en karta."
+      : !k.vagar.length ? "Rita vägen på kartan ovanför så räknas delsträckorna fram här."
+      : f&&f.fel ? esc(f.fel)
+      : `Framräknat från kartan: ${state.segments.length} delsträckor, sammanlagt ${fmt(tot)} m. A ligger närmast ${esc(utfartOf())}.`+((f&&f.varn||[]).filter(v=>/hänger inte ihop|ingen väg till/.test(v)).map(v=>`<br><b>${esc(v)}</b>`).join(""));
+  }
+  const mc=document.getElementById("manuell"); if(mc) mc.checked=!!state.manuell;
+  const st=document.getElementById("segtable");
+  if (st){ const las=kartlage()&&k.vagar.length>0; st.querySelectorAll("input").forEach(i=>i.disabled=las); st.querySelectorAll("[data-segdel]").forEach(b=>b.hidden=las); const ad=document.getElementById("addSeg"); if(ad) ad.hidden=las; }
 }
 async function exportera(){
   const k=KS(), fs=[];
   k.vagar.forEach(v=>fs.push({type:"Feature",geometry:{type:"LineString",coordinates:v.pts.map(p=>[p[1],p[0]])},properties:{typ:"väg"}}));
   k.punkter.forEach(pt=>fs.push({type:"Feature",geometry:{type:"Point",coordinates:[pt.ll[1],pt.ll[0]]},properties:{typ:pt.typ,fastighet:pt.prop?pnamn(pt.prop):"",galler:pt.galler||"",beskrivning:gallerText(pt)}}));
   state.segments.forEach(g=>{ if(g.geo) fs.push({type:"Feature",geometry:{type:"LineString",coordinates:g.geo.map(p=>[p[1],p[0]])},properties:{typ:"delsträcka",id:g.id,namn:g.namn,meter:num(g.m)}}); });
-  const blob=new Blob([JSON.stringify({type:"FeatureCollection",features:fs},null,1)],{type:"application/geo+json"});
-  const dl=await claude.use("downloads"); if(dl) await dl.save({filename:"vagnat.geojson",data:blob});
+  sparaFil("vagnat.geojson",new Blob([JSON.stringify({type:"FeatureCollection",features:fs},null,1)],{type:"application/geo+json"}));
 }
 function importera(text){
   let gj; try{ gj=JSON.parse(text); }catch(e){ setStatus("Filen är inte GeoJSON.",true); return; }
@@ -310,7 +316,7 @@ function importera(text){
       if (String(pr.typ||"").toLowerCase()==="utfart"){ k.punkter.push({id:uid(),typ:"utfart",ll}); np++; return; }
       const namn=String(pr.fastighet||pr.namn||pr.name||"").trim(), p=state.props.find(x=>String(x.namn).trim().toLowerCase()===namn.toLowerCase());
       if (p){ const galler=pr.galler||"route"; k.punkter=k.punkter.filter(x=>!(x.prop===p.id&&(x.galler||"route")===galler)); k.punkter.push({id:uid(),typ:"anslutning",prop:p.id,galler,ll}); np++; } else ej++; } });
-  scheduleSave(); rita(); passa(); renderLista();
+  andrat(); passa();
   setStatus(`Inläst: ${nv} väglinjer och ${np} punkter${ej?`, ${ej} punkter utan känd fastighet hoppades över`:""}.`, !!ej);
 }
 
@@ -320,27 +326,29 @@ document.addEventListener("click",e=>{
   if (b.dataset.km){ satMode(mode===b.dataset.km?"visa":b.dataset.km); return; }
   if (b.id==="kartKlarBtn"){ avslutaLinje(); return; }
   if (b.id==="kartAngra"){ if(ritar){ ritar.pts.pop(); if(!ritar.pts.length) ritar=null; rita(); } return; }
-  if (b.dataset.kvisa){ const pt=KS().punkter.find(x=>x.id===b.dataset.kvisa); if(pt&&map){ map.setView(pt.ll,Math.max(map.getZoom(),16)); document.getElementById("karta").scrollIntoView({behavior:"smooth",block:"center"}); } return; }
-  if (b.dataset.kdel){ KS().punkter=KS().punkter.filter(x=>x.id!==b.dataset.kdel); scheduleSave(); rita(); renderLista(); return; }
-  if (b.id==="kartBerakna"){ sistaForslag=forslag(); renderForslag(sistaForslag); document.getElementById("kartForslag").scrollIntoView({behavior:"smooth",block:"start"}); return; }
-  if (b.id==="kartTillampa"&&sistaForslag&&!sistaForslag.fel){ tillampa(sistaForslag); sistaForslag=null; renderForslag(null); setStatus("Delsträckor och vägval är uppdaterade från kartan."); return; }
-  if (b.id==="kartAvbryt"){ sistaForslag=null; renderForslag(null); return; }
+  if (b.dataset.mal){ aktivt=b.dataset.mal; renderLista(); rita(); const x=mal().find(y=>y.val===aktivt); if(x&&x.pt&&map) map.panTo(x.pt.ll); document.getElementById("karta").scrollIntoView({behavior:"smooth",block:"center"}); return; }
+  if (b.dataset.maldel){ const [prop,g]=b.dataset.maldel.split("|"); KS().punkter=KS().punkter.filter(x=>!(x.prop===prop&&(x.galler||"route")===g)); aktivt=b.dataset.maldel; andrat(); return; }
   if (b.id==="kartExport"){ exportera(); return; }
   if (b.id==="kartMinPos"){ if(!navigator.geolocation){ setStatus("Enheten kan inte visa position.",true); return; }
-    navigator.geolocation.getCurrentPosition(p=>{ const ll=[r6(p.coords.latitude),r6(p.coords.longitude)]; map.setView(ll,17);
-      if (mode==="punkt"&&$("#kartPunktVal").value) satPunkt($("#kartPunktVal").value,ll); },()=>setStatus("Kunde inte hämta position.",true),{enableHighAccuracy:true,timeout:15000}); return; }
-  if (b.id==="kartKoordBtn"){ const ll=lasKoordinat($("#kartKoord").value); if(!ll){ setStatus("Kunde inte läsa koordinaten. Skriv till exempel 6555123 598765 eller 59,1234 16,5678.",true); return; }
-    map.setView(ll,17); const v=$("#kartPunktVal").value; if(v&&!readOnly){ satPunkt(v,[r6(ll[0]),r6(ll[1])]); } return; }
+    navigator.geolocation.getCurrentPosition(p=>{ const ll=[r6(p.coords.latitude),r6(p.coords.longitude)]; if(map) map.setView(ll,17); if(aktivt) satPunkt(aktivt,ll); },()=>setStatus("Kunde inte hämta position.",true),{enableHighAccuracy:true,timeout:15000}); return; }
+  if (b.id==="kartKoordBtn"){ const ll=lasKoordinat($("#kartKoord").value); if(!ll){ setStatus("Kunde inte läsa koordinaten. Skriv till exempel 6555123 598765 eller 59,1234 16,5678.",true); return; } if(map) map.setView(ll,16); return; }
 });
 document.addEventListener("change",e=>{
-  if (e.target.id==="kartVisa"){ valtVisa=e.target.value; visaVag(); if(valtVisa){ const p=state.props.find(x=>x.id===valtVisa), pts=KS().punkter.filter(x=>x.prop===valtVisa); if(pts.length&&map) map.setView(pts[0].ll,Math.max(map.getZoom(),15)); } }
   if (e.target.id==="kartImport"&&e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>importera(fr.result); fr.readAsText(e.target.files[0]); e.target.value=""; }
+  if (e.target.dataset&&(e.target.dataset.f==="skogEgen"||e.target.dataset.skf==="plats")) andrat();
 });
-/* Kartan startas när fliken öppnas och ritas om när uppgifterna ändras. */
-const panel=document.getElementById("tab-karta");
-if (panel) new MutationObserver(()=>{ if(!panel.hidden) setTimeout(()=>{ initKarta(); renderLista(); },30); }).observe(panel,{attributes:true,attributeFilter:["hidden"]});
+/* Kartan flyttas till det steg som visas. */
+window.kartaSteg=function(s){
+  steg=s; const plats=document.querySelector(`[data-kartplats="${s}"]`), el=document.getElementById("karta");
+  if (!plats||!el){ if(mode==="vag") avslutaLinje(); return; }
+  plats.appendChild(el);
+  mode = s==="ansl" ? "ansl" : "visa";
+  document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",false));
+  const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=true;
+  visaHjalp(""); setTimeout(()=>{ initKarta(); if(map){ map.invalidateSize(); satMode(mode); } renderLista(); },30);
+};
 const orig=window.renderAll;
-window.renderAll=function(){ orig(); if(map){ rita(); } renderLista(); };
-window.kartaTest={natverk,forslag,tillampa,dijkstra,lasKoordinat,GK,satPunkt,avslutaLinje,get map(){return map;}};
-setTimeout(()=>{ if(panel&&!panel.hidden){ initKarta(); } renderLista(); satMode("visa"); },50);
+window.renderAll=function(){ orig(); if(map) rita(); renderLista(); };
+window.kartaTest={natverk,forslag,tillampa,dijkstra,lasKoordinat,GK,satPunkt,avslutaLinje,mal,get map(){return map;}};
+if (typeof openTab!=="undefined") window.kartaSteg(openTab);
 })();

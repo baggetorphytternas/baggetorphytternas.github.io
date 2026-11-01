@@ -282,8 +282,14 @@ function segBoxes(p, key){
 }
 function renderPick(){
   if (!state.props.find(p=>p.id===selected)) selected = state.props[0]?.id ?? null;
+  const el=document.getElementById("propList"); if(!el) return;
   const sorted=[...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv"));
-  $("#pick").innerHTML = sorted.map(p=>`<option value="${p.id}" ${p.id===selected?"selected":""}>${esc(p.namn||"Namnlös")}</option>`).join("") || `<option value="">Inga fastigheter</option>`;
+  const {rows}=calc();
+  el.innerHTML = sorted.length ? sorted.map(p=>{ const r=rows.find(x=>x.p===p), ks=window.kartaStatus?window.kartaStatus(p):null, v=varningar(p,r).length;
+    const lab=(TYPER.find(x=>x[0]===typOf(p))||[,""])[1].replace(/ \(.*\)$/,"");
+    return `<button type="button" class="vkprop${p.id===selected?" on":""}" data-valj="${p.id}"><strong>${esc(p.namn||"Namnlös")}</strong>${p.beteckning&&p.beteckning!==p.namn?`<small>${esc(p.beteckning)}</small>`:""}<small>${esc(lab)}</small>
+      <span class="vkstat">${!state.manuell&&typOf(p)!=="annan"?(ks&&ks.satt?`<span class="ok">Ansluten</span>`:`<span class="saknas">Ej ansluten</span>`):""}${v?`<span class="saknas">Kontrollera</span>`:""}</span></button>`; }).join("")
+    : `<p class="empty">Inga fastigheter ännu. Läs in en fastighetslista eller lägg till fastigheter.</p>`;
 }
 const TYPER=[
   ["perm","Permanentbostad (villa, radhus, kedjehus)","Bostad"],["frit","Fritidsbostad (även fasta ställplatser och villavagnar)","Bostad"],
@@ -354,10 +360,6 @@ const MALLAR={
 };
 const MALL_FOR={kombi:["kombi","hastbesok"],jord:["hastbesok","djur","kombi"],egen:["skola","golf","camping","hotell","friluft","idrott","samling","kyrka","aldre","butik","rening"]};
 let editProp=null;
-document.addEventListener("click", e=>{
-  const u=e.target.closest("[data-unlock]"); if(u){ editProp=u.dataset.unlock; renderCards(); const f=document.getElementById("namn-"+editProp); if(f) f.focus(); return; }
-  if (e.target.closest("[data-lock]")){ editProp=null; renderCards(); renderSummary(); }
-});
 const fld=(p,f,label,mode="decimal",extra="")=>`<label for="${f}-${p.id}">${label}<input id="${f}-${p.id}" inputmode="${mode}" data-p="${p.id}" data-f="${f}" value="${esc(String(p[f]??"").replace(".",","))}"${extra}></label>`;
 const sel=(p,f,label,opts,def)=>`<label for="${f}-${p.id}">${label}<select id="${f}-${p.id}" data-p="${p.id}" data-f="${f}">${opts.map(([v,l])=>`<option value="${v}" ${String(p[f]??def)===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label>`;
 const chk=(p,f,label)=>`<label class="check" for="${f}-${p.id}"><input type="checkbox" id="${f}-${p.id}" data-p="${p.id}" data-f="${f}" ${p[f]?"checked":""}>${label}</label>`;
@@ -412,7 +414,7 @@ function skiftenBlock(p){
       <div class="grid2">${f(s,"aker","Åker, ha")}${f(s,"bete","Bete, ha")}</div>
       <label for="skplats-${s.id}">Var ligger skiftet<select id="skplats-${s.id}" data-sk="${id}|${s.id}" data-skf="plats">${[["bc","Vid brukningscentrum (inga interna transporter)"],["inom","Annat ställe inom området"],["utanfor","Utanför området, nås via vägen"]].map(([v,l])=>`<option value="${v}" ${(s.plats||"bc")===v?"selected":""}>${l}</option>`).join("")}</select></label>
       <label class="check" for="skfu-${s.id}"><input type="checkbox" id="skfu-${s.id}" data-sk="${id}|${s.id}" data-skf="fu" ${s.fu===false?"":"checked"}>Skörden körs till brukningscentrum (åkern ingår i företagsutfarten)</label>
-      ${s.plats&&s.plats!=="bc"?`<label>Interna transporter mellan brukningscentrum och skiftet kör på delsträckor</label><div class="segs">${segBoxes(p,"sk:"+s.id)}</div>`:""}
+      ${s.plats&&s.plats!=="bc"?(state.manuell?`<label>Interna transporter mellan brukningscentrum och skiftet kör på delsträckor</label><div class="segs">${segBoxes(p,"sk:"+s.id)}</div>`:`<p class="hint">Var skiftet ansluter till vägen sätter du ut i steg 4. Transporterna räknas på vägen mellan gården och skiftet.</p>`):""}
     </div>`).join("")}
     <div class="row"><button type="button" class="ghost small" data-addsk="${id}">Lägg till skifte</button></div>
     <p class="hint">Företagsutfart: under ${O.grans} ha åker ${O.t8} ton per ha, annars ${fmt(O.t9[0])} ton + ${O.t9[1]} ton per ha. Interna transporter: ${O.t7[0]} ton per ha åker och ${O.t7[1]} ton per ha bete. (${esc(O.namn)})</p>
@@ -423,7 +425,7 @@ function renderCards(){
   renderPick();
   const S=state.schablon, O=omrOf();
   $("#cards").innerHTML = state.props.filter(p=>p.id===selected).map(p=>{
-    const t=typOf(p), ed=editProp===p.id;
+    const t=typOf(p);
     const harSkog=["kombi","jord","skog"].includes(t);
     const grupper=[...new Set(TYPER.map(x=>x[2]))];
     const nivOpt=[["",`Samma som området (${NIV[S.fritNiva||"normal"]})`],["intensiv","Intensiv – veckoslut året runt (1 800 ton)"],["normal","Normal – sommar och veckoslut apr–sep (900 ton)"],["lag","Låg – 4–5 veckor per år (450 ton)"]];
@@ -455,21 +457,23 @@ function renderCards(){
     if (t==="jarnvag") f+=`<fieldset class="fs"><legend>Järnvägsfastighet</legend>${sel(p,"jarnvagTyp","Anläggning",[["signal","Signalanläggning (800 ton)"],["ovrig","Övriga anläggningar (600 ton)"]],"ovrig")}</fieldset>`;
     if (t==="kombi"||t==="jord"||t==="egen") f+=raderBlock(p,t);
     if (t==="annan") f+=`<fieldset class="fs"><legend>Fast andel</legend>${fld(p,"fast","Andel i procent")}</fieldset>`;
+    const kartlage=!state.manuell, ks=window.kartaStatus?window.kartaStatus(p):null;
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
-      <label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
-      ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>
-      ${chk(p,"skogJamn","Skogen ligger jämnt utmed sträckan (medelavstånd)")}`:""}
+      ${kartlage?`<p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Var fastigheten ansluter till vägen sätter du ut i steg 4, Anslutningar.`}</p>
+        ${harSkog?chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården (sätts ut i steg 4)"):""}`
+      :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
+        ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>`:""}`}
+      ${harSkog?chk(p,"skogJamn","Skogen ligger utspridd jämnt längs vägen (räkna med medelavståndet)"):""}
       ${chk(p,"direkt","Direktutfart till allmän väg (minsta väglängd och reduktionsfaktor, PM 3.1.4)")}
       ${p.direkt?sel(p,"direktFaktor","Reduktionsfaktor",[["0.5","0,5 – gemensamma nyttigheter i normal omfattning"],["0.3","0,3 – gemensamma nyttigheter i mindre omfattning"]],"0.5"):""}
     </fieldset>`;
-    return `<div class="panel card${ed?" editing":""}" data-card="${p.id}">
-    <div class="card-head">
-      ${ed?`<input id="namn-${p.id}" aria-label="Fastighetens namn" data-p="${p.id}" data-f="namn" value="${esc(p.namn)}">`:`<h3 class="pname">${esc(p.namn)}</h3>`}
-      ${ed?`<button type="button" data-lock="1">Klar</button>`:`<button type="button" class="ghost" data-unlock="${p.id}">Redigera</button>`}
+    return `<div class="panel card editing" data-card="${p.id}">
+    <div class="grid2">
+      <label for="namn-${p.id}">Fastighetens namn<input id="namn-${p.id}" data-p="${p.id}" data-f="namn" value="${esc(p.namn)}"></label>
+      <label for="bet-${p.id}">Fastighetsbeteckning<input id="bet-${p.id}" data-p="${p.id}" data-f="beteckning" value="${esc(p.beteckning??"")}" placeholder="t.ex. Exempelby 1:5"></label>
     </div>
-    ${ed?"":`<p class="hint">Tryck på Redigera för att ändra uppgifterna.</p>`}
     <div id="vkn-${p.id}"></div>
-    <fieldset class="lockwrap" ${ed?"":"disabled"}>
+    <fieldset class="lockwrap">
     <label for="typ-${p.id}">Typ av fastighet<select id="typ-${p.id}" data-typ="${p.id}">${grupper.map(g=>`<optgroup label="${g}">${TYPER.filter(x=>x[2]===g).map(([v,l])=>`<option value="${v}" ${v===t?"selected":""}>${esc(l)}</option>`).join("")}</optgroup>`).join("")}</select></label>
     <p class="hint">${esc(typHjalp(t))}</p>
     ${f}${vag}
@@ -477,7 +481,7 @@ function renderCards(){
       <label for="andelNu-${p.id}">Nuvarande andel, % (om fastigheten redan har ett andelstal)<input id="andelNu-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="andelNu" value="${esc(String(p.andelNu??"").replace(".",","))}"></label>
       <label for="note-${p.id}">Anteckning (syns bara här)<textarea id="note-${p.id}" rows="2" data-p="${p.id}" data-f="note">${esc(p.note)}</textarea></label>
     </details>
-    ${ed?`<div class="row"><button type="button" class="danger" data-del="${p.id}">Ta bort fastigheten</button></div>`:""}
+    <div class="row"><button type="button" class="danger" data-del="${p.id}">Ta bort fastigheten</button></div>
     </fieldset>
     <div class="calc" id="calc-${p.id}"></div>
   </div>`; }).join("");
@@ -546,11 +550,29 @@ function renderSchablon(){
 }
 function renderAll(){ renderCards(); renderSegments(); renderSchablon(); const u=document.getElementById("utdeb"); if(u && document.activeElement!==u) u.value = state.schablon.utdebitering ?? ""; renderSummary(); }
 
-let openTab="edit";
+const STEG=[["omrade","Området","Ange vägens namn och var den ansluter, och välj områden för jordbruk och skog. Det styr vilka schablonvärden som används."],
+  ["fast","Fastigheter","Lägg in alla fastigheter som har del i vägen. Välj typ för varje fastighet och fyll i uppgifterna. Tryck på en fastighet för att ändra den."],
+  ["vag","Vägen","Rita vägen på kartan och sätt ut var den ansluter till allmän väg. Delsträckor och längder räknas fram automatiskt."],
+  ["ansl","Anslutningar","Visa var varje fastighet ansluter till vägen. Då vet verktyget hur långt varje fastighet kör."],
+  ["res","Resultat","Andelstalen för varje fastighet. Tryck på en fastighet för att se hur den är räknad."]];
+let openTab=(()=>{ try{ return localStorage.getItem("andelstal_steg")||"omrade"; }catch(e){ return "omrade"; } })();
 function renderTabs(){
-  document.querySelectorAll(".tab").forEach(b=>{ const on=b.dataset.tab===openTab; b.setAttribute("aria-selected",on?"true":"false"); b.setAttribute("aria-expanded",on?"true":"false"); });
-  document.querySelectorAll(".tabpanel").forEach(p=>{ p.hidden = p.id!=="tab-"+openTab; });
+  if (!STEG.some(x=>x[0]===openTab)) openTab="omrade";
+  const st=STEG.find(x=>x[0]===openTab), i=STEG.indexOf(st);
+  document.querySelectorAll("[data-steg]").forEach(b=>{ const on=b.dataset.steg===openTab; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
+  document.querySelectorAll(".steg").forEach(p=>{ p.hidden = p.id!=="steg-"+openTab; });
+  $("#stegForra").hidden=i===0; $("#stegNasta").hidden=i===STEG.length-1;
+  if (i<STEG.length-1) $("#stegNasta").textContent=`Nästa: ${STEG[i+1][1]} →`;
+  try{ localStorage.setItem("andelstal_steg",openTab); }catch(e){}
+  if (window.kartaSteg) window.kartaSteg(openTab);
 }
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-steg],#stegForra,#stegNasta,[data-valj]"); if(!b) return;
+  if (b.dataset.valj){ selected=b.dataset.valj; renderCards(); renderSummary(); const c=document.getElementById("cards"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  const i=STEG.findIndex(x=>x[0]===openTab);
+  openTab = b.dataset.steg || STEG[Math.max(0,Math.min(STEG.length-1,i+(b.id==="stegNasta"?1:-1)))][0];
+  renderTabs(); window.scrollTo({top:0,behavior:"smooth"});
+});
 /* ---------- events ---------- */
 document.addEventListener("input", e=>{
   const t=e.target;
@@ -581,24 +603,23 @@ document.addEventListener("input", e=>{
 const OMRITA=["direkt","frit","mjolk","boxar","hastEgna","hastInack","skogHa","skogFjallHa","skogRestrHa","arealHa","akerHa","beteHa","gods","antalAnl"];
 document.addEventListener("change", e=>{ const f=e.target.dataset.f; if(OMRITA.includes(f)||e.target.dataset.skf==="plats"){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, pos=a&&a.selectionStart; renderCards(); renderSummary(); const n=id&&document.getElementById(id); if(n){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(x){} } },0); } if(["prodOmr","tillvOmr","fritNiva","utfart"].includes(e.target.dataset.s)){ renderSchablon(); renderCards(); renderSummary(); } });
 document.addEventListener("change", e=>{ if (e.target.dataset.sf==="id"||e.target.dataset.sf==="namn") renderCards(), renderSummary(); if (e.target.dataset.f==="namn") renderPick(); });
-document.addEventListener("change", e=>{ if(e.target.id==="pick"){ selected=e.target.value; editProp=null; renderCards(); renderSummary(); } });
+
 document.addEventListener("click", e=>{
   const tr=e.target.closest("#summary tbody tr[data-row]");
-  if (tr){ selected=tr.dataset.row; openTab="edit"; renderTabs(); renderCards(); renderSummary(); document.getElementById("pick").scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  if (tr){ selected=tr.dataset.row; renderSummary(); visaDetalj(); return; }
   const t=e.target.closest("button"); if(!t) return;
   if (t.id==="pdf"){ makePdf(); return; }
-  if (t.dataset.tab){ openTab = openTab===t.dataset.tab ? null : t.dataset.tab; renderTabs(); return; }
   if (t.dataset.del){
     if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort fastigheten";}},3000); return; }
-    state.props=state.props.filter(p=>p.id!==t.dataset.del); selected=null; editProp=null; renderCards(); renderSummary(); scheduleSave();
+    state.props=state.props.filter(p=>p.id!==t.dataset.del); if(state.karta&&state.karta.punkter) state.karta.punkter=state.karta.punkter.filter(x=>x.prop!==t.dataset.del); selected=null; renderPick(); renderCards(); renderSummary(); scheduleSave();
   } else if (t.dataset.segdel!==undefined){
     if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Bekräfta"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort";}},3000); return; }
     const g=state.segments.splice(+t.dataset.segdel,1)[0];
     mapRoutes(r=>r.filter(x=>x!==g.id));
     renderAll(); scheduleSave();
   } else if (t.id==="addProp"){
-    const p={id:uid(),namn:"Ny fastighet",typ:"perm",perm:1,frit:0,fritNiva:"",akerHa:0,beteHa:0,skogHa:0,route:[],skogRoute:[],skogJamn:false,fast:"",note:""};
-    state.props.push(p); selected=p.id; editProp=p.id; renderCards(); renderSummary(); scheduleSave();
+    const p=nyFastighet("Ny fastighet","");
+    state.props.push(p); selected=p.id; renderCards(); renderSummary(); scheduleSave();
     const el=document.getElementById("namn-"+p.id); if(el){ el.focus(); el.select(); }
   } else if (t.dataset.addsk){
     const p=state.props.find(x=>x.id===t.dataset.addsk); if(!p) return;
@@ -624,14 +645,16 @@ document.addEventListener("click", e=>{
 });
 
 
-/* ---------- read only ---------- */
-let readOnly=true;
-function applyReadOnly(){
-  document.getElementById("readonly").hidden=!readOnly;
-  document.body.classList.toggle("is-admin",!readOnly);
-  ["tabbtn-edit","tabbtn-segs","tabbtn-schab"].forEach(id=>{ const b=document.getElementById(id); if(b) b.hidden=readOnly; });
-  if (readOnly && openTab!=="karta"){ openTab="karta"; renderTabs(); }
+/* Verktyget är fristående: allt går att ändra, och arbetet sparas i webbläsaren och som projektfil. */
+const readOnly=false;
+function applyReadOnly(){}
+function nyFastighet(namn,bet){ return {id:uid(),namn,beteckning:bet||"",typ:"perm",perm:1,frit:0,fritNiva:"",akerHa:0,beteHa:0,skogHa:0,route:[],skogRoute:[],skogJamn:false,fast:"",note:""}; }
+function visaDetalj(){
+  const el=document.getElementById("resDetalj"); if(!el) return;
+  const r=calc().rows.find(x=>x.p.id===selected); if(!r){ el.innerHTML=""; return; }
+  el.innerHTML=`<div class="panel"><div class="ph"><h2>${esc(r.p.namn||"Namnlös")}</h2><button type="button" class="ghost small" data-gaFast="${r.p.id}">Ändra uppgifterna</button></div>${varningar(r.p,r).map(x=>`<p class="notice">${esc(x)}</p>`).join("")}<div class="calc">${esc(calcText(r))}</div></div>`;
 }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-gaFast],[data-gafast]"); if(!b) return; selected=b.dataset.gafast||b.dataset.gaFast; openTab="fast"; renderTabs(); renderCards(); renderSummary(); });
 
 /* ---------- PDF ---------- */
 const NBSP=/ | /g;
@@ -732,9 +755,7 @@ async function makePdf(){
     const pages=doc.getNumberOfPages();
     for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText((foreningOf()?foreningOf()+" · ":"")+"Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
     const blob=doc.output("blob");
-    const dl=await claude.use("downloads");
-    if (!dl) throw {code:"unavailable"};
-    await dl.save({filename:"Förslag nya andelstal"+(foreningOf()?" "+foreningOf():"")+".pdf",data:blob});
+    sparaFil("Förslag nya andelstal"+(foreningOf()?" "+foreningOf():"")+".pdf",blob);
     setStatus("PDF skapad");
   }catch(e){
     if (e && e.code==="declined") setStatus("PDF sparades inte");
@@ -742,44 +763,72 @@ async function makePdf(){
     else setStatus("Kunde inte skapa PDF. Ladda om sidan och försök igen.",true);
   }finally{ btn.disabled=false; btn.innerHTML=old; }
 }
-/* ---------- storage ---------- */
-function scheduleSave(){
-  if (readOnly) return;
-  dirty=true; if(!ref){ setStatus("Sparas inte: lagringen är inte tillgänglig i den här vyn.",true); return; }
-  setStatus("Osparade ändringar…"); clearTimeout(saveTimer); saveTimer=setTimeout(save,900);
+/* ---------- lagring: webbläsaren och projektfiler ---------- */
+const LS="andelstal_projekt";
+function sparaFil(filename,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
+function scheduleSave(){ dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(save,400); }
+function save(){
+  try{ localStorage.setItem(LS,JSON.stringify(state)); dirty=false; visaNamn(); }
+  catch(e){ setStatus("Kunde inte spara i webbläsaren. Spara projektet som fil.",true); }
 }
-async function save(){
-  if (saving){ scheduleSave(); return; }
-  saving=true; dirty=false;
-  try{ await ref.set(JSON.parse(JSON.stringify(state))); setStatus("Sparat"); }
-  catch(err){
-    if (err && err.code==="unavailable"){ setTimeout(save, 1500+Math.random()*1000); }
-    else setStatus(err && err.code==="invalid_argument" ? "Du har inte behörighet att ändra, bara att läsa." : "Kunde inte spara. Försök igen om en stund.", true);
-  } finally { saving=false; }
-  if (pendingRemote && !dirty){ applyRemote(pendingRemote); pendingRemote=null; }
-}
+function visaNamn(){ const n=$("#projNamn"); if(n) n.textContent=foreningOf()||""; }
 function applyRemote(data){
   data = JSON.parse(JSON.stringify(data||{}));
-  const editing = document.activeElement && document.activeElement.closest && document.activeElement.closest("main") && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-  if (dirty || saving || editing){ pendingRemote=data; return; }
   state = normalisera(Object.assign(structuredClone(DEFAULT), data, {schablon:Object.assign({},DEFAULT.schablon,data.schablon||{})}));
-  renderAll();
+  if (!state.props.find(p=>p.id===selected)) selected=null;
+  renderAll(); visaNamn();
 }
-document.addEventListener("focusout", ()=>{ setTimeout(()=>{ if(pendingRemote && !dirty && !saving){ const d=pendingRemote; pendingRemote=null; applyRemote(d);} },50); });
+/* Projektfilen: hela arbetet plus resultatet, så att vägföreningens app kan visa andelarna. */
+function projektfil(){
+  const {rows}=calc();
+  return {format:"andelstal-projekt", version:1, sparad:new Date().toISOString(), forening:foreningOf(), utfart:utfartOf(),
+    data:JSON.parse(JSON.stringify(state)),
+    resultat:rows.map(r=>({id:r.p.id, namn:r.p.namn||"", beteckning:r.p.beteckning||"", typ:(TYPER.find(x=>x[0]===typOf(r.p))||[,""])[1].replace(/ \(.*\)$/,""), andel:r.disp, tonPerAr:Math.round(r.ton), tonkm:Math.round(r.tkm), km:r.fixed!==null?null:Math.round(r.d*1000)/1000, delstrackor:r.p.route||[]}))};
+}
+function sparaProjekt(){
+  const n=(foreningOf()||"Andelstal").replace(/[\\/:*?"<>|]/g,"").trim();
+  sparaFil(`${n} andelstal ${new Date().toISOString().slice(0,10)}.json`, new Blob([JSON.stringify(projektfil(),null,1)],{type:"application/json"}));
+  setStatus("Projektet är sparat som fil.");
+}
+function lasProjekt(text){
+  let d; try{ d=JSON.parse(text); }catch(e){ setStatus("Filen kunde inte läsas.",true); return; }
+  if (d&&d.format==="andelstal-fastigheter"){ lasFastigheter(d.fastigheter||[], d.forening); return; }
+  const data = d&&d.format==="andelstal-projekt" ? d.data : (d&&Array.isArray(d.props)?d:null);
+  if (!data){ setStatus("Filen är inget andelstalsprojekt.",true); return; }
+  if (state.props.length && !confirm("Ersätta det du har nu med projektet i filen?")) return;
+  applyRemote(data); save(); setStatus("Projektet är inläst.");
+}
+/* Fastighetslista: från appen (JSON) eller text/CSV med en fastighet per rad: namn;beteckning */
+function lasFastigheter(lista, forening){
+  let ny=0, fanns=0;
+  lista.forEach(x=>{ const namn=String(x.namn||x.fastighet||"").trim(), bet=String(x.beteckning||"").trim(); if(!namn&&!bet) return;
+    const finns=state.props.find(p=>(bet&&String(p.beteckning||"").trim().toLowerCase()===bet.toLowerCase())||String(p.namn||"").trim().toLowerCase()===(namn||bet).toLowerCase());
+    if (finns){ if(bet&&!finns.beteckning) finns.beteckning=bet; fanns++; return; }
+    state.props.push(nyFastighet(namn||bet,bet)); ny++; });
+  if (forening && !foreningOf()) state.schablon.forening=forening;
+  scheduleSave(); renderAll();
+  setStatus(`${ny} fastigheter lades till${fanns?`, ${fanns} fanns redan`:""}. Välj typ och fyll i uppgifter för varje fastighet.`);
+}
+function lasFastighetsfil(text,namn){
+  if (/\.json$/i.test(namn)||/^\s*[\[{]/.test(text)){ try{ const d=JSON.parse(text); if(d.format==="andelstal-projekt"){ lasProjekt(text); return; } lasFastigheter(Array.isArray(d)?d:(d.fastigheter||[]),d.forening); return; }catch(e){ setStatus("Filen kunde inte läsas.",true); return; } }
+  const rader=text.split(/\r?\n/).map(r=>r.trim()).filter(Boolean);
+  const lista=rader.map(r=>{ const c=r.split(/[;\t]/).map(x=>x.trim().replace(/^"|"$/g,"")); return {namn:c[0]||"",beteckning:c[1]||""}; })
+    .filter((x,i)=>!(i===0&&/^(fastighet|namn)$/i.test(x.namn)));
+  lasFastigheter(lista);
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if (b.id==="projSpara"||b.id==="projSpara2") sparaProjekt();
+  else if (b.id==="projOppna") $("#projFil").click();
+  else if (b.id==="fastLas") $("#fastFil").click();
+  else if (b.id==="projNytt"){ if(confirm("Börja om med ett tomt projekt? Det du har nu försvinner om du inte sparat det som fil.")){ applyRemote({}); save(); openTab="omrade"; renderTabs(); } }
+});
+document.addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  if (e.target.id==="projFil"||e.target.id==="fastFil"){ const fr=new FileReader(), id=e.target.id; fr.onload=()=>{ id==="projFil"?lasProjekt(fr.result):lasFastighetsfil(fr.result,f.name); }; fr.readAsText(f); e.target.value=""; }
+  if (e.target.id==="manuell"){ state.manuell=e.target.checked; scheduleSave(); renderAll(); }
+});
+window.addEventListener("beforeunload",()=>{ if(dirty) save(); });
 
-renderAll(); renderTabs(); applyReadOnly();
-(async ()=>{
-  const timer=setTimeout(()=>setStatus("Kan inte nå lagringen ännu. Visar standardvärden.",true),10000);
-  try{
-    try{ const u=await claude.use("user"); if(u){ const ow=await u.isOwner(); readOnly = ow!==true; applyReadOnly(); } }catch(e){}
-    db = await claude.use("db");
-    if (!db){ clearTimeout(timer); setStatus("Lagringen är inte tillgänglig här. Ändringar sparas inte.",true); return; }
-    ref = db.doc(DOC_PATH);
-    ref.onSnapshot(snap=>{
-      if (!snap.metadata.fromCache) clearTimeout(timer);
-      if (snap.metadata.hasPendingWrites) return;
-      if (snap.exists){ applyRemote(snap.data()); if(!dirty) setStatus("Sparat"); }
-      else if (!snap.metadata.fromCache){ setStatus("Inga sparade uppgifter ännu. Lägg till fastigheter."); }
-    }, err=>{ clearTimeout(timer); setStatus("Kontakten med lagringen bröts. Ladda om sidan för att fortsätta spara.",true); ref=null; });
-  }catch(e){ clearTimeout(timer); setStatus("Lagringen är inte tillgänglig här. Ändringar sparas inte.",true); }
-})();
+(()=>{ let d=null; try{ d=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){}
+  if (d) state=normalisera(Object.assign(structuredClone(DEFAULT), d, {schablon:Object.assign({},DEFAULT.schablon,d.schablon||{})}));
+  renderAll(); renderTabs(); visaNamn(); })();

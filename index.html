@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://xhoexctuopvragyqwofs.supabase.co; connect-src 'self' https://xhoexctuopvragyqwofs.supabase.co wss://xhoexctuopvragyqwofs.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://xhoexctuopvragyqwofs.supabase.co https://tile.openstreetmap.org; connect-src 'self' https://xhoexctuopvragyqwofs.supabase.co wss://xhoexctuopvragyqwofs.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Baggetorp Hytternäs vägsamfällighet</title>
 <link rel="manifest" href="manifest.json">
@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2.61">
+<link rel="stylesheet" href="app.css?v=2.62">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -192,12 +192,17 @@
       <button type="button" class="chipbtn on" data-dk="protokoll">Protokoll</button>
       <button type="button" class="chipbtn" data-dk="stadgar"><span class="lg">Stadgar och beslut</span><span class="sm">Stadgar</span></button>
       <button type="button" class="chipbtn" data-dk="ekonomi">Ekonomi</button>
+      <button type="button" class="chipbtn" data-dk="andelstal">Andelstal</button>
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
     </div></div>
     <section id="dk-docs">
       <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
       <p class="hint" id="dkHint"></p>
       <div id="dkList" class="list"></div>
+    </section>
+    <section id="dk-andelstal" hidden>
+      <div id="andelInnehall"></div>
+      <div id="andelKartaWrap" hidden><div id="andelKarta" role="img" aria-label="Karta över vägen och delsträckorna"></div></div>
     </section>
     <section id="dk-lankar" hidden>
       <div class="ph"><h2>Länkar</h2><button type="button" class="ghost small board" id="lnkAdd">+ Ny länk</button></div>
@@ -231,11 +236,19 @@
   </div>
 
   <div class="page" id="page-admin" hidden>
-    <section class="panel" data-fold="a-verktyg" data-fold-default="closed">
-      <h2>Verktyg</h2>
-      <div class="adminlinks">
-        <a class="biglink" href="verktyg.html"><span class="tico"><svg class="ico"><use href="#i-chart"/></svg></span><span><strong>Verktyg för andelstal</strong><small>Öppnas som egen sida: fastigheter, delsträckor, schablonvärden, belopp och PDF för medlemmar</small></span></a>
+    <section class="panel" data-fold="a-andel" data-fold-default="closed">
+      <h2>Andelstal</h2>
+      <p class="hint">Andelstalen räknas i det fristående andelstalsverktyget. Exportera fastigheterna dit. När du är klar sparar du projektet i verktyget och läser in filen här. Då ser medlemmarna andelarna och kartan under Dokument → Andelstal.</p>
+      <div class="adminlinks"><a class="biglink" href="verktyg.html" target="_blank" rel="noopener"><span class="tico"><svg class="ico"><use href="#i-chart"/></svg></span><span><strong>Öppna andelstalsverktyget</strong><small>Öppnas i en ny flik. Arbetet sparas i webbläsaren och som projektfil.</small></span></a></div>
+      <div class="row" style="margin-top:12px">
+        <button type="button" class="ghost" id="andelExport">Exportera fastigheter</button>
+        <button type="button" class="ghost" id="andelTidigare">Ladda ner tidigare arbete</button>
+        <button type="button" id="andelLas">Läs in andelstal</button>
+        <input type="file" id="andelFil" accept=".json,application/json" hidden>
       </div>
+      <p class="hint">Exporten innehåller bara fastigheternas namn och beteckning, inga personuppgifter.</p>
+      <div id="andelForhands"></div>
+      <div id="andelAdmin"></div>
     </section>
     <section class="panel" id="heroSet" data-fold="a-heroSet" data-fold-default="closed">
       <h2>Startbild</h2>
@@ -267,9 +280,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.61</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.62</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.62</b><time>1 nov 2026</time></div><ul><li>Andelstalsverktyget är fristående och går steg för steg: området, fastigheter, vägen, anslutningar och resultat. Det kräver ingen inloggning och sparar i webbläsaren och som projektfil. På kartan sätter man ut en punkt per fastighet från en lista som bockas av, och delsträckor och vägval räknas fram automatiskt.</li><li>Admin → Andelstal: exportera fastigheterna till verktyget, ladda ner tidigare arbete och läs in andelstalen när de är klara.</li><li>Nytt under Dokument: Andelstal, där medlemmarna ser varje fastighets andel, delsträckorna och kartan.</li></ul></li>
         <li><div><b>2.61</b><time>1 nov 2026</time></div><ul><li>Sidorna har inte längre egen rubrik och inledande text. Menyn och underflikarna visar var man är.</li></ul></li>
         <li><div><b>2.60</b><time>1 nov 2026</time></div><ul><li>Antalet kontakter visas inte längre i fastighetens ruta under Medlemmar.</li></ul></li>
         <li><div><b>2.59</b><time>1 nov 2026</time></div><ul><li>Karta i andelstalsverktyget: rita vägen, sätt ut utfarter och var varje fastighet, skog och skifte ansluter. Verktyget räknar fram delsträckor, deras längder och vilken väg varje fastighet kör till närmaste utfart. Koordinater i SWEREF 99 TM, min position, GeoJSON in och ut, och en skiss av vägnätet i PDF:en.</li></ul></li>
@@ -439,6 +453,6 @@
 </main>
 
 
-<script src="app.js?v=2.60"></script>
+<script src="app.js?v=2.62"></script>
 </body>
 </html>

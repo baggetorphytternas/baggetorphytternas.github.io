@@ -156,7 +156,7 @@ function initKarta(){
   osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
-  map.on("click",klick); map.on("moveend",()=>{ if(mode==="vag") forhamta(); });
+  map.on("click",klick);
   map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
   passa(); rita();
 }
@@ -171,92 +171,38 @@ function snap(latlng){
   k.vagar.forEach(v=>{ const p=v.pts||[]; for(let i=0;i+1<p.length;i++){ const r=proj([latlng.lat,latlng.lng],p[i],p[i+1]); const d=P.distanceTo(map.latLngToContainerPoint(r.pt)); if(d<14&&(!best||d<best.d)) best={d,ll:r.pt,typ:"linje",v,i}; } });
   return best;
 }
-/* ---------- Följ vägen: vägens form hämtas från OpenStreetMap (Overpass) och linjen dras längs den. ---------- */
-let osmCache=null, foljVag=true, soker=false;
-const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
-let osmPagar=null;
-/* Hämtar vägarna inom en ruta. Först via föreningens tjänst i Supabase, sedan direkt mot OpenStreetMaps servrar. */
-let osmFel="";
-const VAGDATA="https://xhoexctuopvragyqwofs.supabase.co/functions/v1/vagdata";
-const tolka=ways=>ways.map(w=>({nodes:w.n||w.nodes,geom:w.g||w.geom})).filter(w=>Array.isArray(w.nodes)&&Array.isArray(w.geom)&&w.nodes.length===w.geom.length&&w.geom.length>1);
-async function hamtaRuta(bb){
-  const fel=[];
-  /* 1. Via vägföreningens egen tjänst (Supabase), som frågar OpenStreetMap åt verktyget. */
-  { const ac=new AbortController(), t=setTimeout(()=>ac.abort(),45000);
-    try{ const r=await fetch(VAGDATA+"?bbox="+bb.join(","),{signal:ac.signal}); clearTimeout(t);
-      if (r.ok){ const j=await r.json(); const ways=tolka(j.ways||[]); if(ways.length){ osmFel=""; return {bbox:bb,ways}; } fel.push("inga vägar i området"); }
-      else fel.push("tjänsten svarade "+r.status);
-    }catch(err){ clearTimeout(t); fel.push(err&&err.name==="AbortError"?"tjänsten svarade inte i tid":"tjänsten gick inte att nå"); } }
-  /* 2. Direkt mot OpenStreetMaps servrar. */
-  for (const url of OVERPASS){
-    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),8000);
-    try{ const q=`[out:json][timeout:20];way["highway"](${bb.join(",")});out geom;`;
-      const r=await fetch(url+"?data="+encodeURIComponent(q),{signal:ac.signal}); clearTimeout(t);
-      if(!r.ok) continue; const j=await r.json();
-      const ways=tolka((j.elements||[]).filter(x=>x.type==="way"&&Array.isArray(x.geometry)).map(x=>({nodes:x.nodes,geom:x.geometry.map(g=>[g.lat,g.lon])})));
-      if (!ways.length) continue;
-      osmFel=""; return {bbox:bb,ways}; }catch(err){ clearTimeout(t); }
+/* ---------- Följ vägen: när linjen är klar läggs den på vägen via OpenStreetMaps vägvisare (OSRM, gång-profil
+   som följer även skogs- och grusvägar). Går det inte ligger linjen kvar genom de utsatta punkterna. ---------- */
+let foljVag=true, soker=false, vagFel="";
+const RUTT_DIREKT="https://routing.openstreetmap.de/routed-foot/route/v1/driving/";
+const RUTT_VIA="https://xhoexctuopvragyqwofs.supabase.co/functions/v1/vagdata?route=";
+async function hamtaRutt(pts){
+  const c=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";"), fel=[];
+  for (const [url,namn] of [[RUTT_DIREKT+c+"?overview=full&geometries=geojson","vägvisaren"],[RUTT_VIA+encodeURIComponent(c),"föreningens tjänst"]]){
+    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),20000);
+    try{ const r=await fetch(url,{signal:ac.signal}); clearTimeout(t);
+      if(!r.ok){ fel.push(`${namn} svarade ${r.status}`); continue; }
+      const j=await r.json(), g=j&&j.routes&&j.routes[0]&&j.routes[0].geometry;
+      if(!g||!Array.isArray(g.coordinates)||g.coordinates.length<2){ fel.push(`${namn} hittade ingen väg`); continue; }
+      vagFel=""; return g.coordinates.map(q=>[r6(q[1]),r6(q[0])]);
+    }catch(err){ clearTimeout(t); fel.push(err&&err.name==="AbortError"?`${namn} svarade inte i tid`:`${namn} gick inte att nå`); }
   }
-  osmFel=fel.join(", "); return null;
+  vagFel=fel.join(", "); return null;
 }
-/* Hämtar vägarna för det som syns på kartan i förväg, så att det går fort när man trycker. */
-function forhamta(){
-  if (!map||!foljVag||map.getZoom()<11) return;
-  const b=map.getBounds().pad(0.3), bb=[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()].map(x=>Math.round(x*1e5)/1e5);
-  if (osmCache){ const c=osmCache.bbox; if(bb[0]>=c[0]&&bb[1]>=c[1]&&bb[2]<=c[2]&&bb[3]<=c[3]) return; }
-  if (osmPagar) return;
-  osmPagar=hamtaRuta(bb).then(r=>{ if(r) osmCache=r; osmPagar=null; return r; });
+/* Rimlighetskontroll: rutten får inte gå långt från de utsatta punkterna eller bli mycket längre än linjen genom dem. */
+function rimligRutt(rutt,pts){
+  const langd=a=>a.reduce((s,p,i)=>i?s+hav(a[i-1],p):0,0);
+  if (langd(rutt)>2.5*langd(pts)+300) return false;
+  return pts.every(p=>{ let m=Infinity; for(let i=0;i+1<rutt.length;i++) m=Math.min(m,proj(p,rutt[i],rutt[i+1]).d); return m<80; });
 }
-async function hamtaOsm(a,b){
-  const S=Math.min(a[0],b[0]), N=Math.max(a[0],b[0]), W=Math.min(a[1],b[1]), E=Math.max(a[1],b[1]);
-  const inne=()=>{ const c=osmCache&&osmCache.bbox; return c&&S>=c[0]&&W>=c[1]&&N<=c[2]&&E<=c[3]; };
-  if (inne()) return osmCache;
-  if (osmPagar){ const r=await osmPagar; if(inne()) return osmCache; if(!r) return null; }
-  const pl=Math.max(0.01,(N-S)*0.6), pg=Math.max(0.02,(E-W)*0.6), bb=[S-pl,W-pg,N+pl,E+pg].map(x=>Math.round(x*1e5)/1e5);
-  const r=await hamtaRuta(bb); if(r) osmCache=r; return r;
-}
-/* Kortaste väg längs OpenStreetMaps vägar mellan två punkter. Returnerar koordinaterna eller null. */
-function osmVag(osm,a,b){
-  const adj=new Map(), pos=new Map();
-  const add=(u,v,l)=>{ if(!adj.has(u)) adj.set(u,[]); adj.get(u).push([v,l]); };
-  osm.ways.forEach(w=>{ for(let i=0;i<w.nodes.length;i++){ pos.set(w.nodes[i],w.geom[i]); if(i){ const l=hav(w.geom[i-1],w.geom[i]); add(w.nodes[i-1],w.nodes[i],l); add(w.nodes[i],w.nodes[i-1],l); } } });
-  const fast=(p,id)=>{ let best=null;
-    osm.ways.forEach(w=>{ for(let i=0;i+1<w.geom.length;i++){ const r=proj(p,w.geom[i],w.geom[i+1]); if(!best||r.d<best.d) best={...r,u:w.nodes[i],v:w.nodes[i+1],a:w.geom[i],b:w.geom[i+1]}; } });
-    if (!best||best.d>60) return null;
-    pos.set(id,best.pt); const la=hav(best.a,best.pt), lb=hav(best.pt,best.b); add(id,best.u,la); add(best.u,id,la); add(id,best.v,lb); add(best.v,id,lb); return best; };
-  const A=fast(a,"A"), B=fast(b,"B"); if(!A||!B) return null;
-  if ((A.u===B.u&&A.v===B.v)||(A.u===B.v&&A.v===B.u)){ const l=hav(A.pt,B.pt); add("A","B",l); add("B","A",l); }
-  /* Dijkstra med en enkel binär hög. */
-  const dist=new Map([["A",0]]), prev=new Map(), H=[["A",0]];
-  const push=x=>{ H.push(x); let i=H.length-1; while(i){ const p=(i-1)>>1; if(H[p][1]<=H[i][1]) break; [H[p],H[i]]=[H[i],H[p]]; i=p; } };
-  const pop=()=>{ const t=H[0], l=H.pop(); if(H.length){ H[0]=l; let i=0; for(;;){ const a=2*i+1, b=a+1; let m=i; if(a<H.length&&H[a][1]<H[m][1]) m=a; if(b<H.length&&H[b][1]<H[m][1]) m=b; if(m===i) break; [H[m],H[i]]=[H[i],H[m]]; i=m; } } return t; };
-  while(H.length){ const [u,d]=pop(); if(d>(dist.get(u)??Infinity)) continue; if(u==="B") break;
-    (adj.get(u)||[]).forEach(([v,l])=>{ const nd=d+l; if(nd<(dist.get(v)??Infinity)){ dist.set(v,nd); prev.set(v,u); push([v,nd]); } }); }
-  if (!dist.has("B")) return null;
-  const ut=[]; let x="B", g=0; while(x!==undefined&&g++<100000){ ut.push(pos.get(x)); x=prev.get(x); }
-  ut.reverse();
-  /* En omväg som är mer än fyra gånger fågelvägen tyder på att vägarna inte hänger ihop. */
-  if (dist.get("B")>4*hav(a,b)+200) return null;
-  return ut;
-}
-async function klickVag(e){
+function klickVag(e){
   if (soker) return;
   const ll=[r6(e.latlng.lat),r6(e.latlng.lng)];
   const s=snap(e.latlng); let p=ll;
   if (s){ p=[r6(s.ll[0]),r6(s.ll[1])]; if(s.typ==="linje") s.v.pts.splice(s.i+1,0,p); }
-  if (!ritar){ ritar={id:uid(),pts:[p],ben:[1]}; rita(); visaHjalp(foljVag?"Tryck där vägen slutar eller där en annan väg tar av. Linjen följer vägen på kartan.":HJALP.vag); return; }
+  if (!ritar){ ritar={id:uid(),pts:[p]}; rita(); visaHjalp("Tryck vidare längs vägen, gärna i kurvorna och där vägen tar av. Tryck Klar med linjen när du är framme."); return; }
   const last=ritar.pts[ritar.pts.length-1]; if(hav(last,p)<0.5) return;
-  let mellan=[];
-  if (foljVag){
-    soker=true; visaHjalp("Söker vägen på kartan … Första gången kan det ta upp till en minut.");
-    const osm=await hamtaOsm(last,p), v=osm&&osmVag(osm,last,p);
-    soker=false;
-    if (v&&v.length>2){ mellan=v.slice(1,-1).map(q=>[r6(q[0]),r6(q[1])]); visaHjalp("Klart. Tryck vidare om vägen fortsätter, eller Klar med linjen."); }
-    else visaHjalp(osm?"Hittade ingen väg på kartan mellan punkterna, så linjen dras rakt. Tryck tätare där vägen svänger, eller tryck närmare vägen.":`Kunde inte hämta vägarna (${osmFel||"okänt fel"}), så linjen dras rakt. Tryck tätare där vägen svänger.`);
-  }
-  if (!ritar) return;
-  mellan.forEach(q=>ritar.pts.push(q)); ritar.pts.push(p); ritar.ben=(ritar.ben||[]).concat(mellan.length+1);
-  rita();
+  ritar.pts.push(p); rita();
 }
 function klick(e){
   const ll=[r6(e.latlng.lat),r6(e.latlng.lng)];
@@ -278,9 +224,21 @@ function satPunkt(val,ll){
   if (val!=="utfart"){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
   andrat();
 }
-function avslutaLinje(){
-  if (ritar && ritar.pts.length>=2){ delete ritar.ben; KS().vagar.push(ritar); }
-  ritar=null; andrat();
+async function avslutaLinje(){
+  const r=ritar; ritar=null;
+  if (r && r.pts.length>=2){
+    if (foljVag){
+      soker=true; visaHjalp("Lägger linjen på vägen …");
+      const rutt=await hamtaRutt(r.pts); soker=false;
+      if (rutt && rimligRutt(rutt,r.pts)){
+        /* Början och slutet behålls exakt, så att linjen hänger ihop med vägar som redan är ritade. */
+        r.pts=[r.pts[0],...rutt.slice(1,-1),r.pts[r.pts.length-1]];
+        visaHjalp("Linjen följer vägen. Rita nästa gren eller sätt ut utfarten.");
+      } else visaHjalp(rutt?"Vägvisaren föreslog en annan väg än dina punkter, så linjen går genom punkterna. Sätt fler punkter i kurvorna om det behövs.":`Linjen går genom dina punkter (${vagFel||"vägvisaren svarade inte"}). Sätt fler punkter i kurvorna om det behövs.`);
+    }
+    KS().vagar.push(r);
+  }
+  andrat();
 }
 /* Efter varje ändring på kartan räknas delsträckor och vägval om, om de inte anges för hand. */
 let senaste=null;
@@ -299,7 +257,7 @@ function andrat(){
 }
 function visaHjalp(t){ const h=document.getElementById("kartHjalp"), a=document.getElementById("anslAktiv"); const el=steg==="ansl"?a:h; if(el){ el.hidden=!t; el.textContent=t||""; } }
 const HJALP={
-  vag:"Tryck där vägen börjar. Börjar en gren på en väg du redan ritat, tryck på den.",
+  vag:"Tryck där vägen börjar och sedan med jämna mellanrum längs vägen, gärna i kurvorna. Börjar en gren på en väg du redan ritat, tryck först på den.",
   utfart:"Tryck där vägen ansluter till allmän väg.",
   flytta:"Dra i punkter och i vägens hörn (vita ringar) för att flytta dem.",
   radera:"Tryck på en punkt, ett hörn eller en väglinje för att ta bort den."
@@ -310,7 +268,6 @@ function satMode(m){
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=m!=="vag";
   if (map){ ["vag","utfart","ansl"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl"].includes(m)); }
   if (steg==="vag") visaHjalp(HJALP[m]||"");
-  if (m==="vag") forhamta();
   rita();
 }
 function rita(){
@@ -416,7 +373,7 @@ document.addEventListener("click",e=>{
   const b=e.target.closest("button"); if(!b) return;
   if (b.dataset.km){ satMode(mode===b.dataset.km?"visa":b.dataset.km); return; }
   if (b.id==="kartKlarBtn"){ avslutaLinje(); return; }
-  if (b.id==="kartAngra"){ if(ritar){ const n=(ritar.ben&&ritar.ben.pop())||1; ritar.pts.splice(-n,n); if(!ritar.pts.length) ritar=null; rita(); } return; }
+  if (b.id==="kartAngra"){ if(ritar){ ritar.pts.pop(); if(!ritar.pts.length) ritar=null; rita(); } return; }
   if (b.dataset.mal){ aktivt=b.dataset.mal; renderLista(); rita(); const x=mal().find(y=>y.val===aktivt); if(x&&x.pt&&map) map.panTo(x.pt.ll); document.getElementById("karta").scrollIntoView({behavior:"smooth",block:"center"}); return; }
   if (b.dataset.maldel){ const [prop,g]=b.dataset.maldel.split("|"); KS().punkter=KS().punkter.filter(x=>!(x.prop===prop&&(x.galler||"route")===g)); aktivt=b.dataset.maldel; andrat(); return; }
   if (b.id==="kartExport"){ exportera(); return; }

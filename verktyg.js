@@ -147,7 +147,7 @@ function poster(p){
       }
       sk.forEach(s=>{ if (s.plats==="bc") return;
         const a=num(s.aker), b=num(s.bete), d=[a?`${fx(a)} ha åker × ${O.t7[0]} ton`:"", b?`${fx(b)} ha bete × ${O.t7[1]} ton`:""].filter(Boolean).join(" + ");
-        add(`Interna transporter, ${s.namn||"skifte"}: ${d}`, a*O.t7[0]+b*O.t7[1], "s:"+s.id, "3.7.1.2 tabell 7"); });
+        add(`Transporter gården–${s.namn||"skifte"}: ${d}`, a*O.t7[0]+b*O.t7[1], "s:"+s.id, "3.7.1.2 tabell 7"); });
       mjolk();
       add(`Heltidsanställda ${fx(n("anstallda"))} × ${PM.anstalld} ton`, n("anstallda")*PM.anstalld,"route","3.7.1.7");
       hastar(); skog(); egnaRader(); break; }
@@ -247,7 +247,9 @@ function varningar(p,r){
   if (t==="kombi"&&num(p.skogHa)>0&&!p.skogSalu) v.push("Skogen räknas inte: ved för husbehov ingår i bostadens schablon (PM 3.5.4).");
   if ((t==="kombi")&&num(p.hastEgna)+num(p.hastInack)>10) v.push("Fler än 10 hästar räknas som jordbruksfastighet (PM 3.5.7).");
   if (t==="jord"&&ha>0&&ha<10&&(num(p.perm)||num(p.frit))) v.push("Under 10 ha med bostad räknas fastigheten normalt som kombinerad bostadsfastighet (PM tabell 6).");
-  if (t==="jord") skiften(p).forEach(s=>{ if(s.plats!=="bc"&&(num(s.aker)||num(s.bete))&&!(s.route||[]).length) v.push(`${s.namn||"Skiftet"}: inga delsträckor valda, så de interna transporterna räknas inte. Välj de delsträckor som transporterna till skiftet kör på.`); });
+  if (t==="jord") skiften(p).forEach(s=>{ if(s.plats!=="bc"&&(num(s.aker)||num(s.bete))&&!(s.route||[]).length) v.push(state.manuell
+    ? `${s.namn||"Skiftet"}: välj vilka delsträckor transporterna mellan gården och skiftet kör på. Tills dess räknas de inte.`
+    : `${s.namn||"Skiftet"} ligger inte vid gården, men det är inte utsatt var det ansluter till vägen. Tills dess räknas transporterna dit inte. Tryck Visa på kartan vid skiftet under Fastigheter, eller välj Vid gården om skiftet inte nås via föreningens väg.`); });
   if ((t==="jord"||t==="kombi")&&num(p.boxar)>0&&num(p.boxar)!==num(p.hastEgna)+num(p.hastInack)&&(p.hastJamk||"faktiska")==="faktiska"&&num(p.hastEgna)+num(p.hastInack)>0) v.push("Antalet boxar skiljer sig från antalet hästar. PM 3.5.7.1 föreslår att man jämkar mellan dem.");
   if (["kombi","jord","skog"].includes(t)){ const s=num(p.skogHa)+(harFjall()?num(p.skogFjallHa):0); if(s>0&&s<1) v.push("Skog under 1 ha räknas inte (PM 3.8.2)."); }
   if (t==="skog"&&num(p.skogRestrHa)>0&&num(p.skogHa)+num(p.skogFjallHa)===0&&!p.skogJakt) v.push("Får jakt bedrivas på marken? Då räknas jaktresor, 60 ton per påbörjade 100 ha, i stället för 2 ton per ha (PM 3.8.2.3).");
@@ -407,17 +409,26 @@ function hastBlock(p){
 function skiftenBlock(p){
   const O=omrOf(), sk=skiften(p), id=p.id;
   const f=(s,k,l,mode="decimal")=>`<label for="sk${k}-${s.id}">${l}<input id="sk${k}-${s.id}" inputmode="${mode}" data-sk="${id}|${s.id}" data-skf="${k}" value="${esc(String(s[k]??"").replace(".",","))}"></label>`;
-  return `<fieldset class="fs"><legend>Åker och bete, per skifte</legend>
-    <p class="hint">Ett skifte är ett sammanhängande markområde. Lägg in åker och bete för varje skifte, även mark utanför området som brukas härifrån (ägd eller arrenderad, PM 3.7.1.8–9). Mark som arrenderas ut till någon annan räknas ändå här (PM 3.7.2.1).</p>
+  const PLATS=[["bc","Vid gården – inga transporter på föreningens väg"],["inom","På annat ställe – nås via föreningens väg"],["utanfor","Utanför området – nås via föreningens väg"]];
+  const status=s=>{
+    if (!s.plats||s.plats==="bc") return "";
+    if (state.manuell) return `<label>Transporterna mellan gården och skiftet kör på delsträckor</label><div class="segs">${segBoxes(p,"sk:"+s.id)}</div>`;
+    const satt=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id), km=segKm(s.route);
+    return `<div class="skstatus${satt?" ok":""}"><span>${satt?(km>0?`Utsatt på kartan: ${fmt(km,2)} km på föreningens väg mellan gården och skiftet.`:"Utsatt på kartan. Sätt också ut gården, så räknas sträckan.")
+      :"Inte utsatt på kartan. Visa var skiftet ansluter till vägen, så räknas sträckan från gården."}</span>
+      <button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}">${satt?"Ändra på kartan":"Visa på kartan"}</button></div>`;
+  };
+  return `<fieldset class="fs"><legend>Åker och bete</legend>
+    <p class="hint">Dela upp marken i skiften om den ligger på olika ställen. Ligger allt vid gården räcker ett skifte. För skiften som nås via föreningens väg räknas också transporterna mellan gården och skiftet (PM 3.7.1.2).</p>
     ${sk.map(s=>`<div class="skifte">
       <div class="radnamn">${f(s,"namn","Skifte","text")}<button type="button" class="ghost small" data-delsk="${id}|${s.id}">Ta bort</button></div>
       <div class="grid2">${f(s,"aker","Åker, ha")}${f(s,"bete","Bete, ha")}</div>
-      <label for="skplats-${s.id}">Var ligger skiftet<select id="skplats-${s.id}" data-sk="${id}|${s.id}" data-skf="plats">${[["bc","Vid brukningscentrum (inga interna transporter)"],["inom","Annat ställe inom området"],["utanfor","Utanför området, nås via vägen"]].map(([v,l])=>`<option value="${v}" ${(s.plats||"bc")===v?"selected":""}>${l}</option>`).join("")}</select></label>
-      <label class="check" for="skfu-${s.id}"><input type="checkbox" id="skfu-${s.id}" data-sk="${id}|${s.id}" data-skf="fu" ${s.fu===false?"":"checked"}>Skörden körs till brukningscentrum (åkern ingår i företagsutfarten)</label>
-      ${s.plats&&s.plats!=="bc"?(state.manuell?`<label>Interna transporter mellan brukningscentrum och skiftet kör på delsträckor</label><div class="segs">${segBoxes(p,"sk:"+s.id)}</div>`:`<p class="hint">Var skiftet ansluter till vägen sätter du ut i steg 4. Transporterna räknas på vägen mellan gården och skiftet.</p>`):""}
+      <label for="skplats-${s.id}">Var ligger skiftet<select id="skplats-${s.id}" data-sk="${id}|${s.id}" data-skf="plats">${PLATS.map(([v,l])=>`<option value="${v}" ${(s.plats||"bc")===v?"selected":""}>${l}</option>`).join("")}</select></label>
+      ${status(s)}
+      <label class="check" for="skfu-${s.id}"><input type="checkbox" id="skfu-${s.id}" data-sk="${id}|${s.id}" data-skf="fu" ${s.fu===false?"":"checked"}>Skörden körs till gården (åkern räknas i företagsutfarten)</label>
     </div>`).join("")}
     <div class="row"><button type="button" class="ghost small" data-addsk="${id}">Lägg till skifte</button></div>
-    <p class="hint">Företagsutfart: under ${O.grans} ha åker ${O.t8} ton per ha, annars ${fmt(O.t9[0])} ton + ${O.t9[1]} ton per ha. Interna transporter: ${O.t7[0]} ton per ha åker och ${O.t7[1]} ton per ha bete. (${esc(O.namn)})</p>
+    <p class="hint">Mark utanför området som brukas härifrån, ägd eller arrenderad, läggs in som ett skifte (PM 3.7.1.8–9). Mark som arrenderas ut räknas på den här fastigheten (PM 3.7.2.1). Företagsutfart: under ${O.grans} ha åker ${O.t8} ton per ha, annars ${fmt(O.t9[0])} ton + ${O.t9[1]} ton per ha. Transporter till skiften: ${O.t7[0]} ton per ha åker och ${O.t7[1]} ton per ha bete. (${esc(O.namn)})</p>
     ${state.schablon.prodOmr==="Gns"?chk(p,"gnsHog","Högproduktivt och stort jordbruk: fast belopp 1 500 ton som i Gss (PM 3.7.1.3)"):""}
   </fieldset>`;
 }
@@ -623,7 +634,7 @@ document.addEventListener("click", e=>{
     const el=document.getElementById("namn-"+p.id); if(el){ el.focus(); el.select(); }
   } else if (t.dataset.addsk){
     const p=state.props.find(x=>x.id===t.dataset.addsk); if(!p) return;
-    p.skiften=[...skiften(p), nyttSkifte("Skifte "+(skiften(p).length+1),0,0,skiften(p).length?"inom":"bc")]; renderCards(); renderSummary(); scheduleSave();
+    p.skiften=[...skiften(p), nyttSkifte("Skifte "+(skiften(p).length+1),0,0,"bc")]; renderCards(); renderSummary(); scheduleSave();
   } else if (t.dataset.delsk){
     const [pid,sid]=t.dataset.delsk.split("|"), p=state.props.find(x=>x.id===pid); if(!p) return;
     p.skiften=skiften(p).filter(x=>x.id!==sid); renderCards(); renderSummary(); scheduleSave();

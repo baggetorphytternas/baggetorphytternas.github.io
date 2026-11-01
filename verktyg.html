@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org; connect-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://tile.openstreetmap.org https://a.tile.opentopomap.org https://b.tile.opentopomap.org https://c.tile.opentopomap.org; connect-src 'self' https://overpass-api.de https://overpass.kumi.systems; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Andelstalsverktyget</title>
 <meta name="theme-color" content="#1f5c41">
@@ -82,7 +82,7 @@
   <section class="steg" id="steg-vag" hidden>
     <div class="panel kartinfo">
       <ol class="steglista">
-        <li><b>Rita väg:</b> tryck längs vägen på kartan. Tryck <i>Klar med linjen</i> när du är framme. Rita varje gren som en egen linje och börja den på vägen den går ut från, så hänger vägnätet ihop.</li>
+        <li><b>Rita väg:</b> tryck där vägen börjar och där den slutar. Linjen följer vägen på kartan med alla kurvor. Tryck <i>Klar med linjen</i>. Rita varje gren som en egen linje och börja den på vägen den tar av från.</li>
         <li><b>Sätt utfart:</b> tryck där vägen ansluter till allmän väg. Har vägen flera anslutningar sätter du ut alla.</li>
       </ol>
       <p class="hint">Delsträckor och längder räknas fram automatiskt. Var fastigheterna ansluter sätter du ut i nästa steg.</p>
@@ -92,7 +92,10 @@
         <button type="button" class="chipbtn" data-km="flytta">Flytta</button>
         <button type="button" class="chipbtn" data-km="radera">Ta bort</button>
       </div>
-      <div class="row" id="kartKlar" hidden><button type="button" class="small" id="kartKlarBtn">Klar med linjen</button><button type="button" class="ghost small" id="kartAngra">Ångra senaste punkt</button></div>
+      <div id="kartKlar" hidden>
+        <div class="row"><button type="button" class="small" id="kartKlarBtn">Klar med linjen</button><button type="button" class="ghost small" id="kartAngra">Ångra senaste</button></div>
+        <label class="check" for="foljVag"><input type="checkbox" id="foljVag" checked>Följ vägen på kartan (annars dras raka linjer mellan punkterna)</label>
+      </div>
       <p class="notice" id="kartHjalp" hidden></p>
     </div>
     <div class="kartplats" data-kartplats="vag"></div>
@@ -157,6 +160,6 @@
 <span class="status" id="status" role="status" aria-live="polite"></span>
 <script src="verktyg.js?v=2.62"></script>
 <script src="leaflet/leaflet.js"></script>
-<script src="verktyg-karta.js?v=2.62"></script>
+<script src="verktyg-karta.js?v=2.65"></script>
 </body>
 </html>

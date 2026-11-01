@@ -15,7 +15,7 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
     <header class="pghead">…rubrik och hint…</header>
     …
   ```
-  Inga ikoner i underflikarna. Lägg `board` på `.subwrap` om flikarna bara är för styrelsen.
+  Inga ikoner i underflikarna. Lägg `board` på `.subwrap` om flikarna bara är för styrelsen. Alla flikar ska alltid synas: får de inte plats bryts de till fler rader (aldrig scroll i sidled); med fem eller fler flikar blir det ett jämnt rutnät med tre per rad på mobil.
 - **Sidhuvud på sidor:** `.pghead` med `.ph` (rubrik till vänster, knappar till höger) och `.hint` under.
 - **Kort** i listor är lika stora (`grid-auto-rows:1fr`), kompakta, och öppnar en dialog med detaljer.
 - **Kontrollera alltid** på mobil, platta och dator.

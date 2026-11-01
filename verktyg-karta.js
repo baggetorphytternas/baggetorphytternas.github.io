@@ -58,7 +58,7 @@ function gallerText(pt){
   if (pt.typ==="utfart") return "Utfart till "+utfartOf();
   if (pt.typ==="delning") return "Delningspunkt";
   const p=state.props.find(x=>x.id===pt.prop); const g=pt.galler||"route";
-  if (g==="route") return pnamn(pt.prop);
+  if (g==="route") return pnamn(pt.prop)+(p&&typOf(p)==="jord"&&p.gardUtanfor?": infart från gården":"");
   if (g==="skog") return pnamn(pt.prop)+": skogen";
   if (g.startsWith("sk:")){ const s=p&&skiften(p).find(x=>x.id===g.slice(3)); return pnamn(pt.prop)+": "+(s?(s.namn||"skifte"):"skifte"); }
   return pnamn(pt.prop);
@@ -321,9 +321,9 @@ function mal(){
   const k=KS(), ut=[];
   [...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv")).forEach(p=>{ const t=typOf(p); if(t==="annan") return;
     const has=g=>k.punkter.find(x=>x.prop===p.id&&(x.galler||"route")===g);
-    ut.push({val:p.id+"|route", p, namn:p.namn||"Namnlös", del:"", pt:has("route")});
+    ut.push({val:p.id+"|route", p, namn:p.namn||"Namnlös", del:t==="jord"&&p.gardUtanfor?"där man kör in från gården":"", pt:has("route")});
     if (["kombi","jord","skog"].includes(t)&&p.skogEgen) ut.push({val:p.id+"|skog", p, namn:p.namn||"Namnlös", del:"skogen", pt:has("skog")});
-    if (t==="jord") skiften(p).filter(s=>s.plats&&s.plats!=="bc").forEach(s=>ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:s.namn||"skifte", pt:has("sk:"+s.id)}));
+    if (t==="jord") skiften(p).filter(s=>p.gardUtanfor||(s.plats&&s.plats!=="bc")).forEach(s=>ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:s.namn||"skifte", pt:has("sk:"+s.id)}));
   });
   ut.forEach(m=>m.satt=!!m.pt); return ut;
 }
@@ -395,7 +395,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("change",e=>{
   if (e.target.id==="foljVag"){ foljVag=e.target.checked; return; }
   if (e.target.id==="kartImport"&&e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>importera(fr.result); fr.readAsText(e.target.files[0]); e.target.value=""; }
-  if (e.target.dataset&&(e.target.dataset.f==="skogEgen"||e.target.dataset.skf==="plats")) andrat();
+  if (e.target.dataset&&(e.target.dataset.f==="skogEgen"||e.target.dataset.f==="gardUtanfor"||e.target.dataset.skf==="plats")) andrat();
 });
 /* Kartan flyttas till det steg som visas. */
 window.kartaSteg=function(s){

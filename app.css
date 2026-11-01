@@ -794,3 +794,9 @@ dialog::backdrop{touch-action:none}
 .kommform{display:flex;gap:8px;align-items:flex-end}
 .kommform textarea{flex:1;min-height:42px;resize:vertical}
 .kommform button{flex:none}
+
+/* Underflikar: alla syns alltid. Får de inte plats på en rad bryts de till fler rader i stället för att scrolla i sidled. */
+.subnav{flex-wrap:wrap;overflow:visible}
+.subnav .chipbtn{flex:1 1 auto;min-width:0}
+@media (max-width:520px){ .subnav .chipbtn{padding:8px 6px;font-size:.8rem} }
+@media (max-width:760px){ .subnav:has(> .chipbtn:nth-child(5)){display:grid;grid-template-columns:repeat(3,1fr)} }

@@ -1276,7 +1276,8 @@ function renderAndelstal(){
     seg.forEach((g,i)=>{ if(!Array.isArray(g.geo)||g.geo.length<2) return; g.geo.forEach(p=>b.extend(p));
       L.polyline(g.geo,{color:KFARG[i%KFARG.length],weight:6,opacity:.85}).addTo(lg).bindTooltip(E(g.id),{permanent:true,direction:"center",className:"kseg"}); });
     (a.punkter||[]).forEach(p=>{ if(!Array.isArray(p.ll)) return; b.extend(p.ll);
-      L.marker(p.ll,{icon:L.divIcon({className:"kpunkt "+(p.typ==="utfart"?"utfart":"ansl"),html:`<span>${E(p.namn||"")}</span>`,iconSize:null}),interactive:false}).addTo(lg); });
+      L.marker(p.ll,{icon:L.divIcon({className:"kp "+(p.typ==="utfart"?"utfart":"ansl"),html:`<i></i><b>${E(p.namn||"")}</b>`,iconSize:null}),title:p.namn||""}).addTo(lg).bindTooltip(E(p.namn||"")); });
+    const nl=()=>andelKarta.getContainer().classList.toggle("namn",andelKarta.getZoom()>=16); andelKarta.off("zoomend"); andelKarta.on("zoomend",nl); setTimeout(nl,300);
     andelKarta.invalidateSize(); if(b.isValid()) andelKarta.fitBounds(b.pad(0.12));
   }).catch(()=>{ wrap.hidden=true; });
 }

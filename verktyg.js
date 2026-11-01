@@ -447,6 +447,23 @@ function skiftenBlock(p){
     ${state.schablon.prodOmr==="Gns"?chk(p,"gnsHog","Högproduktivt och stort jordbruk: fast belopp 1 500 ton som i Gss (PM 3.7.1.3)"):""}
   </fieldset>`;
 }
+/* Hopfällbara rubriker på fastighetskortet. Tomma delar är ihopfällda från början; valet sparas per rubrik. */
+const FALL=(()=>{ try{ return JSON.parse(localStorage.getItem("andelstal_fall")||"{}"); }catch(e){ return {}; } })();
+function harVarde(fs){
+  return [...fs.querySelectorAll("input,select,textarea")].some(x=>{ if(x.type==="checkbox") return x.checked;
+    if(x.tagName==="SELECT") return false; const v=String(x.value||"").trim(); return v!==""&&v!=="0"; });
+}
+function fallKort(){
+  document.querySelectorAll("#cards fieldset.fs").forEach(fs=>{
+    const lg=fs.querySelector(":scope>legend"); if(!lg) return; const namn=lg.textContent.trim();
+    const oppen = namn in FALL ? FALL[namn] : (namn==="Vägen"||harVarde(fs)||!!fs.querySelector(".notice,.skstatus:not(.ok)"));
+    fs.classList.add("fall"); fs.classList.toggle("stangd",!oppen);
+    lg.setAttribute("role","button"); lg.tabIndex=0; lg.setAttribute("aria-expanded",String(oppen)); });
+}
+document.addEventListener("click",e=>{ const lg=e.target.closest("#cards fieldset.fall>legend"); if(!lg) return;
+  const fs=lg.parentElement, oppen=fs.classList.toggle("stangd")===false; FALL[lg.textContent.trim()]=oppen; lg.setAttribute("aria-expanded",String(oppen));
+  try{ localStorage.setItem("andelstal_fall",JSON.stringify(FALL)); }catch(x){} });
+document.addEventListener("keydown",e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("#cards fieldset.fall>legend")){ e.preventDefault(); e.target.click(); } });
 function renderCards(){
   renderPick();
   const S=state.schablon, O=omrOf();
@@ -514,6 +531,7 @@ function renderCards(){
     </fieldset>
     <div class="calc" id="calc-${p.id}"></div>
   </div>`; }).join("");
+  fallKort();
 }
 document.addEventListener("change", e=>{
   const id=e.target.dataset&&e.target.dataset.typ; if(!id) return;
@@ -555,7 +573,7 @@ function renderSchablon(){
     <label for="s-minAndel">Lägsta andelstal, % (tomt = inget, PM 3.1.5)<input id="s-minAndel" inputmode="decimal" data-s="minAndel" value="${esc(String(S.minAndel??"").replace(".",","))}"></label>
     </div>
     <div id="vkn-global"></div>
-    <div class="schref"><table class="tbl"><thead><tr><th>Schablon enligt Lantmäteriets PM 2025</th><th class="num">Ton per år</th><th>Avsnitt</th></tr></thead><tbody>
+    <details class="more schref"><summary>Lantmäteriets schablonvärden</summary><table class="tbl"><thead><tr><th>Schablon enligt Lantmäteriets PM 2025</th><th class="num">Ton per år</th><th>Avsnitt</th></tr></thead><tbody>
       ${rad("Permanentbostad, per hushåll",fmt(PM.perm),"3.2.1")}${rad("Varaktigt uthyrd komplementbostad",fmt(PM.komp),"3.2.2.2")}
       ${rad("Fritidsbostad intensiv / normal / låg",`${fmt(PM.frit.intensiv)} / ${PM.frit.normal} / ${PM.frit.lag}`,"3.3.1")}
       ${rad("Flerfamiljshus, per lägenhet",fmt(PM.lgh),"3.4.1")}${rad("Småhus i bostadsrätt eller kooperativ hyresrätt",fmt(PM.smahusbr),"3.4.2")}
@@ -575,7 +593,7 @@ function renderSchablon(){
       ${rad("Godstillägg i beräkningsmallar","25 % eller 200","6.3.3, 6.4")}
     </tbody></table>
     <table class="tbl"><thead><tr><th>Fordonsvikter vid egen beräkning</th><th class="num">Ton</th><th>Avsnitt</th></tr></thead><tbody>${VIKTER.map(([v,l])=>rad(l.replace(/ [\d,]+ ton$/,""),v.replace(".",","),"tabell 21")).join("")}</tbody></table>
-    <p class="hint">Källa: Lantmäteriet, PM 2025 om tonkilometermetoden (LM2025/006319) med bilaga 1. Direktutfart: minsta väglängd och reduktionsfaktor 0,5 eller 0,3 (avsnitt 3.1.4). Schablonerna inkluderar genomsnittlig vinterväghållning (3.1.6).</p></div>`;
+    <p class="hint">Källa: Lantmäteriet, PM 2025 om tonkilometermetoden (LM2025/006319) med bilaga 1. Direktutfart: minsta väglängd och reduktionsfaktor 0,5 eller 0,3 (avsnitt 3.1.4). Schablonerna inkluderar genomsnittlig vinterväghållning (3.1.6).</p></details>`;
 }
 function renderAll(){ renderCards(); renderSegments(); renderSchablon(); const u=document.getElementById("utdeb"); if(u && document.activeElement!==u) u.value = state.schablon.utdebitering ?? ""; renderSummary(); }
 
@@ -590,14 +608,29 @@ function renderTabs(){
   const st=STEG.find(x=>x[0]===openTab), i=STEG.indexOf(st);
   document.querySelectorAll("[data-steg]").forEach(b=>{ const on=b.dataset.steg===openTab; b.classList.toggle("on",on); b.setAttribute("aria-selected",String(on)); });
   document.querySelectorAll(".steg").forEach(p=>{ p.hidden = p.id!=="steg-"+openTab; });
-  $("#stegForra").hidden=i===0; $("#stegNasta").hidden=i===STEG.length-1;
-  if (i<STEG.length-1) $("#stegNasta").textContent=`Nästa: ${STEG[i+1][1]} →`;
+  stegNav();
   try{ localStorage.setItem("andelstal_steg",openTab); }catch(e){}
   if (window.kartaSteg) window.kartaSteg(openTab);
 }
+/* I steg 2 bläddrar Nästa och Föregående mellan fastigheterna; efter den sista går Nästa vidare till Vägen. */
+const fastOrdning=()=>[...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv"));
+function stegNav(){
+  const i=STEG.findIndex(x=>x[0]===openTab), F=$("#stegForra"), N=$("#stegNasta"); if(!F||!N) return;
+  F.hidden=i===0; N.hidden=i===STEG.length-1; F.textContent="← Föregående"; if(i<STEG.length-1) N.textContent=`Nästa: ${STEG[i+1][1]} →`;
+  if (openTab==="fast"&&state.props.length){
+    const L=fastOrdning(), k=L.findIndex(p=>p.id===selected);
+    if (k>=0&&k<L.length-1) N.textContent=`Nästa fastighet: ${L[k+1].namn||"Namnlös"} →`;
+    else N.textContent="Alla fastigheter klara – vidare till Vägen →";
+    if (k>0){ F.hidden=false; F.textContent=`← ${L[k-1].namn||"Namnlös"}`; }
+  }
+}
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-steg],#stegForra,#stegNasta,[data-valj]"); if(!b) return;
-  if (b.dataset.valj){ selected=b.dataset.valj; renderCards(); renderSummary(); const c=document.getElementById("cards"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  if (b.dataset.valj){ selected=b.dataset.valj; renderCards(); renderSummary(); stegNav(); const c=document.getElementById("cards"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  if (openTab==="fast"&&!b.dataset.steg&&state.props.length){
+    const L=fastOrdning(), k=L.findIndex(p=>p.id===selected), m=k+(b.id==="stegNasta"?1:-1);
+    if (k>=0&&m>=0&&m<L.length){ selected=L[m].id; renderCards(); renderSummary(); stegNav(); const c=document.getElementById("cards"); if(c) c.scrollIntoView({behavior:"smooth",block:"start"}); return; }
+  }
   const i=STEG.findIndex(x=>x[0]===openTab);
   openTab = b.dataset.steg || STEG[Math.max(0,Math.min(STEG.length-1,i+(b.id==="stegNasta"?1:-1)))][0];
   renderTabs(); window.scrollTo({top:0,behavior:"smooth"});

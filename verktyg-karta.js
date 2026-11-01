@@ -167,7 +167,9 @@ function tillampa(f){
 /* ---------- karta ---------- */
 let map=null, lager=null, lagerHl=null, mode="visa", ritar=null, steg="", aktivt="";
 const FARG=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
-const ikon=(cls,txt)=>L.divIcon({className:"kpunkt "+cls, html:`<span>${esc(txt)}</span>`, iconSize:null});
+/* Punkterna är små prickar. Namnet syns när man zoomar in, för utfarten och för den punkt man arbetar med. */
+const ikon=(cls,txt)=>L.divIcon({className:"kp "+cls, html:`<i></i><b>${esc(txt)}</b>`, iconSize:null});
+const namnLage=()=>{ if(map) map.getContainer().classList.toggle("namn",map.getZoom()>=16); };
 const kartlage=()=>!state.manuell;
 function initKarta(){
   const el=document.getElementById("karta");
@@ -179,7 +181,7 @@ function initKarta(){
   osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
-  map.on("click",klick);
+  map.on("click",klick); map.on("zoomend",namnLage); namnLage();
   map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
   passa(); rita();
 }
@@ -321,7 +323,7 @@ function rita(){
     const del=pt.typ==="delning", ut=pt.typ==="utfart"||del, g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
     const cls=(del?"delning":ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");
     const txt=del?"✂":ut?"Utfart":gallerText(pt);
-    const m=L.marker(pt.ll,{icon:ikon(cls,txt),draggable:mode==="flytta"||(steg==="ansl"&&!ut),zIndexOffset:ut?1000:500}).addTo(lager);
+    const m=L.marker(pt.ll,{icon:ikon(cls,txt),title:txt,draggable:mode==="flytta"||(steg==="ansl"&&!ut),zIndexOffset:ut?1000:500}).addTo(lager);
     if (mode==="visa") m.bindPopup(()=>`<b>${esc(gallerText(pt))}</b><br>${esc(swText(pt.ll))} (SWEREF 99 TM)${avstText(pt)}`,{autoPan:false});
     m.on("dragend",()=>{ const q=m.getLatLng(); pt.ll=[r6(q.lat),r6(q.lng)]; andrat(); });
     if (mode==="radera") m.on("click",()=>{ KS().punkter=KS().punkter.filter(x=>x!==pt); andrat(); });

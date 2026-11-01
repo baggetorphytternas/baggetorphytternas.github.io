@@ -19,6 +19,16 @@ const PM = {
     "Nö":{namn:"Nö – Övre Norrland", t7:[110,30], t8:75, t9:[1000,20], grans:20}
   }
 };
+const OMR_TEXT={
+  Gss:"Slättbygderna i södra och västra Skåne. Högst skördar i landet.",
+  Gmb:"Mellanbygderna i Götaland, mellan slättbygderna och skogsbygderna, bland annat delar av Skåne, Blekinge, Kalmar, Östergötland och Västergötland.",
+  Gns:"Slättbygderna i Östergötland och Västergötland. Stora och högproduktiva gårdar kan få det högre fasta beloppet som i Gss.",
+  Gsk:"Skogsbygderna i Götaland, till exempel Smålands höglandet och delar av Halland och Västergötland.",
+  Ss:"Slättbygderna runt Mälaren och Hjälmaren, i delar av Uppsala, Stockholms, Västmanlands, Södermanlands och Örebro län.",
+  Ssk:"Skogsbygderna i Svealand, till exempel Värmland, Dalarna och skogsdelarna av Mälardalslänen.",
+  Nn:"Nedre Norrland, ungefär Gävleborgs, Västernorrlands och Jämtlands län.",
+  "Nö":"Övre Norrland, ungefär Västerbottens och Norrbottens län."
+};
 const TILLV={1:"1 – Jämtland och inre Norrbotten/Västerbotten",2:"2 – Västernorrland och kustnära Norrland",3:"3 – Dalarna och västra Gävleborg",4:"4 – Värmland, Örebro, Västmanland, Södermanland, Stockholm, Uppsala",5:"5 – Västra Götaland, Jönköping, Kronoberg, Kalmar, Östergötland, Gotland",6:"6 – Halland, Skåne, Blekinge"};
 const DEFAULT = {
   segments:[], props:[],
@@ -39,7 +49,7 @@ function setStatus(t, warn){ const el=$("#status"); el.textContent=t; el.classLi
 
 /* ---------- calculation ---------- */
 /* Average distance to the exit for traffic spread evenly along the given segments.
-   Each segment's "mot" names the next segment toward Stav; without it, half the length is used. */
+   Each segment's "mot" names the next segment toward the exit; without it, half the length is used. */
 function jamnKm(ids){
   ids=ids||[]; const seg=id=>state.segments.find(x=>x.id===id);
   if (!ids.every(id=>{ const g=seg(id); return g && "mot" in g; })) return segKm(ids)/2;
@@ -57,6 +67,8 @@ const omrOf = () => PM.omr[state.schablon.prodOmr]||PM.omr.Ss;
 const skogTal = () => PM.skog[state.schablon.tillvOmr]||30;
 const fjallTal = () => Number(state.schablon.tillvOmr)===3 ? 4 : 3;
 const harFjall = () => Number(state.schablon.tillvOmr)<=3;
+const utfartOf = () => String(state.schablon.utfart||"").trim() || "allmän väg";
+const foreningOf = () => String(state.schablon.forening||"").trim();
 const fritNivaOf = p => p.fritNiva || state.schablon.fritNiva || "normal";
 const NIV = {lag:"låg",normal:"normal",intensiv:"intensiv"};
 const skiften = p => Array.isArray(p.skiften) ? p.skiften : [];
@@ -216,7 +228,7 @@ function renderSummary(){
     <td>${esc(r.p.namn||"Namnlös")}${varningar(r.p,r).length?` <span class="warnmark" title="Kontrollera uppgifterna">!</span>`:""}</td><td>${typeChips(r.p)}</td>
     <td class="num">${r.fixed!==null?"":fmt(r.d,2)+" km"}</td>
     <td class="num">${r.fixed!==null?"":fmt(r.tkm)}</td>
-    <td class="num">${r.p.andel2012?esc(String(r.p.andel2012).replace(".",","))+" %":"ny"}</td>
+    <td class="num">${String(r.p.andelNu??"").trim()!==""?fmt(num(r.p.andelNu),1)+" %":"–"}</td>
     <td class="num share">${fmt(r.disp,1)} %</td>
     ${showKr?`<td class="num">${fmt(Math.round(r.kr))}</td>`:""}</tr>`).join("");
   const sumShare = rows.reduce((s,r)=>s+r.disp,0), sumKr = rows.reduce((s,r)=>s+r.kr,0);
@@ -300,6 +312,7 @@ function normalisera(st){
       p.akerHa=0; p.beteHa=0; delete p.interna; delete p.inreRoute;
     }
     if (p.fritNiva && p.fritNiva===(S.fritNiva||"normal")) p.fritNiva="";
+    delete p.andel2012;
   });
   return st;
 }
@@ -443,7 +456,7 @@ function renderCards(){
     if (t==="kombi"||t==="jord"||t==="egen") f+=raderBlock(p,t);
     if (t==="annan") f+=`<fieldset class="fs"><legend>Fast andel</legend>${fld(p,"fast","Andel i procent")}</fieldset>`;
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
-      <label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till Stav</label><div class="segs">${segBoxes(p,"route")}</div>
+      <label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
       ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>
       ${chk(p,"skogJamn","Skogen ligger jämnt utmed sträckan (medelavstånd)")}`:""}
       ${chk(p,"direkt","Direktutfart till allmän väg (minsta väglängd och reduktionsfaktor, PM 3.1.4)")}
@@ -461,7 +474,7 @@ function renderCards(){
     <p class="hint">${esc(typHjalp(t))}</p>
     ${f}${vag}
     <details class="more"><summary>Fler uppgifter</summary>
-      <label for="a2012-${p.id}">Andel i förslaget 2012, %<input id="a2012-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="andel2012" value="${esc(String(p.andel2012??"").replace(".",","))}"></label>
+      <label for="andelNu-${p.id}">Nuvarande andel, % (om fastigheten redan har ett andelstal)<input id="andelNu-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="andelNu" value="${esc(String(p.andelNu??"").replace(".",","))}"></label>
       <label for="note-${p.id}">Anteckning (syns bara här)<textarea id="note-${p.id}" rows="2" data-p="${p.id}" data-f="note">${esc(p.note)}</textarea></label>
     </details>
     ${ed?`<div class="row"><button type="button" class="danger" data-del="${p.id}">Ta bort fastigheten</button></div>`:""}
@@ -492,7 +505,16 @@ function renderSchablon(){
   const S=state.schablon, O=omrOf(), sk=skogTal();
   const rad=(a,b,c)=>`<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td><td>${esc(c||"")}</td></tr>`;
   $("#schablon").innerHTML = `
-    <label for="s-prodOmr">Produktionsområde för jordbruk (PM 6.1)<select id="s-prodOmr" data-s="prodOmr">${Object.entries(PM.omr).map(([k,v])=>`<option value="${k}" ${S.prodOmr===k?"selected":""}>${esc(v.namn)}</option>`).join("")}</select></label>
+    <div class="grid2">
+    <label for="s-forening">Gemensamhetsanläggningens namn (visas i PDF:en)<input id="s-forening" data-s="forening" value="${esc(S.forening??"")}" placeholder="t.ex. Exempelvägens samfällighetsförening"></label>
+    <label for="s-utfart">Vägen ansluter till (allmän väg eller plats)<input id="s-utfart" data-s="utfart" value="${esc(S.utfart??"")}" placeholder="allmän väg"></label>
+    </div>
+    <label for="s-prodOmr">Produktionsområde för jordbruk<select id="s-prodOmr" data-s="prodOmr">${Object.entries(PM.omr).map(([k,v])=>`<option value="${k}" ${S.prodOmr===k?"selected":""}>${esc(v.namn)}</option>`).join("")}</select></label>
+    <div class="hint prodinfo">
+      <p>Jordbruksverket delar in Sverige i åtta produktionsområden efter hur mycket jordbruksmarken ger. Området avgör hur mycket trafik åker och bete ger: interna transporter (tabell 7) och företagsutfart (tabell 8 och 9) i Lantmäteriets PM, avsnitt 3.7 och 6.1. Det påverkar bara jordbruksfastigheter och kombinerade bostadsfastigheter med mark.</p>
+      <p><b>Valt område, ${esc(O.namn)}:</b> ${esc(OMR_TEXT[S.prodOmr]||"")} Interna transporter ${O.t7[0]} ton per ha åker och ${O.t7[1]} ton per ha bete. Företagsutfart ${O.t8} ton per ha under ${O.grans} ha åker, annars ${fmt(O.t9[0])} ton + ${O.t9[1]} ton per ha.</p>
+      <p>Gränserna följer inte kommun- eller länsgränser. Kontrollera var vägen ligger på <a href="https://statistik.sjv.se/PXWeb/Resources/PX/Kartor/Produktionsomraden.html" target="_blank" rel="noopener">Jordbruksverkets karta över produktionsområden</a>. Ligger området nära en gräns, välj det område där det mesta av åkern finns.</p>
+    </div>
     <label for="s-tillvOmr">Tillväxtområde för skog (tabell 10)<select id="s-tillvOmr" data-s="tillvOmr">${Object.entries(TILLV).map(([k,v])=>`<option value="${k}" ${String(S.tillvOmr)===k?"selected":""}>${esc(v)} (${PM.skog[k]} ton/ha)</option>`).join("")}</select></label>
     <label for="s-fritNiva">Fritidsbostädernas användning i området (PM 3.3.2)<select id="s-fritNiva" data-s="fritNiva">${[["intensiv","Intensiv (1 800 ton)"],["normal","Normal (900 ton)"],["lag","Låg (450 ton)"]].map(([v,l])=>`<option value="${v}" ${(S.fritNiva||"normal")===v?"selected":""}>${l}</option>`).join("")}</select></label>
     <div class="grid2">
@@ -557,7 +579,7 @@ document.addEventListener("input", e=>{
 });
 /* Fält som ändrar formuläret ritar om kortet efteråt, och fokus behålls i det fält man gått vidare till. */
 const OMRITA=["direkt","frit","mjolk","boxar","hastEgna","hastInack","skogHa","skogFjallHa","skogRestrHa","arealHa","akerHa","beteHa","gods","antalAnl"];
-document.addEventListener("change", e=>{ const f=e.target.dataset.f; if(OMRITA.includes(f)||e.target.dataset.skf==="plats"){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, pos=a&&a.selectionStart; renderCards(); renderSummary(); const n=id&&document.getElementById(id); if(n){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(x){} } },0); } if(["prodOmr","tillvOmr","fritNiva"].includes(e.target.dataset.s)){ renderSchablon(); renderCards(); renderSummary(); } });
+document.addEventListener("change", e=>{ const f=e.target.dataset.f; if(OMRITA.includes(f)||e.target.dataset.skf==="plats"){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, pos=a&&a.selectionStart; renderCards(); renderSummary(); const n=id&&document.getElementById(id); if(n){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(x){} } },0); } if(["prodOmr","tillvOmr","fritNiva","utfart"].includes(e.target.dataset.s)){ renderSchablon(); renderCards(); renderSummary(); } });
 document.addEventListener("change", e=>{ if (e.target.dataset.sf==="id"||e.target.dataset.sf==="namn") renderCards(), renderSummary(); if (e.target.dataset.f==="namn") renderPick(); });
 document.addEventListener("change", e=>{ if(e.target.id==="pick"){ selected=e.target.value; editProp=null; renderCards(); renderSummary(); } });
 document.addEventListener("click", e=>{
@@ -649,15 +671,15 @@ async function makePdf(){
     const table=(h,b,opts={})=>{ doc.autoTable(Object.assign({head:[h.map(pdfText)],body:b.map(r=>r.map(pdfText)),startY:y,margin:{left:M,right:M},theme:"grid",styles:{font:"helvetica",fontSize:9,cellPadding:1.8,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},headStyles:{fillColor:green,textColor:255,fontStyle:"bold"},alternateRowStyles:{fillColor:[244,245,241]}},opts)); y=doc.lastAutoTable.finalY+5; };
     // band
     doc.setFillColor(...green); doc.rect(0,0,W,38,"F");
-    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Baggetorp Hytternäs vägsamfällighet · väg 13986"),M,13);
+    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText(foreningOf()||"Gemensamhetsanläggning för väg"),M,13);
     doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text(pdfText("Förslag till nya andelstal"),M,25);
     doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Utkast för diskussion, "+today),M,32);
     y=48;
     head("Sammanfattning");
-    para("Förslaget är räknat på samma sätt som Lantmäteriet gör vid en förrättning. Gällande andelstal kommer från förrättningen 1958. Ett förslag togs fram 2012 men antogs aldrig, och sedan dess har flera fastigheter tillkommit.");
+    para("Förslaget är räknat med Lantmäteriets tonkilometermetod och schablonvärden enligt PM 2025 (LM2025/006319), på samma sätt som vid en förrättning."+(state.props.some(p=>String(p.andelNu??"").trim()!=="")?" Nuvarande andelar visas som jämförelse.":""));
     para("Stämmer inte uppgifterna om din fastighet? Hör av dig till styrelsen.");
     head("Hur andelstalen räknas");
-    para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till Stav. Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(num(S.minKm)*1000)+" meter.");
+    para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till "+utfartOf()+". Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(num(S.minKm)*1000)+" meter.");
     { const anv=new Map(); rows.forEach(r=>r.poster.forEach(x=>{ const k=x.namn.replace(/^(.*?)( \d| ×| \(|$).*/,"$1").trim(); if(!anv.has(k)) anv.set(k,x); }));
       const O=PM.omr[S.prodOmr]||PM.omr.Ss, b=[];
       const finns=t=>rows.some(r=>typOf(r.p)===t);
@@ -673,30 +695,29 @@ async function makePdf(){
     // map
     doc.addPage(); y=M;
     head("Vägen och delsträckorna");
-    try{ const img=await imgData("vagkarta.png"); const h=CW*1200/1474; doc.addImage(img,"PNG",M,y,CW,h); y+=h+5; }catch(e){ para("Kartan kunde inte läggas in.",9.5,muted); }
     const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
     table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,"cirka "+fmt(num(g.m))+" m"]).concat([["","Totalt","cirka "+fmt(segTot)+" m"]]),{columnStyles:{0:{cellWidth:24},2:{cellWidth:32,halign:"right"}}});
     para("Längderna är uppmätta på fastighetskartan.",9,muted);
     // properties
     doc.addPage(); y=M;
     head("Fastigheterna och föreslagna andelar");
-    const h1=["Fastighet","Typ","Kör på delsträcka","Väglängd","Förslag 2012","Ny andel"].concat(showKr?["Kr per år"]:[]);
+    const h1=["Fastighet","Typ","Kör på delsträcka","Väglängd","Nuvarande andel","Ny andel"].concat(showKr?["Kr per år"]:[]);
     const b1=sorted.map(r=>{
       const vl = r.fixed!==null ? "" : fmt(r.d,1)+" km";
-      return [pdfName(r.p.namn),typeText(r.p),routeText(r.p),vl,r.p.andel2012?r.p.andel2012.replace(".",",")+" %":"ny",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
+      return [pdfName(r.p.namn),typeText(r.p),routeText(r.p),vl,String(r.p.andelNu??"").trim()!==""?fmt(num(r.p.andelNu),1)+" %":"–",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
     });
     b1.push(["Totalt","","","","100 %",fmt(rows.reduce((s,r)=>s+r.disp,0),1)+" %"].concat(showKr?[fmt(Math.round(rows.reduce((s,r)=>s+r.kr,0)))]:[]));
     table(h1,b1,{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:30,fontStyle:"bold"},3:{halign:"right",cellWidth:24},4:{halign:"right",cellWidth:17},5:{halign:"right",fontStyle:"bold",cellWidth:17},6:{halign:"right"}},didParseCell:d=>{ if(d.section==="body"&&d.row.index===b1.length-1){ d.cell.styles.fontStyle="bold"; } }});
     if (showKr) para("Kronorna visar hur "+fmt(num(S.utdebitering))+" kr per år fördelas enligt de nya andelarna.",9,muted);
     head("Underlag");
     ["Beräkningen följer Lantmäteriets tonkilometermetod och dess schablonvärden.",
-     "Gällande förrättning är från 1958 (akt 04-MEL-1291.1). Nya andelstal kan antas genom en överenskommelse mellan medlemmarna."].forEach(t=>para("•  "+t,9.5,ink,1.2));
+     "Nya andelstal kan bestämmas vid en lantmäteriförrättning eller, där det är tillåtet, genom en överenskommelse mellan delägarna."].forEach(t=>para("•  "+t,9.5,ink,1.2));
     const pages=doc.getNumberOfPages();
-    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Baggetorp Hytternäs vägsamfällighet · Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
+    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText((foreningOf()?foreningOf()+" · ":"")+"Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
     const blob=doc.output("blob");
     const dl=await claude.use("downloads");
     if (!dl) throw {code:"unavailable"};
-    await dl.save({filename:"Förslag nya andelstal Baggetorp Hytternäs.pdf",data:blob});
+    await dl.save({filename:"Förslag nya andelstal"+(foreningOf()?" "+foreningOf():"")+".pdf",data:blob});
     setStatus("PDF skapad");
   }catch(e){
     if (e && e.code==="declined") setStatus("PDF sparades inte");

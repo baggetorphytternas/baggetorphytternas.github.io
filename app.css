@@ -828,3 +828,16 @@ dialog::backdrop{touch-action:none}
 .radsum{margin-left:auto;font-weight:700;color:var(--ink)}
 .warnmark{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#b45309;color:#fff;font-size:.75rem;font-weight:700;margin-left:4px}
 .schref .tbl+.tbl{margin-top:12px}
+/* Resultattabellen i andelstalsverktyget ska alltid rymmas utan sidscroll */
+#summary{width:100%}
+#summary td:first-child{overflow-wrap:anywhere}
+@media (max-width:900px){ #summary th:nth-child(2),#summary td:nth-child(2){display:none} }
+@media (max-width:520px){
+  #summary th:nth-child(4),#summary td:nth-child(4),#summary th:nth-child(5),#summary td:nth-child(5){display:none}
+  #summary th,#summary td{padding:8px 6px;font-size:.88rem}
+  #summary th{white-space:normal}
+}
+@media (max-width:380px){ #summary th:nth-child(3),#summary td:nth-child(3){display:none} }
+.schref .tbl{width:100%}
+@media (max-width:520px){ .schref .tbl th:nth-child(3),.schref .tbl td:nth-child(3){display:none} .schref .tbl td{padding:6px 4px;font-size:.85rem} }
+@media (max-width:520px){ .schref .tbl th,.schref .tbl td.num{white-space:normal} }

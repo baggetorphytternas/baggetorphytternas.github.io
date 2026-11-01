@@ -132,11 +132,11 @@ function poster(p){
     case "flerfam": add(`${n("lgh")} lägenheter × ${fmt(PM.lgh)} ton`, n("lgh")*PM.lgh,"route","3.4.1"); break;
     case "smahusbr": add(`${n("smahus")} småhus i förening × ${fmt(PM.smahusbr)} ton`, n("smahus")*PM.smahusbr,"route","3.4.2"); break;
     case "kombi": { bostad();
-      if (markHa(p)>2 || p.markNaring){
-        add(`Åker ${fx(n("akerHa"))} ha × ${O.t7[0]} ton`, n("akerHa")*O.t7[0],"route","3.5.5 och tabell 7");
-        add(`Bete ${fx(n("beteHa"))} ha × ${O.t7[1]} ton`, n("beteHa")*O.t7[1],"route","3.5.5 och tabell 7");
-        if (p.skogSalu) skog();
-      }
+      /* 1–2 ha räknas som bostad (tabell 1). En hästgård får ändå bete (tabell 5 och 6). */
+      const naring=markHa(p)>2||p.markNaring, hast=n("hastEgna")+n("hastInack")>0;
+      if (naring) add(`Åker ${fx(n("akerHa"))} ha × ${O.t7[0]} ton`, n("akerHa")*O.t7[0],"route","3.5.5 och tabell 7");
+      if (naring||hast) add(`Bete ${fx(n("beteHa"))} ha × ${O.t7[1]} ton`, n("beteHa")*O.t7[1],"route",naring?"3.5.5 och tabell 7":"tabell 5 och 6");
+      if (naring&&p.skogSalu) skog();
       hastar(); egnaRader(); break; }
     case "jord": { const ute=!!p.gardUtanfor, sk=skiften(p);
       if (!ute) bostad();
@@ -246,7 +246,9 @@ function varningar(p,r){
   if (t==="annan") return v;
   if (r && r.poster.length && r.tkm===0) v.push("Ingen delsträcka vald: fastigheten får andelen 0. Välj delsträckor eller markera direktutfart.");
   if (t==="kombi"&&ha>=10) v.push(`Fastigheten har ${fmt(ha)} ha mark. Från 10 ha räknas den som jordbruks- eller skogsbruksfastighet (PM tabell 6).`);
-  if (t==="kombi"&&ha>0&&ha<=2&&!p.markNaring&&(num(p.akerHa)||num(p.beteHa)||num(p.skogHa))) v.push("Kombinerad bostadsfastighet med 1–2 ha räknas som en permanentbostad, 2 500 ton (PM tabell 1). Marken räknas inte.");
+  { const hast=num(p.hastEgna)+num(p.hastInack)>0;
+    if (t==="kombi"&&ha>0&&ha<=2&&!p.markNaring&&!hast&&(num(p.akerHa)||num(p.beteHa)||num(p.skogHa))) v.push("Med 1–2 ha räknas marken inte, bara bostaden (2 500 ton, PM tabell 1). Hästar och annan verksamhet räknas alltid.");
+    if (t==="kombi"&&ha>0&&ha<=2&&hast&&num(p.akerHa)&&!p.markNaring) v.push("Hästgård med 1–2 ha: bostaden, hästarna och betet räknas (PM tabell 5 och 6). Åkern räknas bara om marken brukas som näring."); }
   if (t==="kombi"&&num(p.skogHa)>0&&!p.skogSalu) v.push("Skogen räknas inte: ved för husbehov ingår i bostadens schablon (PM 3.5.4).");
   if ((t==="kombi")&&num(p.hastEgna)+num(p.hastInack)>10) v.push("Fler än 10 hästar räknas som jordbruksfastighet (PM 3.5.7).");
   if (t==="jord"&&!p.gardUtanfor&&ha>0&&ha<10&&(num(p.perm)||num(p.frit))) v.push("Under 10 ha med bostad räknas fastigheten normalt som kombinerad bostadsfastighet (PM tabell 6).");

@@ -156,7 +156,7 @@ function initKarta(){
   osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
-  map.on("click",klick);
+  map.on("click",klick); map.on("moveend",()=>{ if(mode==="vag") forhamta(); });
   map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
   passa(); rita();
 }
@@ -173,19 +173,38 @@ function snap(latlng){
 }
 /* ---------- Följ vägen: vägens form hämtas från OpenStreetMap (Overpass) och linjen dras längs den. ---------- */
 let osmCache=null, foljVag=true, soker=false;
-const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
-async function hamtaOsm(a,b){
-  const S=Math.min(a[0],b[0]), N=Math.max(a[0],b[0]), W=Math.min(a[1],b[1]), E=Math.max(a[1],b[1]);
-  if (osmCache){ const c=osmCache.bbox; if(S>=c[0]&&W>=c[1]&&N<=c[2]&&E<=c[3]) return osmCache; }
-  const pl=Math.max(0.01,(N-S)*0.6), pg=Math.max(0.02,(E-W)*0.6), bb=[S-pl,W-pg,N+pl,E+pg].map(x=>Math.round(x*1e5)/1e5);
-  const q=`[out:json][timeout:25];way["highway"](${bb.join(",")});out geom;`;
+const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+let osmPagar=null;
+/* Hämtar vägarna inom en ruta. Varje server får 8 sekunder och allt högst 20; svarar ingen dras linjen rakt. */
+async function hamtaRuta(bb){
+  const q=`[out:json][timeout:20];way["highway"](${bb.join(",")});out geom;`;
+  const slut=Date.now()+20000;
   for (const url of OVERPASS){
-    try{ const r=await fetch(url,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+    const kvar=slut-Date.now(); if(kvar<2000) break;
+    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),Math.min(8000,kvar));
+    try{ const r=await fetch(url+"?data="+encodeURIComponent(q),{signal:ac.signal}); clearTimeout(t);
       if(!r.ok) continue; const j=await r.json();
       const ways=(j.elements||[]).filter(x=>x.type==="way"&&Array.isArray(x.geometry)&&Array.isArray(x.nodes)&&x.nodes.length===x.geometry.length).map(x=>({nodes:x.nodes,geom:x.geometry.map(g=>[g.lat,g.lon])}));
-      osmCache={bbox:bb,ways}; return osmCache; }catch(err){}
+      if (!ways.length) continue;
+      return {bbox:bb,ways}; }catch(err){ clearTimeout(t); }
   }
   return null;
+}
+/* Hämtar vägarna för det som syns på kartan i förväg, så att det går fort när man trycker. */
+function forhamta(){
+  if (!map||!foljVag||map.getZoom()<11) return;
+  const b=map.getBounds().pad(0.3), bb=[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()].map(x=>Math.round(x*1e5)/1e5);
+  if (osmCache){ const c=osmCache.bbox; if(bb[0]>=c[0]&&bb[1]>=c[1]&&bb[2]<=c[2]&&bb[3]<=c[3]) return; }
+  if (osmPagar) return;
+  osmPagar=hamtaRuta(bb).then(r=>{ if(r) osmCache=r; osmPagar=null; return r; });
+}
+async function hamtaOsm(a,b){
+  const S=Math.min(a[0],b[0]), N=Math.max(a[0],b[0]), W=Math.min(a[1],b[1]), E=Math.max(a[1],b[1]);
+  const inne=()=>{ const c=osmCache&&osmCache.bbox; return c&&S>=c[0]&&W>=c[1]&&N<=c[2]&&E<=c[3]; };
+  if (inne()) return osmCache;
+  if (osmPagar){ const r=await osmPagar; if(inne()) return osmCache; if(!r) return null; }
+  const pl=Math.max(0.01,(N-S)*0.6), pg=Math.max(0.02,(E-W)*0.6), bb=[S-pl,W-pg,N+pl,E+pg].map(x=>Math.round(x*1e5)/1e5);
+  const r=await hamtaRuta(bb); if(r) osmCache=r; return r;
 }
 /* Kortaste väg längs OpenStreetMaps vägar mellan två punkter. Returnerar koordinaterna eller null. */
 function osmVag(osm,a,b){
@@ -282,6 +301,7 @@ function satMode(m){
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=m!=="vag";
   if (map){ ["vag","utfart","ansl"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl"].includes(m)); }
   if (steg==="vag") visaHjalp(HJALP[m]||"");
+  if (m==="vag") forhamta();
   rita();
 }
 function rita(){

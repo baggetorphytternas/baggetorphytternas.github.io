@@ -193,7 +193,7 @@ function memGroup(ps){
     if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
     return `<div class="item sub" data-kind="medlemmar" data-id="${it.id}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
   }).join("");
-  return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div><span class="badge typ">${ps.length} ${ps.length===1?"kontakt":"kontakter"}</span></div>${rows}
+  return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div></div>${rows}
     ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
 }
 const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;

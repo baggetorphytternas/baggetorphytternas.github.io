@@ -739,7 +739,6 @@ async function kontaktDialog(){
   };
   d.showModal();
 }
-document.addEventListener("click",e=>{ if(e.target.closest("#memMine")) kontaktDialog(); });
 /* Styrelsen → Register: översikt över medlemsregistret */
 function renderReg(){
   const el=q("#regStat"); if(!el) return; const m=site.medlemmar||[];

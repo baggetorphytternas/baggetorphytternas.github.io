@@ -99,9 +99,6 @@
   </div>
 
   <div class="page" id="page-medlemmar" hidden>
-    <header class="pghead">
-      <div class="ph pgknappar"><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button></div></div>
-    </header>
     <section>
       <label for="memSearch" class="search" id="memSearchL" hidden>Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
       <div id="memberList" class="cards"></div>
@@ -280,9 +277,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.62</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.63</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.63</b><time>1 nov 2026</time></div><ul><li>Knappen Mina uppgifter är borttagen från Medlemmar. Dina uppgifter finns under din sida.</li></ul></li>
         <li><div><b>2.62</b><time>1 nov 2026</time></div><ul><li>Andelstalsverktyget är fristående och går steg för steg: området, fastigheter, vägen, anslutningar och resultat. Det kräver ingen inloggning och sparar i webbläsaren och som projektfil. På kartan sätter man ut en punkt per fastighet från en lista som bockas av, och delsträckor och vägval räknas fram automatiskt.</li><li>Admin → Andelstal: exportera fastigheterna till verktyget, ladda ner tidigare arbete och läs in andelstalen när de är klara.</li><li>Nytt under Dokument: Andelstal, där medlemmarna ser varje fastighets andel, delsträckorna och kartan.</li></ul></li>
         <li><div><b>2.61</b><time>1 nov 2026</time></div><ul><li>Sidorna har inte längre egen rubrik och inledande text. Menyn och underflikarna visar var man är.</li></ul></li>
         <li><div><b>2.60</b><time>1 nov 2026</time></div><ul><li>Antalet kontakter visas inte längre i fastighetens ruta under Medlemmar.</li></ul></li>
@@ -453,6 +451,6 @@
 </main>
 
 
-<script src="app.js?v=2.62"></script>
+<script src="app.js?v=2.63"></script>
 </body>
 </html>

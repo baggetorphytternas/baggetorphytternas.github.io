@@ -695,9 +695,26 @@ async function makePdf(){
     // map
     doc.addPage(); y=M;
     head("Vägen och delsträckorna");
+    { const geo=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1);
+      if (geo.length && window.SWEREF){
+        const P=ll=>window.SWEREF.till(ll), all=geo.flatMap(g=>g.geo.map(P));
+        const minN=Math.min(...all.map(p=>p[0])), maxN=Math.max(...all.map(p=>p[0])), minE=Math.min(...all.map(p=>p[1])), maxE=Math.max(...all.map(p=>p[1]));
+        const H=130, sc=Math.min(CW/Math.max(1,maxE-minE), H/Math.max(1,maxN-minN)), ox=M+(CW-(maxE-minE)*sc)/2, y0=y;
+        const X=p=>ox+(p[1]-minE)*sc, Y=p=>y0+(maxN-p[0])*sc;
+        const F=[[31,92,65],[180,83,9],[37,99,235],[147,51,234],[190,18,60],[15,118,110],[77,124,15],[194,65,12]];
+        geo.forEach((g,i)=>{ const q=g.geo.map(P); doc.setDrawColor(...F[i%F.length]); doc.setLineWidth(1.4);
+          for(let j=1;j<q.length;j++) doc.line(X(q[j-1]),Y(q[j-1]),X(q[j]),Y(q[j]));
+          const m=q[Math.floor(q.length/2)], n=q[Math.max(0,Math.floor(q.length/2)-1)], mx=(X(m)+X(n))/2, my=(Y(m)+Y(n))/2;
+          doc.setFillColor(255,255,255); doc.setDrawColor(...ink); doc.setLineWidth(0.2); doc.roundedRect(mx-3,my-2.6,6,4.4,1,1,"FD");
+          doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(...ink); doc.text(pdfText(g.id),mx,my+0.8,{align:"center"}); });
+        ((state.karta&&state.karta.punkter)||[]).forEach(pt=>{ const q=P(pt.ll), u=pt.typ==="utfart"; doc.setFillColor(...(u?[124,58,237]:[31,92,65])); doc.circle(X(q),Y(q),1.3,"F");
+          const p=state.props.find(x=>x.id===pt.prop); doc.setFont("helvetica","normal"); doc.setFontSize(7); doc.setTextColor(...muted);
+          doc.text(pdfText(u?"Utfart":pdfName(p?p.namn:"")),X(q)+2,Y(q)-1.5); });
+        y=y0+(maxN-minN)*sc+8; doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Norr är uppåt. Skiss ur vägnätet i verktyget."),M,y); y+=5;
+      } }
     const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
     table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,"cirka "+fmt(num(g.m))+" m"]).concat([["","Totalt","cirka "+fmt(segTot)+" m"]]),{columnStyles:{0:{cellWidth:24},2:{cellWidth:32,halign:"right"}}});
-    para("Längderna är uppmätta på fastighetskartan.",9,muted);
+    para(state.segments.some(g=>g.geo)?"Längderna är mätta längs vägen på kartan i verktyget.":"Längderna är uppmätta på karta.",9,muted);
     // properties
     doc.addPage(); y=M;
     head("Fastigheterna och föreslagna andelar");

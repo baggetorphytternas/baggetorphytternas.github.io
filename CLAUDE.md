@@ -31,6 +31,7 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
 - `index.html` – appens HTML. `app.js` – appens kod. `app.css` – gemensam stil. `sb.js` – inloggning och Supabase. Höj `?v=` på den fil som ändrats.
 - Ingen inline-JavaScript: sidorna har en Content-Security-Policy som bara tillåter skript från appen själv.
 - `verktyg.html` + `verktyg.js` – andelstalsverktyget (eget fönster, läser/skriver `vag/config`, bara admin kan ändra).
+- `verktyg-karta.js` – kartan i verktyget (Leaflet i `leaflet/`, kartbilder från OpenStreetMap och OpenTopoMap, tillåtna i CSP). Vägnätet sparas i `vag/config` som `karta` och delsträckor får `geo` och `mot`.
 - Testskript (Playwright) ligger i Vag-repot under `tests/`.
 
 ## Data

@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2.59">
+<link rel="stylesheet" href="app.css?v=2.61">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -100,8 +100,7 @@
 
   <div class="page" id="page-medlemmar" hidden>
     <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Medlemmar</h1></div><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button></div></div>
-      <p class="hint">Fastighetsägarna längs vägen. Håll dina egna uppgifter aktuella under Mina uppgifter.</p>
+      <div class="ph pgknappar"><div class="row"><button type="button" class="ghost small" id="memMine"><svg class="ico"><use href="#i-user"/></svg><span>Mina uppgifter</span></button></div></div>
     </header>
     <section>
       <label for="memSearch" class="search" id="memSearchL" hidden>Sök<input id="memSearch" type="search" placeholder="Namn, fastighet eller beteckning"></label>
@@ -118,10 +117,6 @@
       <button type="button" class="chipbtn" data-st="prot">Dokument</button>
       <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
     </div></div>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Styrelsen</h1></div></div>
-      <p class="hint">Hör av dig till styrelsen om vägen, avgifter eller dina uppgifter i registret.</p>
-    </header>
     <section id="st-led">
       <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
       <div id="boardList" class="cards"></div>
@@ -186,10 +181,6 @@
   </div>
 
   <div class="page" id="page-moten" hidden>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Möten</h1></div></div>
-      <p class="hint">Kallelser och årsstämmor. Protokollen finns under Dokument.</p>
-    </header>
     <section id="mo-list">
       <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
       <div id="meetList" class="list"></div>
@@ -203,10 +194,6 @@
       <button type="button" class="chipbtn" data-dk="ekonomi">Ekonomi</button>
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
     </div></div>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Dokument</h1></div></div>
-      <p class="hint">Föreningens protokoll, stadgar, ekonomi och bra länkar. Alla medlemmar kan läsa.</p>
-    </header>
     <section id="dk-docs">
       <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
       <p class="hint" id="dkHint"></p>
@@ -221,10 +208,6 @@
   </div>
 
   <div class="page" id="page-arenden" hidden>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Fel och synpunkter</h1></div></div>
-      <p class="hint">Anmäl fel på vägen eller skicka en fråga till styrelsen. Här ser du också hur ärendena går.</p>
-    </header>
     <section class="panel" id="caseForm" data-fold="arende">
       <h2>Anmäl fel eller lämna synpunkt</h2>
       <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
@@ -248,10 +231,6 @@
   </div>
 
   <div class="page" id="page-admin" hidden>
-    <header class="pghead">
-      <div class="ph"><div class="pagehead"><h1>Admin</h1></div></div>
-      <p class="hint">Inställningar och verktyg som bara admin ser.</p>
-    </header>
     <section class="panel" data-fold="a-verktyg" data-fold-default="closed">
       <h2>Verktyg</h2>
       <div class="adminlinks">
@@ -288,9 +267,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.60</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.61</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.61</b><time>1 nov 2026</time></div><ul><li>Sidorna har inte längre egen rubrik och inledande text. Menyn och underflikarna visar var man är.</li></ul></li>
         <li><div><b>2.60</b><time>1 nov 2026</time></div><ul><li>Antalet kontakter visas inte längre i fastighetens ruta under Medlemmar.</li></ul></li>
         <li><div><b>2.59</b><time>1 nov 2026</time></div><ul><li>Karta i andelstalsverktyget: rita vägen, sätt ut utfarter och var varje fastighet, skog och skifte ansluter. Verktyget räknar fram delsträckor, deras längder och vilken väg varje fastighet kör till närmaste utfart. Koordinater i SWEREF 99 TM, min position, GeoJSON in och ut, och en skiss av vägnätet i PDF:en.</li></ul></li>
         <li><div><b>2.58</b><time>1 nov 2026</time></div><ul><li>Andelstalsverktyget är neutralt: inga hänvisningar till tidigare förslag eller beslut. Nuvarande andel kan fyllas i som jämförelse. Föreningens namn och var vägen ansluter anges under Schablonvärden.</li><li>Produktionsområdet väljs i en lista med förklaring av vad det påverkar och länk till Jordbruksverkets karta.</li><li>Resultattabellen och schablontabellen ryms på smala mobiler.</li></ul></li>

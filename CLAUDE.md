@@ -12,11 +12,10 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
       <button type="button" class="chipbtn on" data-x="a">A</button>
       <button type="button" class="chipbtn" data-x="b"><span class="lg">Lång text</span><span class="sm">Kort</span></button>
     </div></div>
-    <header class="pghead">…rubrik och hint…</header>
     …
   ```
   Inga ikoner i underflikarna. Lägg `board` på `.subwrap` om flikarna bara är för styrelsen. Alla flikar ska alltid synas: får de inte plats bryts de till fler rader (aldrig scroll i sidled); med fem eller fler flikar blir det ett jämnt rutnät med tre per rad på mobil.
-- **Sidhuvud på sidor:** `.pghead` med `.ph` (rubrik till vänster, knappar till höger) och `.hint` under.
+- **Ingen sidrubrik eller inledande hjälptext** på sidorna: menyn och underflikarna visar var man är. Behövs knappar för hela sidan läggs de i `<header class="pghead"><div class="ph pgknappar">…</div></header>` direkt efter underflikarna.
 - **Kort** i listor är lika stora (`grid-auto-rows:1fr`), kompakta, och öppnar en dialog med detaljer.
 - **Kontrollera alltid** på mobil, platta och dator.
 - Varje release: höj `Version X` och lägg till en rad i ändringsloggen på adminsidan; höj `sb.js?v=` om `sb.js` ändrats.

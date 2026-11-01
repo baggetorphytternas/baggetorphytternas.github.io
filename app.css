@@ -819,3 +819,12 @@ dialog::backdrop{touch-action:none}
 .schref .tbl .num{text-align:right;white-space:nowrap}
 .card .notice{margin-top:8px;background:var(--warn-soft)}
 @media (max-width:520px){ #summary th:nth-child(5),#summary td:nth-child(5){display:none} }
+/* Andelstalsverktyget: skiften och egna poster */
+.skifte,.radpost{border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.radnamn{display:flex;gap:8px;align-items:flex-end}
+.radnamn label{flex:1}
+.radtal{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:560px){ .radtal{grid-template-columns:1fr 1fr} }
+.radsum{margin-left:auto;font-weight:700;color:var(--ink)}
+.warnmark{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#b45309;color:#fff;font-size:.75rem;font-weight:700;margin-left:4px}
+.schref .tbl+.tbl{margin-top:12px}

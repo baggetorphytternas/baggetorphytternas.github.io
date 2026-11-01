@@ -1,19 +1,28 @@
 const DOC_PATH = "vag/config";
-const SCHABLON_FIELDS = [
-  ["perm","Permanentbostad, ton per år"],
-  ["fritNormal","Fritidshus normal, ton per år"],
-  ["fritLag","Fritidshus låg, ton per år"],
-  ["fritIntensiv","Fritidshus intensiv, ton per år"],
-  ["skog","Skog, ton per ha och år"],
-  ["akerFast","Jordbruk fast belopp, ton"],
-  ["akerPerHa","Jordbruk, ton per ha åker"],
-  ["akerSmallPerHa","Liten åkerareal, ton per ha"],
-  ["akerGrans","Gräns liten åkerareal, ha"],
-  ["minKm","Minsta väglängd, km"]
-];
+/* Schabloner enligt Lantmäteriets PM 2025 "Tonkilometermetoden" (LM2025/006319) med bilaga 1. */
+const PM = {
+  perm:2500, komp:1300, frit:{intensiv:1800, normal:900, lag:450}, lgh:1500, smahusbr:2000, obebyggd:100,
+  hastEgen:200, hastInack:1100, anstalld:780, mjolk:{enkel:6600, tor:13200},
+  teknisk:{manad:500, varannan:600, vecka:800, tva:1100}, natur:500, bat:400, batTatort:500,
+  jarnvag:{signal:800, ovrig:600}, skogRestr:2,
+  skog:{1:15, 2:18, 3:24, 4:30, 5:36, 6:42},
+  /* Tabell 7 interna jordbrukstransporter [ton/ha åker, ton/ha bete], tabell 8 företagsutfart liten areal (ton/ha åker),
+     tabell 9 företagsutfart [fast belopp, ton/ha åker], gräns för liten areal (ha åker). */
+  omr:{
+    Gss:{namn:"Gss – Götalands södra slättbygder", t7:[195,60], t8:125, t9:[1500,80], grans:30},
+    Gmb:{namn:"Gmb – Götalands mellanbygder", t7:[145,45], t8:100, t9:[1000,55], grans:20},
+    Gns:{namn:"Gns – Götalands norra slättbygder", t7:[145,45], t8:100, t9:[1000,55], grans:20},
+    Gsk:{namn:"Gsk – Götalands skogsbygder", t7:[145,45], t8:100, t9:[1000,35], grans:20},
+    Ss:{namn:"Ss – Svealands slättbygder", t7:[145,45], t8:100, t9:[1000,35], grans:20},
+    Ssk:{namn:"Ssk – Svealands skogsbygder", t7:[110,30], t8:75, t9:[1000,20], grans:20},
+    Nn:{namn:"Nn – Nedre Norrland", t7:[110,30], t8:75, t9:[1000,20], grans:20},
+    "Nö":{namn:"Nö – Övre Norrland", t7:[110,30], t8:75, t9:[1000,20], grans:20}
+  }
+};
+const TILLV={1:"1 – Jämtland och inre Norrbotten/Västerbotten",2:"2 – Västernorrland och kustnära Norrland",3:"3 – Dalarna och västra Gävleborg",4:"4 – Värmland, Örebro, Västmanland, Södermanland, Stockholm, Uppsala",5:"5 – Västra Götaland, Jönköping, Kronoberg, Kalmar, Östergötland, Gotland",6:"6 – Halland, Skåne, Blekinge"};
 const DEFAULT = {
   segments:[], props:[],
-  schablon:{perm:2500,fritNormal:900,fritLag:450,fritIntensiv:1800,skog:30,akerFast:1000,akerPerHa:35,akerSmallPerHa:100,akerGrans:20,minKm:0.3,utdebitering:""}
+  schablon:{prodOmr:"Ss", tillvOmr:"4", minKm:0.3, utdebitering:""}
 };
 let state = structuredClone(DEFAULT);
 let selected = null;
@@ -41,21 +50,54 @@ function jamnKm(ids){
 function segKm(ids){
   return (ids||[]).reduce((s,id)=>{ const g=state.segments.find(x=>x.id===id); return s+(g?num(g.m):0); },0)/1000;
 }
+/* Fastighetens trafikposter: [{namn, ton, vag:"route"|"skog"|"inre"}]. Varje post räknas mot sin väglängd. */
+function poster(p){
+  const S=state.schablon, t=typOf(p), O=PM.omr[S.prodOmr]||PM.omr.Ss, n=k=>num(p[k]), ut=[];
+  const add=(namn,ton,vag="route")=>{ if(ton>0) ut.push({namn,ton,vag}); };
+  const bostad=()=>{ add(`Permanentbostad ${n("perm")>1?n("perm")+" × ":""}${fmt(PM.perm)} ton`, n("perm")*PM.perm);
+    add(`Uthyrd komplementbostad ${n("komp")>1?n("komp")+" × ":""}${fmt(PM.komp)} ton`, n("komp")*PM.komp);
+    const niva=p.fritNiva||"normal"; add(`Fritidsbostad (${{lag:"låg",normal:"normal",intensiv:"intensiv"}[niva]} användning) ${n("frit")>1?n("frit")+" × ":""}${fmt(PM.frit[niva]||0)} ton`, n("frit")*(PM.frit[niva]||0)); };
+  const skog=()=>{ const ha=n("skogHa"); if(ha>=1) add(`Skog ${fmt(ha,ha%1?1:0)} ha × ${PM.skog[S.tillvOmr]||30} ton`, ha*(PM.skog[S.tillvOmr]||30),"skog");
+    add(`Skog med restriktioner ${fmt(n("skogRestrHa"),1)} ha × ${PM.skogRestr} ton`, n("skogRestrHa")*PM.skogRestr,"skog"); };
+  const hastar=()=>{ add(`Egna hästar ${n("hastEgna")} × ${PM.hastEgen} ton`, n("hastEgna")*PM.hastEgen); add(`Inackorderade hästar ${n("hastInack")} × ${fmt(PM.hastInack)} ton`, n("hastInack")*PM.hastInack); };
+  const interna=()=>{ if(!p.interna) return; add(`Interna transporter åker ${fmt(n("akerHa"),1)} ha × ${O.t7[0]} ton`, n("akerHa")*O.t7[0],"inre"); add(`Interna transporter bete ${fmt(n("beteHa"),1)} ha × ${O.t7[1]} ton`, n("beteHa")*O.t7[1],"inre"); };
+  switch(t){
+    case "perm": case "frit": bostad(); break;
+    case "flerfam": add(`${n("lgh")} lägenheter × ${fmt(PM.lgh)} ton`, n("lgh")*PM.lgh); break;
+    case "smahusbr": add(`${n("smahus")} småhus i förening × ${fmt(PM.smahusbr)} ton`, n("smahus")*PM.smahusbr); break;
+    case "kombi": bostad();
+      add(`Åker ${fmt(n("akerHa"),1)} ha × ${O.t8} ton`, n("akerHa")*O.t8);
+      add(`Bete ${fmt(n("beteHa"),1)} ha × ${O.t7[1]} ton`, n("beteHa")*O.t7[1]);
+      skog(); hastar(); add(`Övrig verksamhet (egen beräkning)`, n("ovrigTon")); break;
+    case "jord": { bostad(); const a=n("akerHa");
+      if(a>0){ if(a>=O.grans) add(`Företagsutfart ${fmt(O.t9[0])} ton + ${fmt(a,1)} ha × ${O.t9[1]} ton`, O.t9[0]+a*O.t9[1]); else add(`Företagsutfart ${fmt(a,1)} ha åker × ${O.t8} ton`, a*O.t8); }
+      interna(); if(p.mjolk&&PM.mjolk[p.mjolk]) add(`Mjölktransporter (${p.mjolk==="tor"?"tur och retur":"enkelresa"})`, PM.mjolk[p.mjolk]);
+      add(`Anställda ${n("anstallda")} × ${PM.anstalld} ton`, n("anstallda")*PM.anstalld); hastar(); skog(); break; }
+    case "skog": skog(); break;
+    case "obebyggd": add(`Obebyggd fastighet`, PM.obebyggd); break;
+    case "teknisk": add(`Teknisk anläggning`, PM.teknisk[p.tekFrek||"manad"]); break;
+    case "smabat": add(`${n("batplatser")} båtplatser × ${p.batTatort?PM.batTatort:PM.bat} ton`, n("batplatser")*(p.batTatort?PM.batTatort:PM.bat)); break;
+    case "natur": add(`Naturreservat, skyddad natur`, PM.natur); break;
+    case "jarnvag": add(`Järnvägsfastighet, ${p.jarnvagTyp==="signal"?"signalanläggning":"övrig anläggning"}`, PM.jarnvag[p.jarnvagTyp==="signal"?"signal":"ovrig"]); break;
+    case "egen": add(`Eget beräknat tontal`, n("egenTon")); break;
+  }
+  return ut;
+}
 function calc(){
-  const S = state.schablon;
-  const fritVal = {lag:num(S.fritLag), normal:num(S.fritNormal), intensiv:num(S.fritIntensiv)};
+  const S = state.schablon, minKm=num(S.minKm);
   const rows = state.props.map(p=>{
-    let d = segKm(p.route); if (d>0) d = Math.max(d, num(S.minKm));
-    const aker = num(p.akerHa);
-    const jord = aker>0 ? (aker>=num(S.akerGrans) ? num(S.akerFast)+num(S.akerPerHa)*aker : num(S.akerSmallPerHa)*aker) : 0;
-    const bostad = num(p.perm)*num(S.perm) + num(p.frit)*(fritVal[p.fritNiva||"normal"]||0);
-    let dSkog = (p.skogRoute&&p.skogRoute.length) ? segKm(p.skogRoute) : d;
+    const fixed = typOf(p)==="annan" && String(p.fast??"").trim()!=="" ? num(p.fast) : null;
+    let d = segKm(p.route); const direkt = !!p.direkt && d===0;
+    if (direkt) d = minKm; else if (d>0) d = Math.max(d, minKm);
+    let dSkog = (p.skogRoute&&p.skogRoute.length) ? Math.max(segKm(p.skogRoute),minKm) : d;
     if (p.skogJamn) dSkog = jamnKm(p.skogRoute&&p.skogRoute.length ? p.skogRoute : p.route);
-    const skogTon = num(p.skogHa)*num(S.skog);
-    const ton = bostad + jord + skogTon;
-    const tkm = (bostad+jord)*d + skogTon*dSkog;
-    const fixed = (p.fast!==undefined && p.fast!==null && String(p.fast).trim()!=="") ? num(p.fast) : null;
-    return {p, d, dSkog, ton, tkm, fixed, bostad, jord, skogTon};
+    const dInre = (p.inreRoute&&p.inreRoute.length) ? Math.max(segKm(p.inreRoute),minKm) : d;
+    const ps = fixed!==null ? [] : poster(p);
+    const km = v=>v==="skog"?dSkog:v==="inre"?dInre:d;
+    const faktor = direkt ? num(p.direktFaktor||0.5) : 1;
+    ps.forEach(x=>{ x.km=km(x.vag); x.tkm=x.ton*x.km*faktor; });
+    const ton = ps.reduce((s,x)=>s+x.ton,0), tkm = ps.reduce((s,x)=>s+x.tkm,0);
+    return {p, d, dSkog, dInre, ton, tkm, fixed, poster:ps, direkt, faktor};
   });
   const fixedSum = rows.reduce((s,r)=>s+(r.fixed??0),0);
   const S0 = rows.filter(r=>r.fixed===null).reduce((s,r)=>s+r.tkm,0);
@@ -68,12 +110,10 @@ function calc(){
   return {rows, fixedSum, total:S0};
 }
 function typeChips(p){
-  const t=[];
-  if (num(p.akerHa)>0 || num(p.skogHa)>0) t.push(num(p.akerHa)>0&&num(p.skogHa)>0?"Jord och skog":num(p.skogHa)>0?"Skog":"Jordbruk");
-  if (num(p.perm)>0) t.push(num(p.perm)>1?num(p.perm)+" permanent":"Permanent");
-  if (num(p.frit)>0) t.push((num(p.frit)>1?num(p.frit)+" ":"")+"Fritid"+(p.fritNiva&&p.fritNiva!=="normal"?" ("+p.fritNiva+")":""));
-  if (p.fast!==undefined&&p.fast!==null&&String(p.fast).trim()!=="") t.push("Fast andel");
-  return t.map(x=>`<span class="chip">${esc(x)}</span>`).join("") || `<span class="chip">Ej angiven</span>`;
+  const t=typOf(p), lab=(TYPER.find(x=>x[0]===t)||[,"Ej angiven"])[1], c=[lab];
+  if (t==="jord"||t==="kombi"){ const ha=num(p.akerHa)+num(p.beteHa)+num(p.skogHa); if(ha) c.push(fmt(ha)+" ha"); if(num(p.perm)) c.push(num(p.perm)>1?num(p.perm)+" bostäder":"med bostad"); }
+  if (p.direkt) c.push("Direktutfart");
+  return c.map(x=>`<span class="chip">${esc(x)}</span>`).join("");
 }
 
 /* ---------- rendering ---------- */
@@ -99,15 +139,20 @@ function renderSummary(){
   const sumShare = rows.reduce((s,r)=>s+r.disp,0), sumKr = rows.reduce((s,r)=>s+r.kr,0);
   $("#summary tfoot").innerHTML = `<tr><td>Totalt</td><td></td><td></td><td class="num">${fmt(total)}</td><td></td><td class="num">${fmt(sumShare,1)} %</td>${showKr?`<td class="num">${fmt(Math.round(sumKr))}</td>`:""}</tr>`;
   document.querySelector("#summary th.kr").style.display = showKr?"":"none";
-  rows.forEach(r=>{ const el=document.getElementById("calc-"+r.p.id); if(el) el.textContent = calcText(r); });
+  rows.forEach(r=>{ const el=document.getElementById("calc-"+r.p.id); if(el) el.textContent = calcText(r); const nv=document.getElementById("vkn-"+r.p.id); if(nv) nv.innerHTML=varningar(r.p); });
+}
+function varningar(p){
+  const t=typOf(p), ha=num(p.akerHa)+num(p.beteHa)+num(p.skogHa)+num(p.skogRestrHa), v=[];
+  if (t==="kombi"&&ha>=10) v.push(`Fastigheten har ${fmt(ha)} ha mark. Från 10 ha räknas den som jordbruks- eller skogsbruksfastighet.`);
+  if (t==="jord"&&ha>0&&ha<10&&(num(p.perm)||num(p.frit))) v.push("Under 10 ha med bostad räknas fastigheten normalt som kombinerad bostadsfastighet.");
+  if (t==="kombi"&&num(p.hastEgna)+num(p.hastInack)>10) v.push("Fler än 10 hästar räknas som jordbruksfastighet.");
+  return v.map(x=>`<p class="notice">${esc(x)}</p>`).join("");
 }
 function calcText(r){
   if (r.fixed!==null) return `Fast andel ${fmt(r.fixed,1)} %. Övriga fält påverkar inte resultatet.`;
-  const parts=[];
-  if (r.bostad) parts.push(`bostäder ${fmt(r.bostad)} ton`);
-  if (r.jord) parts.push(`jordbruk ${fmt(r.jord)} ton`);
-  if (r.skogTon) parts.push(`skog ${fmt(r.skogTon)} ton på ${fmt(r.dSkog,2)} km`);
-  return (parts.length?parts.join(", ")+". ":"") + `Väg ${fmt(r.d,2)} km, ${fmt(r.tkm)} tonkm, andel ${fmt(r.disp,1)} %.`;
+  if (!r.poster.length) return "Ingen trafik angiven ännu.";
+  const rad=r.poster.map(x=>`${x.namn} = ${fmt(x.ton)} ton × ${fmt(x.km,2)} km`).join("\n");
+  return rad + (r.direkt?`\nDirektutfart: minsta väglängd och reduktionsfaktor ${fmt(r.faktor,1)}.`:"") + `\nSumma ${fmt(r.ton)} ton per år, ${fmt(r.tkm)} tonkm, andel ${fmt(r.disp,1)} %.`;
 }
 function segBoxes(p, key){
   return state.segments.map(g=>{
@@ -120,31 +165,98 @@ function renderPick(){
   const sorted=[...state.props].sort((a,b)=>String(a.namn).localeCompare(String(b.namn),"sv"));
   $("#pick").innerHTML = sorted.map(p=>`<option value="${p.id}" ${p.id===selected?"selected":""}>${esc(p.namn||"Namnlös")}</option>`).join("") || `<option value="">Inga fastigheter</option>`;
 }
-const TYPER=[["perm","Permanentbostad"],["frit","Fritidshus"],["jord","Jord och skogsbruk utan bostad"],["jordperm","Jord och skogsbruk med permanentbostad"],["jordfrit","Jord och skogsbruk med fritidshus"],["annan","Annat, fast andel"]];
+const TYPER=[
+  ["perm","Permanentbostad (villa, radhus, kedjehus)","Bostad"],["frit","Fritidsbostad","Bostad"],
+  ["flerfam","Flerfamiljshus","Bostad"],["smahusbr","Småhus i bostadsrätt eller kooperativ hyresrätt","Bostad"],
+  ["kombi","Kombinerad bostadsfastighet (bostad med mark under 10 ha)","Jord och skog"],
+  ["jord","Jordbruksfastighet (10 ha eller mer)","Jord och skog"],["skog","Skogsbruksfastighet utan bostad","Jord och skog"],
+  ["obebyggd","Obebyggd fastighet","Övrigt"],["teknisk","Teknisk anläggning (mast, kraftverk, pumpstation …)","Övrigt"],
+  ["smabat","Småbåtshamn","Övrigt"],["natur","Naturreservat, skyddad natur","Övrigt"],["jarnvag","Järnvägsfastighet","Övrigt"],
+  ["egen","Eget beräknat tontal (skola, golfbana, camping …)","Övrigt"],["annan","Fast andel i procent","Övrigt"]];
+const TYPKODER=TYPER.map(x=>x[0]);
 function typOf(p){
-  if (p.typ) return p.typ;
-  const j=num(p.akerHa)>0||num(p.skogHa)>0;
+  if (TYPKODER.includes(p.typ)) return p.typ;
   if (String(p.fast??"").trim()!=="") return "annan";
-  return j ? (num(p.perm)>0?"jordperm":num(p.frit)>0?"jordfrit":"jord") : (num(p.frit)>0&&!num(p.perm)?"frit":"perm");
+  if (p.typ&&String(p.typ).startsWith("jord")) return (num(p.akerHa)>0||num(p.perm)||num(p.frit)) ? "jord" : "skog";
+  if (num(p.akerHa)>0||num(p.skogHa)>0) return (num(p.akerHa)===0&&!num(p.perm)&&!num(p.frit)) ? "skog" : "jord";
+  return num(p.frit)>0&&!num(p.perm) ? "frit" : "perm";
 }
 function setTyp(p,t){
   p.typ=t;
-  const jord=t.startsWith("jord"), perm=t==="perm"||t==="jordperm", frit=t==="frit"||t==="jordfrit";
-  if (perm){ if(!num(p.perm)) p.perm=1; } else p.perm=0;
-  if (frit){ if(!num(p.frit)) p.frit=1; } else p.frit=0;
-  if (!jord){ p.akerHa=0; p.skogHa=0; p.skogRoute=[]; p.skogJamn=false; }
+  const bostad = t==="perm"||t==="kombi"||t==="jord";
+  if (t==="perm"||t==="kombi"){ if(!num(p.perm)) p.perm=1; p.frit=0; }
+  else if (t==="frit"){ if(!num(p.frit)) p.frit=1; p.perm=0; p.komp=0; }
+  else if (t!=="jord"){ p.perm=0; p.frit=0; p.komp=0; }
+  if (!["kombi","jord"].includes(t)){ p.akerHa=0; p.beteHa=0; p.hastEgna=0; p.hastInack=0; p.interna=false; p.inreRoute=[]; }
+  if (!["kombi","jord","skog"].includes(t)){ p.skogHa=0; p.skogRestrHa=0; p.skogRoute=[]; p.skogJamn=false; }
+  if (t!=="jord"){ p.mjolk=""; p.anstallda=0; }
   if (t!=="annan") p.fast="";
+  if (t==="flerfam"&&!num(p.lgh)) p.lgh=2;
+  if (t==="smahusbr"&&!num(p.smahus)) p.smahus=1;
+  if (t==="smabat"&&!num(p.batplatser)) p.batplatser=10;
+  if (t==="teknisk"&&!p.tekFrek) p.tekFrek="manad";
+  if (t==="jarnvag"&&!p.jarnvagTyp) p.jarnvagTyp="ovrig";
+  void bostad;
 }
 let editProp=null;
 document.addEventListener("click", e=>{
   const u=e.target.closest("[data-unlock]"); if(u){ editProp=u.dataset.unlock; renderCards(); const f=document.getElementById("namn-"+editProp); if(f) f.focus(); return; }
   if (e.target.closest("[data-lock]")){ editProp=null; renderCards(); renderSummary(); }
 });
+const fld=(p,f,label,mode="decimal",extra="")=>`<label for="${f}-${p.id}">${label}<input id="${f}-${p.id}" inputmode="${mode}" data-p="${p.id}" data-f="${f}" value="${esc(String(p[f]??"").replace(".",","))}"${extra}></label>`;
+const sel=(p,f,label,opts,def)=>`<label for="${f}-${p.id}">${label}<select id="${f}-${p.id}" data-p="${p.id}" data-f="${f}">${opts.map(([v,l])=>`<option value="${v}" ${(p[f]||def)===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label>`;
+const chk=(p,f,label)=>`<label class="check" for="${f}-${p.id}"><input type="checkbox" id="${f}-${p.id}" data-p="${p.id}" data-f="${f}" ${p[f]?"checked":""}>${label}</label>`;
+function typHjalp(t){
+  return ({
+    perm:"2 500 ton per hushåll. Radhus och kedjehus räknas som villa. En komplementbostad ingår normalt, men en varaktigt uthyrd räknas med 1 300 ton.",
+    frit:"Intensiv 1 800 ton (används veckoslut året runt), normal 900 ton (sommar och veckoslut april–september), låg 450 ton (4–5 veckor per år). Normalt samma nivå för hela området.",
+    flerfam:"1 500 ton per lägenhet oavsett upplåtelseform.",
+    smahusbr:"2 000 ton per hus. Används bara om något, till exempel närhet till kollektivtrafik, motiverar lägre trafik än en vanlig villa.",
+    kombi:"Bostad med mark under 10 ha. Bostaden räknas som permanentbostad och därutöver marken och verksamheten: åker, bete, skog, hästar och annan verksamhet som gårdsförsäljning eller bed & breakfast.",
+    jord:"Bostäderna på gården räknas för sig. Företagsutfarten räknas på åkerarealen: under gränsen per hektar, över gränsen ett fast belopp plus per hektar. Interna transporter räknas bara om åker eller bete nås via föreningens väg.",
+    skog:"Skog under 1 ha räknas inte. Mark där inget skogsbruk får bedrivas räknas med 2 ton per ha.",
+    obebyggd:"100 ton per fastighet. Har bygglov vunnit laga kraft räknas den som bebyggd.",
+    teknisk:"Schablon efter hur ofta anläggningen besöks. Den inkluderar planerat underhåll.",
+    smabat:"400 ton per båtplats, 500 ton nära större tätort.",
+    natur:"500 ton för naturreservat som skyddar natur. Reservat för friluftsliv och nationalparker beräknas i det enskilda fallet.",
+    jarnvag:"Signalanläggning 800 ton, övriga anläggningar 600 ton.",
+    egen:"För fastigheter som Lantmäteriet säger ska beräknas i det enskilda fallet, till exempel skola, golfbana, camping eller större hästgård. Ange det beräknade tontalet per år.",
+    annan:"En fast andel i procent som läggs först. Övriga fastigheter delar på resten."
+  })[t]||"";
+}
 function renderCards(){
   renderPick();
+  const S=state.schablon, O=PM.omr[S.prodOmr]||PM.omr.Ss;
   $("#cards").innerHTML = state.props.filter(p=>p.id===selected).map(p=>{
-    const t=typOf(p), jord=t.startsWith("jord"), perm=t==="perm"||t==="jordperm", frit=t==="frit"||t==="jordfrit";
-    const ed=editProp===p.id;
+    const t=typOf(p), ed=editProp===p.id;
+    const harSkog=["kombi","jord","skog"].includes(t), harMark=t==="kombi"||t==="jord";
+    const ha=num(p.akerHa)+num(p.beteHa)+num(p.skogHa)+num(p.skogRestrHa);
+    const grupper=[...new Set(TYPER.map(x=>x[2]))];
+    let f="";
+    if (t==="perm"||t==="kombi") f+=`<fieldset class="fs"><legend>Bostad</legend><div class="grid2">${fld(p,"perm","Antal hushåll (permanentbostäder)","numeric")}${fld(p,"komp","Varaktigt uthyrda komplementbostäder","numeric")}</div></fieldset>`;
+    if (t==="frit") f+=`<fieldset class="fs"><legend>Fritidsbostad</legend><div class="grid2">${fld(p,"frit","Antal fritidsbostäder","numeric")}${sel(p,"fritNiva","Användning",[["intensiv","Intensiv – veckoslut året runt (1 800 ton)"],["normal","Normal – sommar och veckoslut apr–sep (900 ton)"],["lag","Låg – 4–5 veckor per år (450 ton)"]],"normal")}</div></fieldset>`;
+    if (t==="jord") f+=`<fieldset class="fs"><legend>Bostäder på gården</legend><div class="grid2">${fld(p,"perm","Permanentbostäder","numeric")}${fld(p,"komp","Uthyrda komplementbostäder","numeric")}${fld(p,"frit","Fritidsbostäder","numeric")}${(num(p.frit)?sel(p,"fritNiva","Fritidsbostadens användning",[["intensiv","Intensiv (1 800 ton)"],["normal","Normal (900 ton)"],["lag","Låg (450 ton)"]],"normal"):"")}</div></fieldset>`;
+    if (t==="flerfam") f+=`<fieldset class="fs"><legend>Flerfamiljshus</legend>${fld(p,"lgh","Antal lägenheter","numeric")}</fieldset>`;
+    if (t==="smahusbr") f+=`<fieldset class="fs"><legend>Småhus i förening</legend>${fld(p,"smahus","Antal hus","numeric")}</fieldset>`;
+    if (harMark) f+=`<fieldset class="fs"><legend>Mark och verksamhet</legend><div class="grid2">${fld(p,"akerHa","Åker, ha")}${fld(p,"beteHa","Bete, ha")}${fld(p,"hastEgna","Egna hästar (200 ton)","numeric")}${fld(p,"hastInack","Inackorderade hästar (1 100 ton)","numeric")}
+      ${t==="jord"?sel(p,"mjolk","Mjölktransporter",[["","Inga"],["enkel","Enkelresa (6 600 ton)"],["tor","Tur och retur (13 200 ton)"]],"")+fld(p,"anstallda","Heltidsanställda (780 ton)","decimal"):fld(p,"ovrigTon","Övrig verksamhet, ton per år (gårdsförsäljning, B&B …)")}</div>
+      ${t==="jord"?chk(p,"interna","Åker eller bete nås via föreningens väg (interna jordbrukstransporter)"):""}
+      ${t==="jord"?`<p class="hint">Åker under ${O.grans} ha: ${O.t8} ton per ha. Från ${O.grans} ha: ${fmt(O.t9[0])} ton + ${O.t9[1]} ton per ha. Interna: ${O.t7[0]} ton per ha åker och ${O.t7[1]} ton per ha bete. (${esc(O.namn)})</p>`:`<p class="hint">Åker ${O.t8} ton per ha, bete ${O.t7[1]} ton per ha. (${esc(O.namn)})</p>`}
+      <div id="vkn-${p.id}"></div></fieldset>`;
+    if (harSkog) f+=`<fieldset class="fs"><legend>Skog</legend><div class="grid2">${fld(p,"skogHa",`Produktiv skogsmark, ha (${PM.skog[S.tillvOmr]||30} ton per ha)`)}${fld(p,"skogRestrHa","Skog där skogsbruk inte får bedrivas, ha (2 ton per ha)")}</div><p class="hint">Under 1 ha skog räknas inte. Impediment räknas inte.</p></fieldset>`;
+    if (t==="teknisk") f+=`<fieldset class="fs"><legend>Teknisk anläggning</legend>${sel(p,"tekFrek","Hur ofta besöks den",[["manad","En gång per månad (500 ton)"],["varannan","Varannan vecka (600 ton)"],["vecka","En gång per vecka (800 ton)"],["tva","Två gånger per vecka (1 100 ton)"]],"manad")}</fieldset>`;
+    if (t==="smabat") f+=`<fieldset class="fs"><legend>Småbåtshamn</legend>${fld(p,"batplatser","Antal båtplatser","numeric")}${chk(p,"batTatort","Nära större tätort (500 ton per båtplats)")}</fieldset>`;
+    if (t==="jarnvag") f+=`<fieldset class="fs"><legend>Järnvägsfastighet</legend>${sel(p,"jarnvagTyp","Anläggning",[["signal","Signalanläggning (800 ton)"],["ovrig","Övriga anläggningar (600 ton)"]],"ovrig")}</fieldset>`;
+    if (t==="egen") f+=`<fieldset class="fs"><legend>Eget tontal</legend>${fld(p,"egenTon","Trafik, ton per år")}</fieldset>`;
+    if (t==="annan") f+=`<fieldset class="fs"><legend>Fast andel</legend>${fld(p,"fast","Andel i procent")}</fieldset>`;
+    const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
+      <label>${harMark?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till Stav</label><div class="segs">${segBoxes(p,"route")}</div>
+      ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>
+      ${chk(p,"skogJamn","Skogen ligger jämnt utmed sträckan")}`:""}
+      ${t==="jord"&&p.interna?`<label>Interna transporter kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"inreRoute")}</div>`:""}
+      ${chk(p,"direkt","Direktutfart till allmän väg (minsta väglängd och reduktionsfaktor)")}
+      ${p.direkt?sel(p,"direktFaktor","Reduktionsfaktor",[["0.5","0,5 – gemensamma nyttigheter i normal omfattning"],["0.3","0,3 – gemensamma nyttigheter i mindre omfattning"]],"0.5"):""}
+    </fieldset>`;
     return `<div class="panel card${ed?" editing":""}" data-card="${p.id}">
     <div class="card-head">
       ${ed?`<input id="namn-${p.id}" aria-label="Fastighetens namn" data-p="${p.id}" data-f="namn" value="${esc(p.namn)}">`:`<h3 class="pname">${esc(p.namn)}</h3>`}
@@ -152,23 +264,9 @@ function renderCards(){
     </div>
     ${ed?"":`<p class="hint">Tryck på Redigera för att ändra uppgifterna.</p>`}
     <fieldset class="lockwrap" ${ed?"":"disabled"}>
-    <label for="typ-${p.id}">Typ av fastighet<select id="typ-${p.id}" data-typ="${p.id}">${TYPER.map(([v,l])=>`<option value="${v}" ${v===t?"selected":""}>${l}</option>`).join("")}</select></label>
-    ${perm?`<fieldset class="fs"><legend>Bostad</legend>
-      <label for="perm-${p.id}">Antal permanentbostäder<input id="perm-${p.id}" inputmode="numeric" data-p="${p.id}" data-f="perm" value="${esc(p.perm??1)}"></label></fieldset>`:""}
-    ${frit?`<fieldset class="fs"><legend>Fritidshus</legend><div class="grid2">
-      <label for="frit-${p.id}">Antal fritidshus<input id="frit-${p.id}" inputmode="numeric" data-p="${p.id}" data-f="frit" value="${esc(p.frit??1)}"></label>
-      <label for="fritNiva-${p.id}">Hur mycket används det<select id="fritNiva-${p.id}" data-p="${p.id}" data-f="fritNiva">
-        ${["lag","normal","intensiv"].map(v=>`<option value="${v}" ${(p.fritNiva||"normal")===v?"selected":""}>${v==="lag"?"Lite":v==="normal"?"Normalt":"Mycket"}</option>`).join("")}</select></label></div></fieldset>`:""}
-    ${jord?`<fieldset class="fs"><legend>Mark</legend><div class="grid2">
-      <label for="akerHa-${p.id}">Åker och bete, ha<input id="akerHa-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="akerHa" value="${esc(p.akerHa??0)}"></label>
-      <label for="skogHa-${p.id}">Produktiv skog, ha<input id="skogHa-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="skogHa" value="${esc(p.skogHa??0)}"></label></div></fieldset>`:""}
-    ${t==="annan"?`<fieldset class="fs"><legend>Fast andel</legend>
-      <label for="fast-${p.id}">Andel i procent<input id="fast-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="fast" value="${esc(p.fast??"")}"></label></fieldset>`:""}
-    <fieldset class="fs"><legend>Vägen</legend>
-      <label>${jord?(perm||frit?"Bostad och jordbruk kör på delsträckor":"Jordbruket kör på delsträckor"):"Kör på delsträckor"} ut till Stav</label><div class="segs">${segBoxes(p,"route")}</div>
-      ${jord?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>
-      <label class="check" for="jamn-${p.id}"><input type="checkbox" id="jamn-${p.id}" data-p="${p.id}" data-f="skogJamn" ${p.skogJamn?"checked":""}>Skogen ligger jämnt utmed sträckan</label>`:""}
-    </fieldset>
+    <label for="typ-${p.id}">Typ av fastighet<select id="typ-${p.id}" data-typ="${p.id}">${grupper.map(g=>`<optgroup label="${g}">${TYPER.filter(x=>x[2]===g).map(([v,l])=>`<option value="${v}" ${v===t?"selected":""}>${esc(l)}</option>`).join("")}</optgroup>`).join("")}</select></label>
+    <p class="hint">${esc(typHjalp(t))}</p>
+    ${f}${vag}
     <details class="more"><summary>Fler uppgifter</summary>
       <label for="a2012-${p.id}">Andel i förslaget 2012, %<input id="a2012-${p.id}" inputmode="decimal" data-p="${p.id}" data-f="andel2012" value="${esc(String(p.andel2012??"").replace(".",","))}"></label>
       <label for="note-${p.id}">Anteckning (syns bara här)<textarea id="note-${p.id}" rows="2" data-p="${p.id}" data-f="note">${esc(p.note)}</textarea></label>
@@ -191,7 +289,25 @@ function renderSegments(){
     <td><button type="button" class="danger" data-segdel="${i}">Ta bort</button></td></tr>`).join("");
 }
 function renderSchablon(){
-  $("#schablon").innerHTML = SCHABLON_FIELDS.map(([k,l])=>`<label for="s-${k}">${l}<input id="s-${k}" inputmode="decimal" data-s="${k}" value="${esc(state.schablon[k])}"></label>`).join("");
+  const S=state.schablon, O=PM.omr[S.prodOmr]||PM.omr.Ss, sk=PM.skog[S.tillvOmr]||30;
+  const rad=(a,b)=>`<tr><td>${esc(a)}</td><td class="num">${esc(b)}</td></tr>`;
+  $("#schablon").innerHTML = `
+    <label for="s-prodOmr">Produktionsområde för jordbruk<select id="s-prodOmr" data-s="prodOmr">${Object.entries(PM.omr).map(([k,v])=>`<option value="${k}" ${S.prodOmr===k?"selected":""}>${esc(v.namn)}</option>`).join("")}</select></label>
+    <label for="s-tillvOmr">Tillväxtområde för skog<select id="s-tillvOmr" data-s="tillvOmr">${Object.entries(TILLV).map(([k,v])=>`<option value="${k}" ${String(S.tillvOmr)===k?"selected":""}>${esc(v)} (${PM.skog[k]} ton/ha)</option>`).join("")}</select></label>
+    <label for="s-minKm">Minsta väglängd, km<input id="s-minKm" inputmode="decimal" data-s="minKm" value="${esc(String(S.minKm).replace(".",","))}"></label>
+    <div class="schref"><table class="tbl"><thead><tr><th>Schablon enligt Lantmäteriets PM 2025</th><th class="num">Ton per år</th></tr></thead><tbody>
+      ${rad("Permanentbostad, per hushåll",fmt(PM.perm))}${rad("Uthyrd komplementbostad",fmt(PM.komp))}
+      ${rad("Fritidsbostad intensiv / normal / låg",`${fmt(PM.frit.intensiv)} / ${PM.frit.normal} / ${PM.frit.lag}`)}
+      ${rad("Flerfamiljshus, per lägenhet",fmt(PM.lgh))}${rad("Småhus i bostadsrätt eller kooperativ hyresrätt",fmt(PM.smahusbr))}
+      ${rad("Obebyggd fastighet",PM.obebyggd)}${rad(`Skog, per ha (tillväxtområde ${S.tillvOmr})`,sk)}${rad("Skog med restriktioner, per ha",PM.skogRestr)}
+      ${rad(`Företagsutfart under ${O.grans} ha åker, per ha`,O.t8)}${rad(`Företagsutfart från ${O.grans} ha åker`,`${fmt(O.t9[0])} + ${O.t9[1]}/ha`)}
+      ${rad("Interna transporter, per ha åker / bete",`${O.t7[0]} / ${O.t7[1]}`)}
+      ${rad("Mjölk enkelresa / tur och retur",`${fmt(PM.mjolk.enkel)} / ${fmt(PM.mjolk.tor)}`)}${rad("Heltidsanställd",PM.anstalld)}
+      ${rad("Häst, egen / inackorderad",`${PM.hastEgen} / ${fmt(PM.hastInack)}`)}
+      ${rad("Teknisk anläggning, besök 1/mån, 1/14 dagar, 1/vecka, 2/vecka","500 / 600 / 800 / 1 100")}
+      ${rad("Småbåtshamn per båtplats (nära tätort)","400 (500)")}${rad("Naturreservat, skyddad natur",PM.natur)}${rad("Järnväg signal / övrig","800 / 600")}
+    </tbody></table>
+    <p class="hint">Källa: Lantmäteriet, PM 2025 om tonkilometermetoden (LM2025/006319) med bilaga 1. Direktutfart: minsta väglängd och reduktionsfaktor 0,5 eller 0,3 (avsnitt 3.1.4).</p></div>`;
 }
 function renderAll(){ renderCards(); renderSegments(); renderSchablon(); const u=document.getElementById("utdeb"); if(u && document.activeElement!==u) u.value = state.schablon.utdebitering ?? ""; renderSummary(); }
 
@@ -213,12 +329,14 @@ document.addEventListener("input", e=>{
     t.closest(".seg").classList.toggle("on",t.checked);
   } else if (t.dataset.segI!==undefined){
     const g=state.segments[+t.dataset.segI]; const old=g.id; g[t.dataset.sf]=t.value;
-    if (t.dataset.sf==="id"){ state.props.forEach(p=>["route","skogRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].map(x=>x===old?t.value:x); })); }
+    if (t.dataset.sf==="id"){ state.props.forEach(p=>["route","skogRoute","inreRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].map(x=>x===old?t.value:x); })); }
   } else if (t.dataset.s){
     state.schablon[t.dataset.s]=t.value;
   } else return;
   renderSummary(); scheduleSave();
 });
+/* Fält som ändrar formuläret ritar om kortet efteråt, och fokus behålls i det fält man gått vidare till. */
+document.addEventListener("change", e=>{ const f=e.target.dataset.f; if(["interna","direkt","frit"].includes(f)){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, pos=a&&a.selectionStart; renderCards(); renderSummary(); const n=id&&document.getElementById(id); if(n){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(x){} } },0); } if(e.target.dataset.s==="prodOmr"||e.target.dataset.s==="tillvOmr"){ renderSchablon(); renderCards(); renderSummary(); } });
 document.addEventListener("change", e=>{ if (e.target.dataset.sf==="id"||e.target.dataset.sf==="namn") renderCards(), renderSummary(); if (e.target.dataset.f==="namn") renderPick(); });
 document.addEventListener("change", e=>{ if(e.target.id==="pick"){ selected=e.target.value; editProp=null; renderCards(); renderSummary(); } });
 document.addEventListener("click", e=>{
@@ -233,10 +351,10 @@ document.addEventListener("click", e=>{
   } else if (t.dataset.segdel!==undefined){
     if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Bekräfta"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort";}},3000); return; }
     const g=state.segments.splice(+t.dataset.segdel,1)[0];
-    state.props.forEach(p=>["route","skogRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].filter(x=>x!==g.id); }));
+    state.props.forEach(p=>["route","skogRoute","inreRoute"].forEach(k=>{ if(p[k]) p[k]=p[k].filter(x=>x!==g.id); }));
     renderAll(); scheduleSave();
   } else if (t.id==="addProp"){
-    const p={id:uid(),namn:"Ny fastighet",typ:"perm",perm:1,frit:0,fritNiva:"normal",akerHa:0,skogHa:0,route:[],skogRoute:[],skogJamn:false,fast:"",note:""};
+    const p={id:uid(),namn:"Ny fastighet",typ:"perm",perm:1,frit:0,fritNiva:"normal",akerHa:0,beteHa:0,skogHa:0,route:[],skogRoute:[],inreRoute:[],skogJamn:false,fast:"",note:""};
     state.props.push(p); selected=p.id; editProp=p.id; renderCards(); renderSummary(); scheduleSave();
     const el=document.getElementById("namn-"+p.id); if(el){ el.focus(); el.select(); }
   } else if (t.id==="addSeg"){
@@ -268,15 +386,15 @@ function routeText(p){
   return state.segments.map(g=>g.id).filter(id=>ids.has(id)).join(", ");
 }
 function typeText(p){
-  const ha=num(p.akerHa)+num(p.skogHa);
-  const t=[];
-  if (num(p.akerHa)>0||num(p.skogHa)>0) t.push("Jord och skogsbruk");
-  if (num(p.perm)>0) t.push((t.length?"med ":"")+(num(p.perm)>1?num(p.perm)+" permanentbostäder":"permanentbostad"));
-  if (num(p.frit)>0) t.push((t.length?"med ":"")+(num(p.frit)>1?num(p.frit)+" fritidshus":"fritidsbostad"));
-  let s=t.join(" ").replace(/^./,c=>c.toUpperCase());
-  if ((num(p.akerHa)>0||num(p.skogHa)>0) && !num(p.perm) && !num(p.frit)) s+=" utan bostad";
+  const t=typOf(p), lab=(TYPER.find(x=>x[0]===t)||[,"Ej angiven"])[1].replace(/ \(.*\)$/,"");
+  const ha=num(p.akerHa)+num(p.beteHa)+num(p.skogHa)+num(p.skogRestrHa);
+  let s=lab;
+  if ((t==="jord"||t==="kombi")&&num(p.perm)) s+=num(p.perm)>1?` med ${num(p.perm)} bostäder`:" med bostad";
+  if (t==="jord"&&!num(p.perm)&&num(p.frit)) s+=" med fritidsbostad";
+  if (t==="frit") s+=` (${{lag:"låg",normal:"normal",intensiv:"intensiv"}[p.fritNiva||"normal"]} användning)`;
   if (ha>0) s+=`, ${fmt(ha)} ha`;
-  return s||"Ej angiven";
+  if (p.direkt) s+=", direktutfart";
+  return s;
 }
 async function imgData(src){
   const r=await fetch(src); const b=await r.blob();
@@ -306,11 +424,15 @@ async function makePdf(){
     para("Stämmer inte uppgifterna om din fastighet? Hör av dig till styrelsen.");
     head("Hur andelstalen räknas");
     para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till Stav. Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(num(S.minKm)*1000)+" meter.");
-    table(["Fastighetstyp","Trafik per år enligt Lantmäteriets schablon"],[
-      ["Permanentbostad",fmt(num(S.perm))+" ton"],
-      ["Fritidsbostad",fmt(num(S.fritNormal))+" ton"],
-      ["Skogsbruk",fmt(num(S.skog))+" ton per hektar skog"],
-      ["Jordbruk",fmt(num(S.akerFast))+" ton plus "+fmt(num(S.akerPerHa))+" ton per hektar åker, eller "+fmt(num(S.akerSmallPerHa))+" ton per hektar vid mindre än "+fmt(num(S.akerGrans))+" ha åker"]]);
+    { const anv=new Map(); rows.forEach(r=>r.poster.forEach(x=>{ const k=x.namn.replace(/^(.*?)( \d| ×| \(|$).*/,"$1").trim(); if(!anv.has(k)) anv.set(k,x); }));
+      const O=PM.omr[S.prodOmr]||PM.omr.Ss, b=[];
+      const finns=t=>rows.some(r=>typOf(r.p)===t);
+      if (rows.some(r=>num(r.p.perm))) b.push(["Permanentbostad",fmt(PM.perm)+" ton per hushåll"]);
+      if (rows.some(r=>num(r.p.frit))) b.push(["Fritidsbostad","1 800 / 900 / 450 ton (intensiv, normal, låg användning)"]);
+      if (rows.some(r=>num(r.p.skogHa)>=1)) b.push(["Skogsbruk",(PM.skog[S.tillvOmr]||30)+" ton per hektar produktiv skog"]);
+      if (rows.some(r=>num(r.p.akerHa)>0&&typOf(r.p)==="jord")) b.push(["Jordbruk, företagsutfart",O.t8+" ton per hektar åker under "+O.grans+" ha, annars "+fmt(O.t9[0])+" ton plus "+O.t9[1]+" ton per hektar"]);
+      ["flerfam","smahusbr","obebyggd","teknisk","smabat","natur","jarnvag","kombi"].forEach(t=>{ if(finns(t)) b.push([(TYPER.find(x=>x[0]===t)||[,""])[1].replace(/ \(.*\)$/,""),typHjalp(t)]); });
+      table(["Fastighetstyp","Trafik per år enligt Lantmäteriets schablon (PM 2025)"],b,{columnStyles:{0:{cellWidth:48}}}); }
     para("En gård med bostad räknas med både bostaden och sin mark.",9.5,muted);
     // map
     doc.addPage(); y=M;

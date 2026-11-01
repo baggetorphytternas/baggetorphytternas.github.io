@@ -811,3 +811,11 @@ dialog::backdrop{touch-action:none}
 .fold:not(.open){padding-bottom:16px}
 /* Underflikarna ligger på exakt samma plats i vila som när de fastnat vid scroll: direkt under sidhuvudet. */
 .page>.subwrap:first-child{margin-top:calc(-1 * var(--mpt,16px));padding-top:12px}
+/* Andelstalsverktyget: beräkningsrader och schablontabell */
+.calc{white-space:pre-line;line-height:1.5}
+.schref{grid-column:1/-1;overflow-x:auto}
+.schref .tbl{width:100%;border-collapse:collapse;font-size:.88rem}
+.schref .tbl th,.schref .tbl td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+.schref .tbl .num{text-align:right;white-space:nowrap}
+.card .notice{margin-top:8px;background:var(--warn-soft)}
+@media (max-width:520px){ #summary th:nth-child(5),#summary td:nth-child(5){display:none} }

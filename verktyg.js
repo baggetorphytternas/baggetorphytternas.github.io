@@ -456,7 +456,10 @@ function harVarde(fs){
 function fallKort(){
   document.querySelectorAll("#cards fieldset.fs").forEach(fs=>{
     const lg=fs.querySelector(":scope>legend"); if(!lg) return; const namn=lg.textContent.trim();
-    const oppen = namn in FALL ? FALL[namn] : (namn==="Vägen"||harVarde(fs)||!!fs.querySelector(".notice,.skstatus:not(.ok)"));
+    /* Tillvalsdelar fälls ihop när de är tomma; huvuddelarna för fastighetstypen är alltid öppna från början. */
+    const p=state.props.find(x=>x.id===selected), t=p?typOf(p):"";
+    const tillval=["Gården","Verksamhet","Hästar","Övriga poster"].includes(namn)||(namn==="Skog"&&t!=="skog");
+    const oppen = namn in FALL ? FALL[namn] : (!tillval||harVarde(fs)||!!fs.querySelector(".notice,.skstatus:not(.ok)"));
     fs.classList.add("fall"); fs.classList.toggle("stangd",!oppen);
     lg.setAttribute("role","button"); lg.tabIndex=0; lg.setAttribute("aria-expanded",String(oppen)); });
 }

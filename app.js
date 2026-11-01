@@ -14,7 +14,7 @@ let fel={}, syn={}, siteSaving=false, siteDirty=false, editIntro=false;
 const editing=new Set();
 
 /* sidhuvudets höjd, så att underflikarna kan stanna precis under det */
-(()=>{ const tb=document.querySelector(".topbar"); if(!tb) return; const set=()=>document.documentElement.style.setProperty("--tb-h",tb.offsetHeight+"px"); set(); if(window.ResizeObserver) new ResizeObserver(set).observe(tb); else addEventListener("resize",set); })();
+(()=>{ const tb=document.querySelector(".topbar"); if(!tb) return; const set=()=>{ const r=document.documentElement.style, m=document.querySelector("main"); r.setProperty("--tb-h",tb.offsetHeight+"px"); if(m) r.setProperty("--mpt",(parseFloat(getComputedStyle(m).paddingTop)||0)+"px"); }; addEventListener("resize",set); set(); if(window.ResizeObserver) new ResizeObserver(set).observe(tb); else addEventListener("resize",set); })();
 /* navigation */
 function go(page){
   if (page==="verktyg"){ location.href="verktyg.html"; return; }
@@ -1194,6 +1194,17 @@ renderSite(); renderCases();
     if (!canWrite){ ["#caseForm"].forEach(s=>{ const f=q(s); f.querySelectorAll("input,textarea,button").forEach(x=>x.disabled=true); f.insertAdjacentHTML("beforeend",'<p class="hint">Du kan inte skicka just nu. Kontakta styrelsen.</p>'); }); }
   }catch(e){}
 })();
+/* ---------- Fällbara rutor: [data-fold] på en ruta gör dess första element (rubriken) till en knapp.
+   data-fold-default="closed" = ihopfälld från början. Läget sparas per ruta i webbläsaren. ---------- */
+const FOLD=(()=>{ try{ return JSON.parse(localStorage.getItem("vag_fold")||"{}"); }catch(e){ return {}; } })();
+function foldSatt(p,open){ p.classList.toggle("open",open); const h=p.firstElementChild; if(h){ h.setAttribute("aria-expanded",String(open)); h.setAttribute("role","button"); h.tabIndex=0; } }
+function foldInit(){ document.querySelectorAll("[data-fold]").forEach(p=>{ const k=p.dataset.fold, open=(k in FOLD)?FOLD[k]:p.dataset.foldDefault!=="closed"; p.classList.add("fold"); foldSatt(p,open); }); }
+function foldVaxla(p){ const open=!p.classList.contains("open"); foldSatt(p,open); FOLD[p.dataset.fold]=open; try{ localStorage.setItem("vag_fold",JSON.stringify(FOLD)); }catch(e){} if(open&&p.id==="backupSet") renderLogg(); }
+document.addEventListener("click",e=>{ const h=e.target.closest(".fold > :first-child"); if(!h||e.target.closest("button,a,input,select,textarea,label")) return; foldVaxla(h.parentElement); });
+document.addEventListener("keydown",e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches(".fold > :first-child")){ e.preventDefault(); foldVaxla(e.target.parentElement); } });
+foldInit();
+/* sb.js ritar om rutan för inloggningar; behåll rubrikens knapp-egenskaper */
+(()=>{ const am=document.getElementById("accessMgr"); if(am&&window.MutationObserver) new MutationObserver(()=>foldSatt(am,am.classList.contains("open"))).observe(am,{childList:true}); })();
 /* ---------- Admin: säkerhetskopia och ändringslogg ---------- */
 document.addEventListener("click",async e=>{
   const b=e.target.closest("#backupBtn"); if(!b||!document.body.classList.contains("is-admin")) return;

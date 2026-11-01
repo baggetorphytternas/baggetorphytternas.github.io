@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2.54">
+<link rel="stylesheet" href="app.css?v=2.55">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -89,7 +89,7 @@
           <div class="ph"><h2>Kommande möten</h2></div>
           <div id="nextMeet" class="list"></div>
         </section>
-        <section class="panel">
+        <section class="panel" data-fold="omvagen">
           <div class="ph"><h2>Om vägen</h2><button type="button" class="ghost small board" data-edit="intro">Ändra</button></div>
           <div id="introView" class="prose"></div>
           <div id="introEdit" hidden><textarea id="introText" rows="7"></textarea><div class="row" style="margin-top:10px"><button type="button" id="introSave">Spara</button><button type="button" class="ghost" data-edit="intro">Avbryt</button></div></div>
@@ -141,7 +141,7 @@
       <div class="regstat" id="regStat"></div>
     </section>
     <section id="st-utskick" class="board" hidden>
-      <div class="panel ufm">
+      <div class="panel ufm" data-fold="utskick">
         <h2>Skapa utskick</h2>
         <p class="hint">Skriv meddelandet, välj mottagare och tryck Skicka. Mejlet går från föreningens egen mejladress, och svar hamnar i föreningens inkorg.</p>
         <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
@@ -225,7 +225,7 @@
       <div class="ph"><div class="pagehead"><h1>Fel och synpunkter</h1></div></div>
       <p class="hint">Anmäl fel på vägen eller skicka en fråga till styrelsen. Här ser du också hur ärendena går.</p>
     </header>
-    <section class="panel" id="caseForm">
+    <section class="panel" id="caseForm" data-fold="arende">
       <h2>Anmäl fel eller lämna synpunkt</h2>
       <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
         <label class="opt"><input type="radio" name="ctype" value="fel" checked><span>Fel på vägen</span></label>
@@ -252,13 +252,13 @@
       <div class="ph"><div class="pagehead"><h1>Admin</h1></div></div>
       <p class="hint">Inställningar och verktyg som bara admin ser.</p>
     </header>
-    <section class="panel">
+    <section class="panel" data-fold="a-verktyg" data-fold-default="closed">
       <h2>Verktyg</h2>
       <div class="adminlinks">
         <a class="biglink" href="verktyg.html"><span class="tico"><svg class="ico"><use href="#i-chart"/></svg></span><span><strong>Verktyg för andelstal</strong><small>Öppnas som egen sida: fastigheter, delsträckor, schablonvärden, belopp och PDF för medlemmar</small></span></a>
       </div>
     </section>
-    <section class="panel" id="heroSet">
+    <section class="panel" id="heroSet" data-fold="a-heroSet" data-fold-default="closed">
       <h2>Startbild</h2>
       <p class="hint">Bilden som visas överst i appen på alla sidor. Välj en liggande bild, gärna av vägen eller bygden.</p>
       <div class="heroprev" id="heroPrev"><span>Ingen bild vald. Den gröna standardbakgrunden visas.</span></div>
@@ -273,24 +273,27 @@
         <button type="button" class="danger" id="heroDel" hidden>Ta bort bild</button>
       </div>
     </section>
-    <section class="panel" id="mailSet">
+    <section class="panel" id="mailSet" data-fold="a-mailSet" data-fold-default="closed">
       <h2>Föreningens mejl</h2>
       <p class="hint">Skriv in föreningens vanliga mejladress. Utskick från appen skickas i föreningens namn, och när medlemmar svarar hamnar svaren i den här brevlådan. Inga lösenord eller andra inställningar behövs.</p>
       <label for="mEpost">Föreningens mejladress<input id="mEpost" type="email" inputmode="email" autocomplete="off" placeholder="t.ex. styrelsen@forening.se"></label>
       <div class="row"><button type="button" id="mSave">Spara</button><span class="status" id="mMsg"></span></div>
       <p class="sender" id="mStatus">Kontrollerar…</p>
     </section>
-    <section class="panel" id="accessMgr"></section>
-    <section class="panel" id="backupSet">
+    <section class="panel" id="accessMgr" data-fold="a-accessMgr" data-fold-default="closed"></section>
+    <section class="panel" id="backupSet" data-fold="a-backupSet" data-fold-default="closed">
       <div class="ph"><h2>Säkerhetskopia och historik</h2><button type="button" class="ghost small" id="backupBtn"><svg class="ico"><use href="#i-file"/></svg>Ladda ner säkerhetskopia</button></div>
       <p class="hint">Säkerhetskopian innehåller allt i appen: medlemsregister, styrelse, nyheter, möten, dokumentlistor, åtgärder och behörigheter (inte själva filerna). Spara den på ett säkert ställe, t.ex. en gång i månaden.</p>
       <h3 class="loggrubrik">Senaste ändringar</h3>
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
-    <section class="panel" id="version">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.54</span></div>
+    <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.55</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.55</b><time>1 nov 2026</time></div><ul>
+          <li>Rutorna går att fälla ihop och ut genom att trycka på rubriken. Appen kommer ihåg hur du lämnade dem. Under Admin är de ihopfällda från början.</li>
+          <li>Underflikarna ligger på exakt samma plats när sidan står still som när man scrollar, direkt under sidhuvudet.</li></ul></li>
         <li><div><b>2.54</b><time>1 nov 2026</time></div><ul>
           <li>Alla underflikar syns alltid. På mobilen bryts Styrelsens flikar till två jämna rader, så man slipper scrolla i sidled för att hitta Åtgärder.</li></ul></li>
         <li><div><b>2.53</b><time>1 nov 2026</time></div><ul>
@@ -449,6 +452,6 @@
 </main>
 
 
-<script src="app.js?v=2.53"></script>
+<script src="app.js?v=2.55"></script>
 </body>
 </html>

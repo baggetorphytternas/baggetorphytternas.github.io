@@ -800,3 +800,14 @@ dialog::backdrop{touch-action:none}
 .subnav .chipbtn{flex:1 1 auto;min-width:0}
 @media (max-width:520px){ .subnav .chipbtn{padding:8px 6px;font-size:.8rem} }
 @media (max-width:760px){ .subnav:has(> .chipbtn:nth-child(5)){display:grid;grid-template-columns:repeat(3,1fr)} }
+
+/* Fällbara rutor */
+.fold > :first-child{cursor:pointer;position:relative;padding-right:34px;-webkit-user-select:none;user-select:none}
+.fold > :first-child::after{content:"";position:absolute;right:8px;top:50%;width:9px;height:9px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);transform:translateY(-70%) rotate(45deg);transition:transform .15s}
+.fold:not(.open) > :first-child::after{transform:translateY(-35%) rotate(-45deg)}
+.fold > :first-child:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.fold:not(.open) > :not(:first-child){display:none!important}
+.fold:not(.open) > :first-child{margin-bottom:0}
+.fold:not(.open){padding-bottom:16px}
+/* Underflikarna ligger på exakt samma plats i vila som när de fastnat vid scroll: direkt under sidhuvudet. */
+.page>.subwrap:first-child{margin-top:calc(-1 * var(--mpt,16px));padding-top:12px}

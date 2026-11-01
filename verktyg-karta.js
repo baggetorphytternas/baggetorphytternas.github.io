@@ -60,7 +60,7 @@ function gallerText(pt){
   const p=state.props.find(x=>x.id===pt.prop); const g=pt.galler||"route";
   if (g==="route") return pnamn(pt.prop)+(p&&typOf(p)==="jord"&&p.gardUtanfor?": infart från gården":"");
   if (g==="skog") return pnamn(pt.prop)+": skogen";
-  if (g.startsWith("sk:")){ const s=p&&skiften(p).find(x=>x.id===g.slice(3)); return pnamn(pt.prop)+": "+(s?(s.namn||"skifte"):"skifte"); }
+  if (g.startsWith("sk:")){ const sid=g.slice(3).replace(/:slut$/,""), s=p&&skiften(p).find(x=>x.id===sid); return pnamn(pt.prop)+": "+(s?(s.namn||"skifte"):"skifte")+(s&&s.plats==="jamn"?(g.endsWith(":slut")?", slutet":", början"):""); }
   return pnamn(pt.prop);
 }
 function natverk(){
@@ -129,10 +129,27 @@ function forslag(){
     const g=pt.galler||"route", r=routes.get(p.id)||{}; routes.set(p.id,r);
     if (g==="route"||g==="skog"){ if(!isFinite(dn(n))) varn.push(`${gallerText(pt)}: punkten har ingen väg till någon utfart.`); r[g]=tillIds(vagTill(D,n)); }
     else if (g.startsWith("sk:")){ r[g]=n; } });
-  routes.forEach((r,pid)=>{ Object.keys(r).filter(g=>g.startsWith("sk:")).forEach(g=>{
+  /* Skiften: sträckan från gården (eller infarten) till skiftet. Ett skifte utspritt jämnt längs vägen har en början
+     och ett slut; då används medelavståndet från gården längs sträckan. */
+  routes.forEach((r,pid)=>{
     const gard=k.punkter.find(x=>x.prop===pid&&(x.galler||"route")==="route"), gn=gard&&G.pnod.get(gard.id);
-    if (!gn){ varn.push(`${pnamn(pid)}: sätt ut gårdens anslutning för att kunna räkna transporterna till skiftena.`); r[g]=null; return; }
-    const D2=dijkstra(G,[gn]); r[g]=isFinite(D2.dist.get(r[g]))?tillIds(vagTill(D2,r[g])):null; }); });
+    const nycklar=[...new Set(Object.keys(r).filter(g=>g.startsWith("sk:")).map(g=>g.replace(/:slut$/,"")))];
+    if (!nycklar.length) return;
+    const pr=state.props.find(x=>x.id===pid), jamn=g=>skiften(pr||{}).some(s=>"sk:"+s.id===g&&s.plats==="jamn");
+    if (!gn){ varn.push(`${pnamn(pid)}: sätt ut gårdens anslutning för att kunna räkna transporterna till skiftena.`); nycklar.forEach(g=>{ r[g]=null; }); return; }
+    const D2=dijkstra(G,[gn]);
+    nycklar.forEach(g=>{
+      const n1=r[g], n2=r[g+":slut"]; delete r[g+":slut"];
+      if (jamn(g)&&!(n1&&n2)){ r[g]=null; return; }
+      if (n1&&n2){
+        const d1=D2.dist.get(n1), d2=D2.dist.get(n2), L=dijkstra(G,[n1]).dist.get(n2);
+        if (!isFinite(d1)||!isFinite(d2)||!isFinite(L)||L<=0){ r[g]=null; return; }
+        /* Ligger gården utanför sträckan: närmaste änden + halva sträckan. Ligger den på sträckan: (a²+b²)/(2L). */
+        const inne=Math.abs(d1+d2-L)<Math.max(5,L*0.02);
+        const medel=inne?(d1*d1+d2*d2)/(2*L):Math.min(d1,d2)+L/2;
+        r[g]={ids:tillIds([...vagTill(D2,n1),...vagTill(D2,n2)]), km:medel/1000};
+      } else r[g]=n1&&isFinite(D2.dist.get(n1))?tillIds(vagTill(D2,n1)):null;
+    }); });
   if (segs.some(s=>!s.nas)) varn.push("Någon del av vägen hänger inte ihop med en utfart. Kontrollera att linjerna möts i korsningarna.");
   G.avst.forEach((d,id)=>{ if(d>40){ const pt=k.punkter.find(x=>x.id===id); varn.push(`${gallerText(pt)} ligger ${fmt(Math.round(d))} m från närmaste väg.`); } });
   state.props.forEach(p=>{ if(typOf(p)!=="annan"&&!(routes.get(p.id)||{}).route&&!p.direkt) varn.push(`${p.namn||"Namnlös"} har ingen anslutningspunkt och får ingen väglängd.`); });
@@ -142,7 +159,7 @@ function tillampa(f){
   state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo}));
   state.props.forEach(p=>{ const r=f.routes.get(p.id)||{};
     p.route=r.route||[]; p.skogRoute=p.skogEgen?(r.skog||[]):[];
-    skiften(p).forEach(s=>{ const v=r["sk:"+s.id]; s.route=v||[]; });
+    skiften(p).forEach(s=>{ const v=r["sk:"+s.id]; if(v&&v.ids){ s.route=v.ids; s.jamnKm=Math.round(v.km*1e4)/1e4; } else { s.route=v||[]; delete s.jamnKm; } });
     delete p.inreRoute; });
   scheduleSave();
 }
@@ -323,7 +340,10 @@ function mal(){
     const has=g=>k.punkter.find(x=>x.prop===p.id&&(x.galler||"route")===g);
     ut.push({val:p.id+"|route", p, namn:p.namn||"Namnlös", del:t==="jord"&&p.gardUtanfor?"där man kör in från gården":"", pt:has("route")});
     if (["kombi","jord","skog"].includes(t)&&p.skogEgen) ut.push({val:p.id+"|skog", p, namn:p.namn||"Namnlös", del:"skogen", pt:has("skog")});
-    if (t==="jord") skiften(p).filter(s=>p.gardUtanfor||(s.plats&&s.plats!=="bc")).forEach(s=>ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:s.namn||"skifte", pt:has("sk:"+s.id)}));
+    if (t==="jord") skiften(p).filter(s=>p.gardUtanfor||(s.plats&&s.plats!=="bc")).forEach(s=>{
+      if (s.plats==="jamn"){ ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:`${s.namn||"skifte"}, början`, pt:has("sk:"+s.id)});
+        ut.push({val:`${p.id}|sk:${s.id}:slut`, p, namn:p.namn||"Namnlös", del:`${s.namn||"skifte"}, slutet`, pt:has("sk:"+s.id+":slut")}); }
+      else ut.push({val:`${p.id}|sk:${s.id}`, p, namn:p.namn||"Namnlös", del:s.namn||"skifte", pt:has("sk:"+s.id)}); });
   });
   ut.forEach(m=>m.satt=!!m.pt); return ut;
 }

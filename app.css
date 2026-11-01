@@ -908,3 +908,4 @@ h2{font-size:1.2rem}
 .ph .ghost.small{white-space:nowrap}
 /* 1. Filtren i Ärenden ser ut som övriga flikar. */
 #caseFilter{margin:4px 0 10px}
+.kpunkt.delning span{background:#fff;color:#1f2a24;border-color:#1f2a24;padding:2px 6px}

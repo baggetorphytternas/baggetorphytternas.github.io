@@ -56,6 +56,7 @@ function lasKoordinat(t){
 const pnamn=id=>{ const p=state.props.find(x=>x.id===id); return p ? (p.namn||"Namnlös") : "Okänd fastighet"; };
 function gallerText(pt){
   if (pt.typ==="utfart") return "Utfart till "+utfartOf();
+  if (pt.typ==="delning") return "Delningspunkt";
   const p=state.props.find(x=>x.id===pt.prop); const g=pt.galler||"route";
   if (g==="route") return pnamn(pt.prop);
   if (g==="skog") return pnamn(pt.prop)+": skogen";
@@ -111,14 +112,14 @@ function forslag(){
   K.forEach(c=>{ c.d=Math.min(dn(c.from),dn(c.to)); });
   K.sort((a,b)=>(a.d-b.d)||(b.len-a.len));
   const avEdge=new Map(); K.forEach((c,i)=>{ c.id=kedjeId(i); c.es.forEach(e=>avEdge.set(e,c)); });
-  const lbl=n=>{ const t=n.tags; if(t.some(x=>x.typ==="utfart")) return "utfarten"; if(t.length) return [...new Set(t.map(x=>pnamn(x.prop)))].join(", "); if(n.e.length>=3) return "korsning"; if(n.e.length===1) return "vägände"; return "punkt"; };
+  const lbl=n=>{ const t=n.tags; if(t.some(x=>x.typ==="utfart")) return "utfarten"; const ft=t.filter(x=>x.typ==="anslutning"); if(ft.length) return [...new Set(ft.map(x=>pnamn(x.prop)))].join(", "); if(t.some(x=>x.typ==="delning")) return "delningspunkt"; if(n.e.length>=3) return "korsning"; if(n.e.length===1) return "vägände"; return "punkt"; };
   const segs=K.map(c=>{
     const near=dn(c.from)<=dn(c.to)?c.from:c.to, far=near===c.from?c.to:c.from, e=D.prev.get(near);
     return {id:c.id, namn:`${lbl(far)} – ${lbl(near)}`, m:Math.round(c.len), mot:e?avEdge.get(e).id:"", geo:c.nodes.map(n=>[r6(n.ll[0]),r6(n.ll[1])]), nas:isFinite(c.d)};
   });
   const tillIds=es=>{ const s=new Set(es.map(e=>avEdge.get(e).id)); return segs.map(g=>g.id).filter(id=>s.has(id)); };
   const routes=new Map(), varn=[];
-  k.punkter.forEach(pt=>{ if(pt.typ==="utfart") return; const p=state.props.find(x=>x.id===pt.prop); if(!p){ return; }
+  k.punkter.forEach(pt=>{ if(pt.typ!=="anslutning") return; const p=state.props.find(x=>x.id===pt.prop); if(!p){ return; }
     const n=G.pnod.get(pt.id); if(!n) return;
     const g=pt.galler||"route", r=routes.get(p.id)||{}; routes.set(p.id,r);
     if (g==="route"||g==="skog"){ if(!isFinite(dn(n))) varn.push(`${gallerText(pt)}: punkten har ingen väg till någon utfart.`); r[g]=tillIds(vagTill(D,n)); }
@@ -208,6 +209,7 @@ function klick(e){
   const ll=[r6(e.latlng.lat),r6(e.latlng.lng)];
   if (mode==="vag"){ klickVag(e); return; }
   if (mode==="utfart"){ satPunkt("utfart",ll); return; }
+  if (mode==="dela"){ if(!KS().vagar.length){ visaHjalp("Rita vägen först."); return; } satPunkt("delning",ll); return; }
   if (mode==="ansl"){
     if (!KS().vagar.length){ visaHjalp("Rita vägen i steg 3 först."); return; }
     if (!aktivt){ visaHjalp("Välj först en fastighet i listan under kartan."); return; }
@@ -216,12 +218,12 @@ function klick(e){
 }
 function satPunkt(val,ll){
   const k=KS(); let pt;
-  if (val==="utfart") pt={id:uid(),typ:"utfart",ll};
+  if (val==="utfart"||val==="delning") pt={id:uid(),typ:val,ll};
   else { const [prop,galler]=val.split("|"); k.punkter=k.punkter.filter(x=>!(x.prop===prop&&(x.galler||"route")===galler)); pt={id:uid(),typ:"anslutning",prop,galler,ll}; }
   let best=null; k.vagar.forEach(v=>{ const p=v.pts||[]; for(let i=0;i+1<p.length;i++){ const r=proj(ll,p[i],p[i+1]); if(!best||r.d<best.d) best=r; } });
   if (best&&best.d<80) pt.ll=[r6(best.pt[0]),r6(best.pt[1])];
   k.punkter.push(pt);
-  if (val!=="utfart"){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
+  if (val!=="utfart"&&val!=="delning"){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
   andrat();
 }
 async function avslutaLinje(){
@@ -259,6 +261,7 @@ function visaHjalp(t){ const h=document.getElementById("kartHjalp"), a=document.
 const HJALP={
   vag:"Tryck där vägen börjar och sedan med jämna mellanrum längs vägen, gärna i kurvorna. Börjar en gren på en väg du redan ritat, tryck först på den.",
   utfart:"Tryck där vägen ansluter till allmän väg.",
+  dela:"Tryck på vägen där du vill dela den i två delsträckor. Ta bort en delning med Ta bort.",
   flytta:"Dra i punkter och i vägens hörn (vita ringar) för att flytta dem.",
   radera:"Tryck på en punkt, ett hörn eller en väglinje för att ta bort den."
 };
@@ -266,7 +269,7 @@ function satMode(m){
   if (mode==="vag"&&m!=="vag") avslutaLinje();
   mode=m; document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",b.dataset.km===m));
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=m!=="vag";
-  if (map){ ["vag","utfart","ansl"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl"].includes(m)); }
+  if (map){ ["vag","utfart","ansl","dela"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl","dela"].includes(m)); }
   if (steg==="vag") visaHjalp(HJALP[m]||"");
   rita();
 }
@@ -291,11 +294,11 @@ function rita(){
       m.on("dragend",()=>{ const q=m.getLatLng(), np=[r6(q.lat),r6(q.lng)]; k.vagar.forEach(w=>{ w.pts=w.pts.map(x=>x.join(",")===key?np:x); }); andrat(); });
       if (mode==="radera") m.on("click",()=>{ k.vagar.forEach(w=>{ w.pts=w.pts.filter(x=>x.join(",")!==key); }); k.vagar=k.vagar.filter(w=>w.pts.length>=2); andrat(); }); }));
   }
-  const vis=steg==="vag" ? k.punkter.filter(p=>p.typ==="utfart") : k.punkter;
+  const vis=steg==="vag" ? k.punkter.filter(p=>p.typ!=="anslutning") : k.punkter.filter(p=>p.typ!=="delning");
   vis.forEach(pt=>{
-    const ut=pt.typ==="utfart", g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
-    const cls=(ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");
-    const txt=ut?"Utfart":gallerText(pt);
+    const del=pt.typ==="delning", ut=pt.typ==="utfart"||del, g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
+    const cls=(del?"delning":ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");
+    const txt=del?"✂":ut?"Utfart":gallerText(pt);
     const m=L.marker(pt.ll,{icon:ikon(cls,txt),draggable:mode==="flytta"||(steg==="ansl"&&!ut),zIndexOffset:ut?1000:500}).addTo(lager);
     if (mode==="visa") m.bindPopup(()=>`<b>${esc(gallerText(pt))}</b><br>${esc(swText(pt.ll))} (SWEREF 99 TM)${avstText(pt)}`,{autoPan:false});
     m.on("dragend",()=>{ const q=m.getLatLng(); pt.ll=[r6(q.lat),r6(q.lng)]; andrat(); });
@@ -361,7 +364,7 @@ function importera(text){
     const linjer=g.type==="LineString"?[g.coordinates]:g.type==="MultiLineString"?g.coordinates:[];
     if (linjer.length && pr.typ!=="delsträcka"){ linjer.forEach(c=>{ if(c.length>=2){ k.vagar.push({id:uid(),pts:c.map(flip)}); nv++; } }); return; }
     if (g.type==="Point"){ const ll=flip(g.coordinates);
-      if (String(pr.typ||"").toLowerCase()==="utfart"){ k.punkter.push({id:uid(),typ:"utfart",ll}); np++; return; }
+      const ty=String(pr.typ||"").toLowerCase(); if (ty==="utfart"||ty==="delning"){ k.punkter.push({id:uid(),typ:ty,ll}); np++; return; }
       const namn=String(pr.fastighet||pr.namn||pr.name||"").trim(), p=state.props.find(x=>String(x.namn).trim().toLowerCase()===namn.toLowerCase());
       if (p){ const galler=pr.galler||"route"; k.punkter=k.punkter.filter(x=>!(x.prop===p.id&&(x.galler||"route")===galler)); k.punkter.push({id:uid(),typ:"anslutning",prop:p.id,galler,ll}); np++; } else ej++; } });
   andrat(); passa();

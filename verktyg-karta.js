@@ -175,20 +175,29 @@ function snap(latlng){
 let osmCache=null, foljVag=true, soker=false;
 const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter","https://maps.mail.ru/osm/tools/overpass/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
 let osmPagar=null;
-/* Hämtar vägarna inom en ruta. Varje server får 8 sekunder och allt högst 20; svarar ingen dras linjen rakt. */
+/* Hämtar vägarna inom en ruta. Först via föreningens tjänst i Supabase, sedan direkt mot OpenStreetMaps servrar. */
+let osmFel="";
+const VAGDATA="https://xhoexctuopvragyqwofs.supabase.co/functions/v1/vagdata";
+const tolka=ways=>ways.map(w=>({nodes:w.n||w.nodes,geom:w.g||w.geom})).filter(w=>Array.isArray(w.nodes)&&Array.isArray(w.geom)&&w.nodes.length===w.geom.length&&w.geom.length>1);
 async function hamtaRuta(bb){
-  const q=`[out:json][timeout:20];way["highway"](${bb.join(",")});out geom;`;
-  const slut=Date.now()+20000;
+  const fel=[];
+  /* 1. Via vägföreningens egen tjänst (Supabase), som frågar OpenStreetMap åt verktyget. */
+  { const ac=new AbortController(), t=setTimeout(()=>ac.abort(),45000);
+    try{ const r=await fetch(VAGDATA+"?bbox="+bb.join(","),{signal:ac.signal}); clearTimeout(t);
+      if (r.ok){ const j=await r.json(); const ways=tolka(j.ways||[]); if(ways.length){ osmFel=""; return {bbox:bb,ways}; } fel.push("inga vägar i området"); }
+      else fel.push("tjänsten svarade "+r.status);
+    }catch(err){ clearTimeout(t); fel.push(err&&err.name==="AbortError"?"tjänsten svarade inte i tid":"tjänsten gick inte att nå"); } }
+  /* 2. Direkt mot OpenStreetMaps servrar. */
   for (const url of OVERPASS){
-    const kvar=slut-Date.now(); if(kvar<2000) break;
-    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),Math.min(8000,kvar));
-    try{ const r=await fetch(url+"?data="+encodeURIComponent(q),{signal:ac.signal}); clearTimeout(t);
+    const ac=new AbortController(), t=setTimeout(()=>ac.abort(),8000);
+    try{ const q=`[out:json][timeout:20];way["highway"](${bb.join(",")});out geom;`;
+      const r=await fetch(url+"?data="+encodeURIComponent(q),{signal:ac.signal}); clearTimeout(t);
       if(!r.ok) continue; const j=await r.json();
-      const ways=(j.elements||[]).filter(x=>x.type==="way"&&Array.isArray(x.geometry)&&Array.isArray(x.nodes)&&x.nodes.length===x.geometry.length).map(x=>({nodes:x.nodes,geom:x.geometry.map(g=>[g.lat,g.lon])}));
+      const ways=tolka((j.elements||[]).filter(x=>x.type==="way"&&Array.isArray(x.geometry)).map(x=>({nodes:x.nodes,geom:x.geometry.map(g=>[g.lat,g.lon])})));
       if (!ways.length) continue;
-      return {bbox:bb,ways}; }catch(err){ clearTimeout(t); }
+      osmFel=""; return {bbox:bb,ways}; }catch(err){ clearTimeout(t); }
   }
-  return null;
+  osmFel=fel.join(", "); return null;
 }
 /* Hämtar vägarna för det som syns på kartan i förväg, så att det går fort när man trycker. */
 function forhamta(){
@@ -239,11 +248,11 @@ async function klickVag(e){
   const last=ritar.pts[ritar.pts.length-1]; if(hav(last,p)<0.5) return;
   let mellan=[];
   if (foljVag){
-    soker=true; visaHjalp("Söker vägen på kartan …");
+    soker=true; visaHjalp("Söker vägen på kartan … Första gången kan det ta upp till en minut.");
     const osm=await hamtaOsm(last,p), v=osm&&osmVag(osm,last,p);
     soker=false;
     if (v&&v.length>2){ mellan=v.slice(1,-1).map(q=>[r6(q[0]),r6(q[1])]); visaHjalp("Klart. Tryck vidare om vägen fortsätter, eller Klar med linjen."); }
-    else visaHjalp(osm?"Hittade ingen väg på kartan mellan punkterna, så linjen dras rakt. Tryck tätare där vägen svänger.":"Kunde inte hämta vägarna från OpenStreetMap, så linjen dras rakt. Tryck tätare där vägen svänger.");
+    else visaHjalp(osm?"Hittade ingen väg på kartan mellan punkterna, så linjen dras rakt. Tryck tätare där vägen svänger, eller tryck närmare vägen.":`Kunde inte hämta vägarna (${osmFel||"okänt fel"}), så linjen dras rakt. Tryck tätare där vägen svänger.`);
   }
   if (!ritar) return;
   mellan.forEach(q=>ritar.pts.push(q)); ritar.pts.push(p); ritar.ben=(ritar.ben||[]).concat(mellan.length+1);

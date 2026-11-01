@@ -938,3 +938,8 @@ fieldset.fall.stangd>:not(legend){display:none!important}
 .kvisa-lista input{width:18px;height:18px}
 .ksegm{width:0;height:0}
 .ksegm .kseg{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1px solid #1f2a24;border-radius:6px;font:700 12px/1.3 "Source Sans 3",system-ui,sans-serif;color:#1f2a24;padding:1px 6px;white-space:nowrap}
+.kp.punkt i{background:#0f766e;border-radius:4px;width:16px;height:16px;left:-8px;top:-8px}
+.kp.punkt b{display:block}
+.punktrader{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.punktrad{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:end;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)}
+.punktrad small{grid-column:1/-1;color:var(--muted);order:3}

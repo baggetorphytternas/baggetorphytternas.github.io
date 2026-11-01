@@ -412,6 +412,11 @@ function hastBlock(p){
     ${b>0&&h>0&&b!==h?sel(p,"hastJamk","Räkna på",[["faktiska",`Hästarna i dag (${h})`],["jamka",`Jämkat mellan hästar och boxar (${ceilE((h+b)/2)})`],["boxar",`Antalet boxar (${b})`]],"faktiska"):""}</div>
     ${j.text?`<p class="hint">${esc(j.text[0].toUpperCase()+j.text.slice(1))}: ${j.egna} egna och ${j.inack} inackorderade (PM 3.5.7.1).</p>`:`<p class="hint">Stallets storlek avgör stadigvarande hur många hästar som kan finnas. Skiljer sig boxarna från hästarna kan man jämka (PM 3.5.7.1).</p>`}</fieldset>`;
 }
+/* Val av gemensam anslutningspunkt (från kartan i steg 3). */
+function punktVal(id,attr,varde,label){
+  const P=window.kartaPunkter?window.kartaPunkter():[]; if(!P.length) return "";
+  return `<label for="${id}">${label}<select id="${id}" ${attr}><option value="">Egen punkt (sätts ut i steg 4)</option>${P.map(x=>`<option value="${x.id}" ${varde===x.id?"selected":""}>${esc(x.namn)}</option>`).join("")}</select></label>`;
+}
 function skiftenBlock(p){
   const O=omrOf(), sk=skiften(p), id=p.id;
   const f=(s,k,l,mode="decimal")=>`<label for="sk${k}-${s.id}">${l}<input id="sk${k}-${s.id}" inputmode="${mode}" data-sk="${id}|${s.id}" data-skf="${k}" value="${esc(String(s[k]??"").replace(".",","))}"></label>`;
@@ -424,12 +429,13 @@ function skiftenBlock(p){
     if (state.manuell) return `<label>Transporterna mellan gården och skiftet kör på delsträckor</label><div class="segs">${segBoxes(p,"sk:"+s.id)}</div>`;
     if (s.plats==="jamn"){
       const b1=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id), b2=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id+":slut"), km=num(s.jamnKm);
-      return `<div class="skstatus${b1&&b2&&km>0?" ok":""}"><span>${b1&&b2?(km>0?`Sträckan är utsatt. Medelavstånd från ${ute?"infarten":"gården"}: ${fmt(km,2)} km.`:`Sträckan är utsatt. Sätt också ut ${ute?"infarten":"gården"}, så räknas avståndet.`)
+      const v1=punktVal("skp-"+s.id,`data-sk="${id}|${s.id}" data-skf="punkt"`,s.punkt||"","Sträckan börjar vid"), v2=punktVal("sks-"+s.id,`data-sk="${id}|${s.id}" data-skf="punktSlut"`,s.punktSlut||"","Sträckan slutar vid");
+      return (v1?`<div class="grid2">${v1}${v2}</div>`:"")+`<div class="skstatus${b1&&b2&&km>0?" ok":""}"><span>${b1&&b2?(km>0?`Sträckan är utsatt. Medelavstånd från ${ute?"infarten":"gården"}: ${fmt(km,2)} km.`:`Sträckan är utsatt. Sätt också ut ${ute?"infarten":"gården"}, så räknas avståndet.`)
         :"Marken räknas som jämnt utspridd längs en sträcka. Visa var sträckan börjar och slutar på kartan."}</span>
         <span class="row"><button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}">${b1?"Ändra början":"Visa början"}</button><button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}:slut">${b2?"Ändra slutet":"Visa slutet"}</button></span></div>`;
     }
     const satt=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id), km=segKm(s.route);
-    return `<div class="skstatus${satt?" ok":""}"><span>${satt?(km>0?`Utsatt på kartan: ${fmt(km,2)} km på föreningens väg mellan ${ute?"infarten":"gården"} och skiftet.`:`Utsatt på kartan. Sätt också ut ${ute?"infarten":"gården"}, så räknas sträckan.`)
+    return punktVal("skp-"+s.id,`data-sk="${id}|${s.id}" data-skf="punkt"`,s.punkt||"","Skiftet ansluter vid")+`<div class="skstatus${satt?" ok":""}"><span>${satt?(km>0?`Utsatt på kartan: ${fmt(km,2)} km på föreningens väg mellan ${ute?"infarten":"gården"} och skiftet.`:`Utsatt på kartan. Sätt också ut ${ute?"infarten":"gården"}, så räknas sträckan.`)
       :`Inte utsatt på kartan. Visa var skiftet ansluter till vägen, så räknas sträckan från ${ute?"infarten":"gården"}.`}</span>
       <button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}">${satt?"Ändra på kartan":"Visa på kartan"}</button></div>`;
   };
@@ -508,8 +514,10 @@ function renderCards(){
     if (t==="annan") f+=`<fieldset class="fs"><legend>Fast andel</legend>${fld(p,"fast","Andel i procent")}</fieldset>`;
     const kartlage=!state.manuell, ks=window.kartaStatus?window.kartaStatus(p):null;
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
-      ${kartlage?`<p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Var fastigheten ansluter till vägen sätter du ut i steg 4, Anslutningar.`}</p>
-        ${harSkog?chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården (sätts ut i steg 4)"):""}`
+      ${kartlage?`${punktVal("pr-"+p.id,`data-p="${p.id}" data-f="punktRoute"`,p.punktRoute||"",t==="jord"&&p.gardUtanfor?"Gårdens trafik kör in på vägen vid":"Ansluter till vägen vid")}
+        <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj en anslutningspunkt ovan eller sätt ut en egen punkt i steg 4.`}</p>
+        ${harSkog?chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården"):""}
+        ${harSkog&&p.skogEgen?punktVal("ps-"+p.id,`data-p="${p.id}" data-f="punktSkog"`,p.punktSkog||"","Skogen ansluter vid"):""}`
       :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
         ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>`:""}`}
       ${harSkog?chk(p,"skogJamn","Skogen ligger utspridd jämnt längs vägen (räkna med medelavståndet)"):""}

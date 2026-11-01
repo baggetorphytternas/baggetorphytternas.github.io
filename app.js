@@ -85,7 +85,7 @@ function itemCard(kind,it,fields,view){
       ${kind==="moten"?`<button type="button" class="ghost tonews" data-act="tonews">${(site.nyheter||[]).some(n=>n.mote===it.id)?"Uppdatera under Aktuellt":"Lägg upp i Aktuellt"}</button>`:""}
       <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
   }
-  return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${board?`<div class="row">${kind==="nyheter"?`${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}<button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis"}</button>`:""}<button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
+  return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${kind==="nyheter"?kommBlock(it.id):""}${board?`<div class="row">${kind==="nyheter"?`${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}<button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis"}</button>`:""}<button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
 }
 const ATT_KINDS=["nyheter","moten"];
 /* Bilagor och startbild ligger i en låst lagringsplats ("filer"). Appen hämtar tillfälliga,
@@ -749,6 +749,45 @@ function renderReg(){
   const box=(n,t,warn)=>`<div class="rs${warn&&n?" warn":""}"><b>${n}</b><span>${t}</span></div>`;
   el.innerHTML=box(f,"fastigheter")+box(k.length,"kontaktpersoner")+box(utanKontakt,"utan kontakt",1)+box(utanMejl,"saknar mejl",1)+box(utanBet,"saknar beteckning",1);
 }
+/* ---------- Kommentarer på inlägg i Aktuellt (tabellen kommentarer) ----------
+   Alla medlemmar läser och skriver; man tar bort sina egna, styrelsen kan ta bort alla. Namnet sätts av databasen. */
+let komm=new Map(), kommOk=false, kommOpen=new Set(), kommTimer=null;
+async function loadKomm(){
+  if(!window.SB) return;
+  const {data,error}=await window.SB.from("kommentarer").select("id,nyhet_id,user_id,namn,text,skapad").order("skapad",{ascending:true});
+  if(error){ kommOk=false; return; }
+  kommOk=true; komm=new Map(); (data||[]).forEach(k=>{ if(!komm.has(k.nyhet_id)) komm.set(k.nyhet_id,[]); komm.get(k.nyhet_id).push(k); });
+  document.querySelectorAll("[data-komm]").forEach(el=>kommRita(el));
+}
+const kommTid=t=>{ const d=new Date(t), idag=new Date(); const dag=d.toDateString()===idag.toDateString()?"i dag":d.toLocaleDateString("sv-SE",{day:"numeric",month:"short"}); return dag+" "+d.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}); };
+function kommBlock(id){ return `<div class="komm" data-komm="${E(id)}">${kommInner(id)}</div>`; }
+function kommInner(id){
+  if(!kommOk) return "";
+  const l=komm.get(id)||[], open=kommOpen.has(id);
+  const knapp=`<button type="button" class="kommbtn" data-kommtoggle aria-expanded="${open}">${ico("chat")}${l.length?`${l.length} ${l.length===1?"kommentar":"kommentarer"}`:"Kommentera"}</button>`;
+  if(!open) return knapp;
+  return knapp+`<div class="kommlist">${l.map(k=>`<div class="kc" data-kid="${E(k.id)}"><div class="kc-h"><strong>${E(k.namn||"En medlem")}</strong><time>${E(kommTid(k.skapad))}</time>${(k.user_id===me||board)?`<button type="button" class="linkbtn kc-del" data-kommdel>Ta bort</button>`:""}</div><p>${E(k.text)}</p></div>`).join("")||`<p class="hint">Inga kommentarer än. Skriv den första.</p>`}</div>
+    <div class="kommform"><textarea rows="2" maxlength="1000" placeholder="Skriv en kommentar…" data-kommtext></textarea><button type="button" class="small" data-kommsend>Skicka</button></div>`;
+}
+function kommRita(el){
+  const id=el.dataset.komm, ta=el.querySelector("[data-kommtext]"), utkast=ta?ta.value:"", fokus=ta&&document.activeElement===ta;
+  el.innerHTML=kommInner(id);
+  const ny=el.querySelector("[data-kommtext]"); if(ny){ ny.value=utkast; if(fokus) ny.focus(); }
+}
+document.addEventListener("click",async e=>{
+  const el=e.target.closest("[data-komm]"); if(!el) return; const id=el.dataset.komm;
+  if(e.target.closest("[data-kommtoggle]")){ kommOpen.has(id)?kommOpen.delete(id):kommOpen.add(id); kommRita(el); if(kommOpen.has(id)){ const t=el.querySelector("[data-kommtext]"); if(t&&!(komm.get(id)||[]).length) t.focus(); } return; }
+  const s=e.target.closest("[data-kommsend]");
+  if(s){ const t=el.querySelector("[data-kommtext]"), txt=t.value.trim(); if(!txt){ t.focus(); return; }
+    s.disabled=true; const {error}=await window.SB.from("kommentarer").insert({nyhet_id:id,text:txt});
+    s.disabled=false; if(error){ setMsg("Det gick inte att skicka kommentaren."); return; }
+    t.value=""; await loadKomm(); return; }
+  const d=e.target.closest("[data-kommdel]");
+  if(d){ if(!d.classList.contains("armed")){ d.classList.add("armed"); d.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(d.isConnected){ d.classList.remove("armed"); d.textContent="Ta bort"; } },4000); return; }
+    const kid=d.closest("[data-kid]").dataset.kid; const {error}=await window.SB.from("kommentarer").delete().eq("id",kid);
+    if(error){ setMsg("Det gick inte att ta bort kommentaren."); return; } await loadKomm(); setMsg("Kommentaren är borttagen."); }
+});
+document.addEventListener("keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&e.target.matches("[data-kommtext]")){ const b=e.target.closest("[data-komm]").querySelector("[data-kommsend]"); if(b) b.click(); } });
 /* Rader i Mitt konto (dialogen byggs i sb.js) */
 window.kontoBind=async d=>{
   const box=d.querySelector(".krows"); if(!box) return; await minEpostH(); const m=minaKontakter()[0];
@@ -1136,7 +1175,8 @@ renderSite(); renderCases();
     if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
-    loadMem();
+    loadMem(); loadKomm();
+    try{ window.SB.channel("kommentarer").on("postgres_changes",{event:"*",schema:"public",table:"kommentarer"},()=>{ clearTimeout(kommTimer); kommTimer=setTimeout(loadKomm,300); }).subscribe(); }catch(e){}
     try{ window.SB.channel("medlemmar").on("postgres_changes",{event:"*",schema:"public",table:"medlemmar"},()=>{ clearTimeout(memTimer); memTimer=setTimeout(loadMem,400); }).subscribe(); }catch(e){}
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMem(); });
     if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); loadMina(); },()=>{}); }

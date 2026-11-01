@@ -83,9 +83,10 @@ function itemCard(kind,it,fields,view){
     return `<div class="item" data-kind="${kind}" data-id="${it.id}">${fields.map(([k,l,t])=>`<label>${l}${t==="area"?`<textarea rows="4" data-f="${k}">${E(it[k])}</textarea>`:`<input ${t==="date"?'type="date"':t==="tel"?'type="tel" inputmode="tel"':t==="email"?'type="email" inputmode="email"':''} data-f="${k}" value="${E(it[k])}">`}</label>`).join("")}
       ${ATT_KINDS.includes(kind)?attEdit(it):""}
       ${kind==="moten"?`<button type="button" class="ghost tonews" data-act="tonews">${(site.nyheter||[]).some(n=>n.mote===it.id)?"Uppdatera under Aktuellt":"Lägg upp i Aktuellt"}</button>`:""}
+      ${kind==="nyheter"?`<div class="row notisrad"><button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis till medlemmarna"}</button>${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}</div>`:""}
       <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
   }
-  return `<div class="item${kind==="nyheter"?" news":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${kind==="nyheter"?kommBlock(it.id):""}${board?`<div class="row">${kind==="nyheter"?`${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}<button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis"}</button>`:""}<button type="button" class="ghost small" data-act="edit">Ändra</button></div>`:""}</div>`;
+  return `<div class="item${kind==="nyheter"?" news":""}${board?" harandra":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${kind==="nyheter"?kommBlock(it.id):""}${board?`<button type="button" class="ghost small kortandra" data-act="edit">Ändra</button>`:""}</div>`;
 }
 const ATT_KINDS=["nyheter","moten"];
 /* Bilagor och startbild ligger i en låst lagringsplats ("filer"). Appen hämtar tillfälliga,
@@ -444,15 +445,15 @@ document.addEventListener("click",e=>{ const t=e.target.closest("[data-dk]"); if
   const dn=q(".dknote"); if(dn) dn.hidden=dkKat==="andelstal"; if(dkKat==="andelstal") renderAndelstal(); else renderDok(); });
 function dokRows(list,kind){
   if(!list.length) return `<p class="empty">Inga dokument uppladdade ännu.</p>`;
-  return sorted(list,true).map(p=>`<div class="item prot" data-pid="${E(p.id)}" data-pkind="${kind}">
+  return sorted(list,true).map(p=>`<div class="item prot${board?" harandra":""}" data-pid="${E(p.id)}" data-pkind="${kind}">
     <span class="meta">${dfmt(p.datum)}</span><h3>${E(p.rubrik||"Dokument")}</h3>
     <div class="docrow"><span class="docname">${ico("file")}<span>${E(p.fil.namn)}</span></span><span class="docbtns">
       <button type="button" class="small" data-protopen>Öppna</button><button type="button" class="ghost small" data-protdl>Ladda ner</button></span></div>
-    ${board?`<div class="row"><button type="button" class="ghost small" data-dokedit>Ändra</button><button type="button" class="danger" data-protdel>Ta bort</button></div>`:""}</div>`).join("");
+    ${board?`<button type="button" class="ghost small kortandra" data-dokedit>Ändra</button>`:""}</div>`).join("");
 }
 function renderDok(){
   const a=q("#dkList");
-  if(a&&dkKat!=="lankar"){ q("#dkTitle").textContent=DK[dkKat]; q("#dkHint").textContent=DK_HINT[dkKat]; a.innerHTML=dokRows((site.dokument||[]).filter(d=>(d.kat||"protokoll")===dkKat),"medlem"); }
+  if(a&&dkKat!=="lankar"){ q("#dkTitle").textContent=DK[dkKat]; a.innerHTML=dokRows((site.dokument||[]).filter(d=>(d.kat||"protokoll")===dkKat),"medlem"); }
   const b=q("#sprotList");
   if(b&&board){ const html=Object.keys(SK).map(k=>{ const l=sprot.filter(x=>(SK[x.kat]?x.kat:"protokoll")===k); return l.length?`<h3 class="dkgrp">${SK[k]}</h3>${dokRows(l,"styrelse")}`:""; }).join(""); b.innerHTML=html||`<p class="empty">Inga dokument uppladdade ännu.</p>`; }
   renderLankar();
@@ -502,9 +503,15 @@ function dokDialog(kind,old){
     <label>Datum<input id="prDatum" type="date" value="${old?E(old.datum||""):today()}" required></label>
     ${old?"":`<label class="filebtn" id="prFilL">${ico("file")}<span id="prFilN">Välj fil (PDF, Word, Excel eller bild)</span><input type="file" accept="${DOK_ACCEPT}" id="prFil"></label>`}
     <p class="status" id="prMsg"></p>
-    <div class="bdlg-btns"><button value="ok" id="prOk">${old?"Spara":"Ladda upp"}</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+    <div class="bdlg-btns"><button value="ok" id="prOk">${old?"Spara":"Ladda upp"}</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div>
+    ${old?`<div class="row" style="margin-top:12px"><button type="button" class="danger" id="prDel">Ta bort dokumentet</button></div>`:""}</form>`;
   document.body.appendChild(dlg);
   const g=id=>dlg.querySelector(id);
+  if(old&&g("#prDel")) g("#prDel").onclick=async()=>{ const b=g("#prDel"); if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; return; }
+    dlg.close(); dlg.remove();
+    try{ if(kind==="medlem"){ site.dokument=(site.dokument||[]).filter(x=>x.id!==old.id); saveSite(); if(old.fil&&old.fil.path) await window.SB.storage.from("dokument").remove([old.fil.path]); }
+      else { sprot=sprot.filter(x=>x.id!==old.id); await sprotRef.set({items:sprot}); if(old.fil&&old.fil.path) await window.SB.storage.from("styrelse").remove([old.fil.path]); } renderDok(); }
+    catch(err){ setMsg("Kunde inte ta bort."); } };
   const moteVis=()=>{ if(g("#prMoteL")) g("#prMoteL").hidden=g("#prKat").value!=="protokoll"; }; moteVis(); g("#prKat").onchange=moteVis;
   if(g("#prMote")) g("#prMote").onchange=()=>{ const m=moten.find(x=>x.id===g("#prMote").value); if(m){ g("#prRubrik").value="Protokoll "+m.rubrik.charAt(0).toLowerCase()+m.rubrik.slice(1); if(m.datum) g("#prDatum").value=m.datum; } };
   if(g("#prFil")) g("#prFil").onchange=()=>{ const f=g("#prFil").files[0]; g("#prFilN").textContent=f?f.name:"Välj fil"; };

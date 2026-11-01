@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=2.62">
+<link rel="stylesheet" href="app.css?v=2.64">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -70,17 +70,12 @@
 <main>
 
   <div class="page" id="page-start">
-    <div class="subwrap"><div class="filters subnav" aria-label="Snabbval">
-      <button type="button" class="chipbtn" data-goto="arenden" data-ctype="fel"><span class="lg">Anmäl fel på vägen</span><span class="sm">Anmäl fel</span></button>
-      <button type="button" class="chipbtn" data-goto="arenden" data-ctype="syn"><span class="lg">Lämna en synpunkt</span><span class="sm">Synpunkt</span></button>
-      <button type="button" class="chipbtn" data-goto="styrelse" data-stab="led"><span class="lg">Kontakta styrelsen</span><span class="sm">Kontakt</span></button>
-    </div></div>
     <div class="pushbanner" id="pushBanner" hidden></div>
     <section class="panel board" id="reqMgr"></section>
     <div class="startgrid">
       <div class="col">
         <section>
-          <div class="ph"><h2>Aktuellt</h2><button type="button" class="ghost small board" id="addNews">+ Ny händelse</button></div>
+          <div class="ph"><h2>Aktuellt</h2><button type="button" class="ghost small board" id="addNews">+ Ny</button></div>
           <div id="news" class="list"></div>
         </section>
       </div>
@@ -115,17 +110,15 @@
       <button type="button" class="chipbtn" data-st="atg">Åtgärder <span class="count" id="atgCount" hidden></span></button>
     </div></div>
     <section id="st-led">
-      <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ <span class="lg">Lägg till ledamot</span><span class="sm">Ny ledamot</span></button></div>
+      <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ Ny</button></div>
       <div id="boardList" class="cards"></div>
       <div id="funkBox" class="funkbox">
-        <div class="ph"><h2>Funktionärer</h2><button type="button" class="ghost small board" id="addFunk">+ <span class="lg">Lägg till funktionär</span><span class="sm">Ny funktionär</span></button></div>
-        <p class="hint">Personer med särskilda uppdrag som inte sitter i styrelsen, till exempel vägansvarig och revisor.</p>
+        <div class="ph"><h2>Funktionärer</h2><button type="button" class="ghost small board" id="addFunk">+ Ny</button></div>
         <div id="funkList" class="cards"></div>
       </div>
     </section>
     <section id="st-reg" class="board" hidden>
       <div class="ph"><h2>Medlemsregister</h2></div>
-      <p class="hint">Medlemmarna håller själva sina uppgifter aktuella. Befintliga kontakter ändrar du under Medlemmar → fastigheten → Ändra.</p>
       <div class="regbtns">
         <button type="button" class="tile" id="addMember"><span class="tico"><svg class="ico"><use href="#i-users"/></svg></span><span>Ny medlem<small>Lägg till en fastighet eller kontaktperson</small></span></button>
         <button type="button" class="tile" id="memPdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span>Adresslista (PDF)<small>Alla fastigheter och kontakter, för styrelsens arbete</small></span></button>
@@ -135,7 +128,6 @@
     <section id="st-utskick" class="board" hidden>
       <div class="panel ufm" data-fold="utskick">
         <h2>Skapa utskick</h2>
-        <p class="hint">Skriv meddelandet, välj mottagare och tryck Skicka. Mejlet går från föreningens egen mejladress, och svar hamnar i föreningens inkorg.</p>
         <label for="uTyp">Typ<select id="uTyp"><option value="info">Information</option><option value="kallelse">Kallelse till möte</option><option value="ovrigt">Övrigt</option></select></label>
         <label for="uAmne">Ämne<input id="uAmne"></label>
         <label for="uText">Meddelande<textarea id="uText" rows="9"></textarea></label>
@@ -161,25 +153,22 @@
     </section>
     <section id="st-inkorg" class="board" hidden>
       <div class="ph"><h2>Inkorg</h2><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
-      <p class="hint" id="inHint">Mejl till föreningens adress hamnar här, till exempel svar på utskick. Bara styrelsen ser inkorgen. Tryck på ett mejl för att läsa och svara.</p>
       <div id="inList" class="list"></div>
     </section>
     <section id="st-atg" class="board" hidden>
-      <div class="ph"><h2>Åtgärdslista</h2><button type="button" class="ghost small" id="addAtg">+ <span class="lg">Ny åtgärd</span><span class="sm">Ny</span></button></div>
-      <p class="hint">Styrelsens uppgifter med ansvarig och datum. Bara styrelsen och admin ser listan.</p>
+      <div class="ph"><h2>Åtgärdslista</h2><button type="button" class="ghost small" id="addAtg">+ Ny</button></div>
       <div id="atgList" class="list"></div>
       <details class="more atgdone" id="atgDoneBox" hidden><summary id="atgDoneSum">Klara</summary><div id="atgDoneList" class="list"></div></details>
     </section>
     <section id="st-prot" class="board" hidden>
-      <div class="ph"><h2>Styrelsens dokument</h2><button type="button" class="ghost small" data-dokadd="styrelse">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
-      <p class="hint">Styrelseprotokoll, avtal, offerter och annat internt. Bara styrelsen och admin kan se dokumenten här. Det som alla medlemmar ska kunna läsa laddar du upp under fliken Dokument.</p>
+      <div class="ph"><h2>Styrelsens dokument</h2><button type="button" class="ghost small" data-dokadd="styrelse">+ Ladda upp</button></div>
       <div id="sprotList" class="list"></div>
     </section>
   </div>
 
   <div class="page" id="page-moten" hidden>
     <section id="mo-list">
-      <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Nytt möte</button></div>
+      <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Ny</button></div>
       <div id="meetList" class="list"></div>
     </section>
   </div>
@@ -193,8 +182,7 @@
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
     </div></div>
     <section id="dk-docs">
-      <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ <span class="lg">Ladda upp dokument</span><span class="sm">Ladda upp</span></button></div>
-      <p class="hint" id="dkHint"></p>
+      <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ Ladda upp</button></div>
       <div id="dkList" class="list"></div>
     </section>
     <section id="dk-andelstal" hidden>
@@ -202,11 +190,9 @@
       <div id="andelKartaWrap" hidden><div id="andelKarta" role="img" aria-label="Karta över vägen och delsträckorna"></div></div>
     </section>
     <section id="dk-lankar" hidden>
-      <div class="ph"><h2>Länkar</h2><button type="button" class="ghost small board" id="lnkAdd">+ Ny länk</button></div>
-      <p class="hint">Bra adresser för dig som är delägare i vägen.</p>
+      <div class="ph"><h2>Länkar</h2><button type="button" class="ghost small board" id="lnkAdd">+ Ny</button></div>
       <div id="lnkList" class="list lnklist"></div>
     </section>
-    <p class="hint board dknote">Styrelsens interna dokument finns under Styrelsen → Dokument och syns bara för styrelsen och admin.</p>
   </div>
 
   <div class="page" id="page-arenden" hidden>
@@ -223,7 +209,7 @@
     </section>
     <section>
       <div class="ph"><h2 id="caseHead">Ärenden</h2><button type="button" class="ghost small board" data-showarch="all">Visa arkiv</button></div>
-      <div class="filters" id="caseFilter">
+      <div class="filters subnav" id="caseFilter" role="tablist" aria-label="Visa">
         <button type="button" class="chipbtn on" data-cf="alla">Alla</button>
         <button type="button" class="chipbtn" data-cf="fel">Fel på vägen</button>
         <button type="button" class="chipbtn" data-cf="syn">Synpunkter</button>
@@ -277,9 +263,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.63</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 2.64</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>2.64</b><time>1 nov 2026</time></div><ul><li>Enhetligare utseende: samma flikar överallt (även filtren i Ärenden), snabbknapparna på Start borttagna, knapparna heter "+ Ny" och "+ Ladda upp", alla kort ser likadana ut och rollikonerna har samma gröna färg.</li><li>Ändra ligger som en liten knapp i kortets hörn. Skicka notis finns när man ändrar en nyhet, och Ta bort dokument finns i dokumentets ändringsruta.</li><li>Färre hjälptexter, tomma listor visas som en enkel rad och färre textstorlekar.</li></ul></li>
         <li><div><b>2.63</b><time>1 nov 2026</time></div><ul><li>Knappen Mina uppgifter är borttagen från Medlemmar. Dina uppgifter finns under din sida.</li></ul></li>
         <li><div><b>2.62</b><time>1 nov 2026</time></div><ul><li>Andelstalsverktyget är fristående och går steg för steg: området, fastigheter, vägen, anslutningar och resultat. Det kräver ingen inloggning och sparar i webbläsaren och som projektfil. På kartan sätter man ut en punkt per fastighet från en lista som bockas av, och delsträckor och vägval räknas fram automatiskt.</li><li>Admin → Andelstal: exportera fastigheterna till verktyget, ladda ner tidigare arbete och läs in andelstalen när de är klara.</li><li>Nytt under Dokument: Andelstal, där medlemmarna ser varje fastighets andel, delsträckorna och kartan.</li></ul></li>
         <li><div><b>2.61</b><time>1 nov 2026</time></div><ul><li>Sidorna har inte längre egen rubrik och inledande text. Menyn och underflikarna visar var man är.</li></ul></li>
@@ -451,6 +438,6 @@
 </main>
 
 
-<script src="app.js?v=2.63"></script>
+<script src="app.js?v=2.64"></script>
 </body>
 </html>

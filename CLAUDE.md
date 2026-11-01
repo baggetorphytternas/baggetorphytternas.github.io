@@ -17,6 +17,7 @@ Appen publiceras från repot `baggetorphytternas/baggetorphytternas.github.io` (
   Inga ikoner i underflikarna. Lägg `board` på `.subwrap` om flikarna bara är för styrelsen. Alla flikar ska alltid synas: får de inte plats bryts de till fler rader (aldrig scroll i sidled); med fem eller fler flikar blir det ett jämnt rutnät med tre per rad på mobil.
 - **Ingen sidrubrik eller inledande hjälptext** på sidorna: menyn och underflikarna visar var man är. Behövs knappar för hela sidan läggs de i `<header class="pghead"><div class="ph pgknappar">…</div></header>` direkt efter underflikarna.
 - **Kort** i listor är lika stora (`grid-auto-rows:1fr`), kompakta, och öppnar en dialog med detaljer.
+- **Enhetligt:** en flikstil (`.subnav`, även för filter), knappar i rubrikrader heter `+ Ny` eller `+ Ladda upp`, alla kort är vita `.item` utan färgade kanter, styrelsens "Ändra" ligger i kortets hörn (`.kortandra` och `harandra` på kortet) och övriga val i ändringsläget. Tomma listor är en grå textrad (`.empty`). Textstorlekar: rubrik 1.2rem, korttitel 1.05rem, småtext .85rem.
 - **Kontrollera alltid** på mobil, platta och dator.
 - Varje release: höj `Version X` och lägg till en rad i ändringsloggen på adminsidan; höj `sb.js?v=` om `sb.js` ändrats.
 

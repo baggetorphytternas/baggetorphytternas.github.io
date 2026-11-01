@@ -888,3 +888,23 @@ dialog::backdrop{touch-action:none}
 @media (min-width:1000px){ #page-arenden>.subwrap{grid-column:1/-1} }
 #andelKarta{height:min(60vh,480px);min-height:300px;border-radius:10px;border:1px solid var(--line);margin-top:12px;z-index:0}
 .andeltbl small{color:var(--muted)}
+/* ===== Enhetligt utseende (2.64) ===== */
+/* 3. Ett kort: samma vita ruta överallt, ingen färgad kant på nyheter, rollikonerna i samma gröna ton. */
+.item.news{border-left:1px solid var(--line)}
+.rollikon{--rf:var(--accent)!important;--rb:var(--accent-soft)!important}
+/* 4. Ändra ligger som en liten knapp i kortets hörn. */
+.item.harandra{position:relative}
+.item.harandra>:first-child{padding-right:76px}
+.item>.kortandra{position:absolute;top:12px;right:12px;padding:5px 12px;font-size:.85rem;min-height:0}
+.notisrad{align-items:center}
+/* 6. Tomma listor är en enkel grå rad. */
+.empty{background:none;border:0;padding:6px 0;text-align:left;color:var(--muted)}
+/* 7. Färre textstorlekar: rubrik 1.2rem, korttitel 1.05rem, småtext .85rem. */
+h2{font-size:1.2rem}
+.item h3,.mhead h3,.atg-body h3,details.mail summary h3,#boardList .person h3,#funkList .person h3{font-size:1.05rem}
+.bc-txt strong,.mc-top strong{font-size:1.05rem!important}
+.item .meta,.person .meta,.atg-body .meta,.bc-txt .meta,.mc-top small,.hint{font-size:.85rem}
+.ph{align-items:center}
+.ph .ghost.small{white-space:nowrap}
+/* 1. Filtren i Ärenden ser ut som övriga flikar. */
+#caseFilter{margin:4px 0 10px}

@@ -256,9 +256,17 @@ function avslutaLinje(){
 }
 /* Efter varje ändring på kartan räknas delsträckor och vägval om, om de inte anges för hand. */
 let senaste=null;
+/* Finns ingen väg eller utfart kvar tas delsträckor som räknats fram från kartan bort, så att inget gammalt visas. */
+function rensaKartsegment(){
+  if (!state.segments.some(g=>Array.isArray(g.geo))) return false;
+  state.segments=state.segments.filter(g=>!Array.isArray(g.geo));
+  const ids=new Set(state.segments.map(g=>g.id));
+  mapRoutes(r=>r.filter(x=>ids.has(x)));
+  return true;
+}
 function andrat(){
   natCache=null;
-  if (kartlage()){ const f=forslag(); senaste=f; if(!f.fel) tillampa(f); }
+  if (kartlage()){ const f=forslag(); senaste=f; if(!f.fel) tillampa(f); else rensaKartsegment(); }
   scheduleSave(); renderAll();
 }
 function visaHjalp(t){ const h=document.getElementById("kartHjalp"), a=document.getElementById("anslAktiv"); const el=steg==="ansl"?a:h; if(el){ el.hidden=!t; el.textContent=t||""; } }
@@ -400,6 +408,7 @@ window.kartaSteg=function(s){
   mode = s==="ansl" ? "ansl" : "visa";
   document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",false));
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=true;
+  if (kartlage()){ const f=forslag(); if(f.fel&&rensaKartsegment()) scheduleSave(); }
   visaHjalp(""); setTimeout(()=>{ initKarta(); if(map){ map.invalidateSize(); satMode(mode); } renderLista(); },30);
 };
 const orig=window.renderAll;

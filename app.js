@@ -1274,7 +1274,8 @@ function renderAndelstal(){
     if (!andelKarta){ andelKarta=L.map("andelKarta",{scrollWheelZoom:false}); L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bidragsgivare</a>'}).addTo(andelKarta); andelKarta._lager=L.layerGroup().addTo(andelKarta); }
     const lg=andelKarta._lager; lg.clearLayers(); const b=L.latLngBounds([]);
     seg.forEach((g,i)=>{ if(!Array.isArray(g.geo)||g.geo.length<2) return; g.geo.forEach(p=>b.extend(p));
-      L.polyline(g.geo,{color:KFARG[i%KFARG.length],weight:6,opacity:.85}).addTo(lg).bindTooltip(E(g.id),{permanent:true,direction:"center",className:"kseg"}); });
+      L.polyline(g.geo,{color:KFARG[i%KFARG.length],weight:6,opacity:.85}).addTo(lg);
+      L.marker(g.geo[Math.floor((g.geo.length-1)/2)],{icon:L.divIcon({className:"ksegm",html:`<span class="kseg">${E(g.id)}</span>`,iconSize:null}),interactive:false,keyboard:false}).addTo(lg); });
     (a.punkter||[]).forEach(p=>{ if(!Array.isArray(p.ll)) return; b.extend(p.ll);
       L.marker(p.ll,{icon:L.divIcon({className:"kp "+(p.typ==="utfart"?"utfart":"ansl"),html:`<i></i><b>${E(p.namn||"")}</b>`,iconSize:null}),title:p.namn||""}).addTo(lg).bindTooltip(E(p.namn||"")); });
     const nl=()=>andelKarta.getContainer().classList.toggle("namn",andelKarta.getZoom()>=16); andelKarta.off("zoomend"); andelKarta.on("zoomend",nl); setTimeout(nl,300);

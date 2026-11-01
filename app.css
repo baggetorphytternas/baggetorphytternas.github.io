@@ -930,3 +930,11 @@ fieldset.fall.stangd>legend::after{transform:rotate(-45deg);margin:0 0 0 2px}
 fieldset.fall.stangd{padding-bottom:4px}
 fieldset.fall.stangd>:not(legend){display:none!important}
 .schref>summary{margin-top:8px}
+/* Visa-valen på kartan */
+.kvisa{background:#fff;font:14px/1.3 "Source Sans 3",system-ui,sans-serif}
+.kvisa-knapp{display:block;border:0;background:#fff;padding:6px 10px;font-weight:700;color:var(--accent);cursor:pointer;border-radius:4px;min-height:0}
+.kvisa-lista{padding:4px 10px 8px;display:flex;flex-direction:column;gap:4px;max-width:240px}
+.kvisa-lista .check{font-size:.88rem;gap:8px}
+.kvisa-lista input{width:18px;height:18px}
+.ksegm{width:0;height:0}
+.ksegm .kseg{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1px solid #1f2a24;border-radius:6px;font:700 12px/1.3 "Source Sans 3",system-ui,sans-serif;color:#1f2a24;padding:1px 6px;white-space:nowrap}

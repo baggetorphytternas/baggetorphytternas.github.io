@@ -169,7 +169,22 @@ let map=null, lager=null, lagerHl=null, mode="visa", ritar=null, steg="", aktivt
 const FARG=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
 /* Punkterna är små prickar. Namnet syns när man zoomar in, för utfarten och för den punkt man arbetar med. */
 const ikon=(cls,txt)=>L.divIcon({className:"kp "+cls, html:`<i></i><b>${esc(txt)}</b>`, iconSize:null});
-const namnLage=()=>{ if(map) map.getContainer().classList.toggle("namn",map.getZoom()>=16); };
+const namnLage=()=>{ if(map) map.getContainer().classList.toggle("namn",VIS.namn||map.getZoom()>=16); };
+/* Punkten halvvägs längs en linje, där delsträckans bokstav placeras. */
+function mittpunkt(geo){ const L0=geo.reduce((s,p,i)=>i?s+hav(geo[i-1],p):0,0)/2; let s=0;
+  for(let i=1;i<geo.length;i++){ const d=hav(geo[i-1],geo[i]); if(s+d>=L0){ const t=d?(L0-s)/d:0; return [geo[i-1][0]+t*(geo[i][0]-geo[i-1][0]),geo[i-1][1]+t*(geo[i][1]-geo[i-1][1])]; } s+=d; }
+  return geo[geo.length-1]; }
+/* Vad som visas på kartan. Valen sparas i webbläsaren. */
+const VISVAL=[["utfart","Utfarter"],["ansl","Fastigheternas anslutningar"],["skog","Skog"],["skifte","Skiften"],["delning","Delningspunkter"],["bokstav","Delsträckornas bokstäver"],["namn","Namn på alla punkter"]];
+const VIS=Object.assign({utfart:true,ansl:true,skog:true,skifte:true,delning:true,bokstav:true,namn:false},(()=>{ try{ return JSON.parse(localStorage.getItem("andelstal_visa")||"{}"); }catch(e){ return {}; } })());
+const VisaKontroll=L.Control.extend({ options:{position:"topright"},
+  onAdd(){ const d=L.DomUtil.create("div","leaflet-bar kvisa"); L.DomEvent.disableClickPropagation(d); L.DomEvent.disableScrollPropagation(d);
+    d.innerHTML=`<button type="button" class="kvisa-knapp" aria-expanded="false">Visa</button><div class="kvisa-lista" hidden>${VISVAL.map(([k,l])=>`<label class="check"><input type="checkbox" data-kvis="${k}" ${VIS[k]?"checked":""}>${l}</label>`).join("")}</div>`;
+    const kn=d.querySelector(".kvisa-knapp"), li=d.querySelector(".kvisa-lista");
+    kn.onclick=()=>{ li.hidden=!li.hidden; kn.setAttribute("aria-expanded",String(!li.hidden)); };
+    d.addEventListener("change",e=>{ const x=e.target.dataset.kvis; if(!x) return; VIS[x]=e.target.checked; try{ localStorage.setItem("andelstal_visa",JSON.stringify(VIS)); }catch(err){} namnLage(); rita(); });
+    return d; } });
+const visKat=pt=>pt.typ==="utfart"?"utfart":pt.typ==="delning"?"delning":(pt.galler||"route")==="skog"?"skog":String(pt.galler||"").startsWith("sk:")?"skifte":"ansl";
 const kartlage=()=>!state.manuell;
 function initKarta(){
   const el=document.getElementById("karta");
@@ -181,6 +196,7 @@ function initKarta(){
   osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
+  new VisaKontroll().addTo(map);
   map.on("click",klick); map.on("zoomend",namnLage); namnLage();
   map.on("dblclick",e=>{ if(mode==="vag"&&ritar){ const last=ritar.pts[ritar.pts.length-1]; if(map.latLngToContainerPoint(e.latlng).distanceTo(map.latLngToContainerPoint(last))<15) avslutaLinje(); } });
   passa(); rita();
@@ -304,7 +320,7 @@ function rita(){
     state.segments.forEach((g,i)=>{ if(!g.geo||g.geo.length<2) return;
       const pek=mode==="visa";
       const l=L.polyline(g.geo,{color:FARG[i%FARG.length],weight:6,opacity:.85,interactive:pek}).addTo(lager);
-      l.bindTooltip(esc(g.id),{permanent:true,direction:"center",className:"kseg"});
+      if (VIS.bokstav) L.marker(mittpunkt(g.geo),{icon:L.divIcon({className:"ksegm",html:`<span class="kseg">${esc(g.id)}</span>`,iconSize:null}),interactive:false,keyboard:false}).addTo(lager);
       if (pek) l.bindPopup(`<b>Delsträcka ${esc(g.id)}</b><br>${esc(g.namn||"")}<br>${fmt(num(g.m))} m`,{autoPan:false}); });
   } else {
     k.vagar.forEach(v=>{ const l=L.polyline(v.pts,{color:"#475569",weight:6,opacity:.8,interactive:mode==="radera"}).addTo(lager);
@@ -318,7 +334,10 @@ function rita(){
       m.on("dragend",()=>{ const q=m.getLatLng(), np=[r6(q.lat),r6(q.lng)]; k.vagar.forEach(w=>{ w.pts=w.pts.map(x=>x.join(",")===key?np:x); }); andrat(); });
       if (mode==="radera") m.on("click",()=>{ k.vagar.forEach(w=>{ w.pts=w.pts.filter(x=>x.join(",")!==key); }); k.vagar=k.vagar.filter(w=>w.pts.length>=2); andrat(); }); }));
   }
-  const vis=steg==="vag" ? k.punkter.filter(p=>p.typ!=="anslutning") : k.punkter.filter(p=>p.typ!=="delning");
+  /* I steg 3 visas utfarter och delningar, i steg 4 utfarter och anslutningar; Visa-valen styr därutöver.
+     Punkten man arbetar med visas alltid. */
+  const vis=(steg==="vag" ? k.punkter.filter(p=>p.typ!=="anslutning") : k.punkter.filter(p=>p.typ!=="delning"))
+    .filter(p=>VIS[visKat(p)] || (p.typ==="anslutning"&&p.prop+"|"+(p.galler||"route")===aktivt));
   vis.forEach(pt=>{
     const del=pt.typ==="delning", ut=pt.typ==="utfart"||del, g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
     const cls=(del?"delning":ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");

@@ -68,15 +68,35 @@ async function memSync(){
   } finally { memSyncing=false; }
 }
 window.getMedlemmar=()=>site.medlemmar||[];
+/* siteJson är serverversionen som det lokala innehållet bygger på. Vid sparning slås ändringarna ihop med det
+   andra hunnit spara (sb.js), och det andra har gjort förs in lokalt utan att ta bort det man skriver just nu. */
+let siteVantar=false;
 function saveSite(){
   if(!board||!siteRef) return; siteDirty=true; clearTimeout(siteTimer);
   const gen=++siteGen;
   siteTimer=setTimeout(async()=>{ siteSaving=true; setMsg("Sparar…");
     try{ const {medlemmar,...rest}=site; const js=JSON.stringify(rest);
-      if(js!==siteJson){ await siteRef.set(JSON.parse(js)); siteJson=js; }
+      if(js!==siteJson){
+        const skickat=JSON.parse(js), ut=await siteRef.set(skickat,JSON.parse(siteJson||"{}"));
+        const {medlemmar:mm,...nu}=site, lokal=window.sammanfoga(skickat,nu,ut);
+        siteJson=JSON.stringify(ut); site={...lokal,medlemmar:mm};
+        if(JSON.stringify(lokal)!==JSON.stringify(nu)){ if(busy()) siteVantar=true; else renderSite(); }
+      }
       await memSync(); if(gen===siteGen) siteDirty=false; setMsg("Sparat"); }
-    catch(e){ setMsg("Kunde inte spara. Försök igen."); } siteSaving=false; },600);
+    catch(e){ setMsg("Kunde inte spara. Försök igen."); } siteSaving=false;
+    if(siteVantar&&!siteDirty) siteFranServer(); },600);
 }
+/* Tar in serverns senaste version när inget är osparat och ingen skriver i ett fält. Annars görs det senare. */
+function siteFranServer(){
+  if(!siteRef) return;
+  if(siteDirty||siteSaving||busy()){ siteVantar=true; return; }
+  siteVantar=false;
+  siteRef.get().then(snap=>{ if(!snap.exists||siteDirty||siteSaving) return;
+    const d=JSON.parse(JSON.stringify(snap.data()||{})); delete d.medlemmar;
+    const js=JSON.stringify(d); if(js===siteJson&&site.nyheter) return;
+    const mm=site.medlemmar||[]; site={intro:"",nyheter:[],moten:[],styrelse:[],...d,medlemmar:mm}; siteJson=js; renderSite(); });
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(siteVantar) siteFranServer(); },50));
 
 /* ---------- renderers ---------- */
 function renderIntro(){
@@ -442,7 +462,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"
 const DK={protokoll:"Protokoll",stadgar:"Stadgar och beslut",ekonomi:"Ekonomi"};
 const SK={protokoll:"Styrelseprotokoll",avtal:"Avtal och offerter",ovrigt:"Övrigt"};
 const DOK_ACCEPT=".pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.jpg,.jpeg,.png";
-let sprot=[], sprotRef=null, dkKat="protokoll";
+let sprot=[], sprotBas=[], sprotRef=null, dkKat="protokoll";
 const isPdf=f=>f&&(/\.pdf$/i.test(f.namn||"")||f.typ==="application/pdf");
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-dk]"); if(!t) return; dkKat=t.dataset.dk;
   document.querySelectorAll("[data-dk]").forEach(x=>x.classList.toggle("on",x===t)); try{ t.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(x){}
@@ -509,7 +529,7 @@ function dokDialog(kind,old){
   if(old&&g("#prDel")) g("#prDel").onclick=async()=>{ const b=g("#prDel"); if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; return; }
     dlg.close(); dlg.remove();
     try{ if(kind==="medlem"){ site.dokument=(site.dokument||[]).filter(x=>x.id!==old.id); saveSite(); if(old.fil&&old.fil.path) await window.SB.storage.from("dokument").remove([old.fil.path]); }
-      else { sprot=sprot.filter(x=>x.id!==old.id); await sprotRef.set({items:sprot}); if(old.fil&&old.fil.path) await window.SB.storage.from("styrelse").remove([old.fil.path]); } renderDok(); }
+      else { sprot=sprot.filter(x=>x.id!==old.id); await sprotRef.set({items:sprot},{items:sprotBas}); if(old.fil&&old.fil.path) await window.SB.storage.from("styrelse").remove([old.fil.path]); } renderDok(); }
     catch(err){ setMsg("Kunde inte ta bort."); } };
   const moteVis=()=>{ if(g("#prMoteL")) g("#prMoteL").hidden=g("#prKat").value!=="protokoll"; }; moteVis(); g("#prKat").onchange=moteVis;
   if(g("#prMote")) g("#prMote").onchange=()=>{ const m=moten.find(x=>x.id===g("#prMote").value); if(m){ g("#prRubrik").value="Protokoll "+m.rubrik.charAt(0).toLowerCase()+m.rubrik.slice(1); if(m.datum) g("#prDatum").value=m.datum; } };
@@ -520,7 +540,7 @@ function dokDialog(kind,old){
     if(!rubrik){ msg.textContent="Skriv en rubrik."; return; }
     if(old){
       Object.assign(old,{rubrik,datum,kat}); if(kind==="medlem") old.mote=mote;
-      try{ if(kind==="medlem") saveSite(); else await sprotRef.set({items:sprot}); }catch(err){ msg.textContent="Kunde inte spara."; return; }
+      try{ if(kind==="medlem") saveSite(); else await sprotRef.set({items:sprot},{items:sprotBas}); }catch(err){ msg.textContent="Kunde inte spara."; return; }
       dlg.close(); renderDok(); renderLists(); setMsg("Dokumentet är ändrat."); return;
     }
     const f=g("#prFil").files[0]; if(!f){ msg.textContent="Välj en fil."; return; }
@@ -533,7 +553,7 @@ function dokDialog(kind,old){
       const {error}=await window.SB.storage.from(bucket).upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false}); if(error) throw error;
       const item={id:nid(),kat,datum,rubrik,fil:{path,namn:f.name,typ:f.type||""}};
       if(kind==="medlem"){ if(mote) item.mote=mote; site.dokument=[...(site.dokument||[]),item]; saveSite(); }
-      else { sprot=[...sprot,item]; await sprotRef.set({items:sprot}); }
+      else { sprot=[...sprot,item]; await sprotRef.set({items:sprot},{items:sprotBas}); }
       dlg.close(); renderDok(); renderLists(); setMsg("Dokumentet är uppladdat.");
     }catch(err){ g("#prOk").disabled=false; msg.textContent="Det gick inte att ladda upp. Försök igen."; }
   };
@@ -590,11 +610,16 @@ document.addEventListener("click",e=>{
 });
 
 /* ---------- åtgärdslista (styrelse/atgarder, bara styrelse och admin) ---------- */
-let atg=[], atgRef=null;
+let atg=[], atgBas=[], atgRef=null;
 const kortDatum=d=>{ const t=new Date(d+"T12:00:00"); return isNaN(t)?"":t.toLocaleDateString("sv-SE",{day:"numeric",month:"short"})+(t.getFullYear()!==new Date().getFullYear()?" "+t.getFullYear():""); };
 const dagarKvar=d=>Math.round((new Date(d+"T12:00:00")-new Date(today()+"T12:00:00"))/864e5);
 function atgStatus(a){ if(a.klar) return "klar"; if(!a.datum) return "ingen"; const n=dagarKvar(a.datum); return n<0?"sen":n<=7?"snart":"ok"; }
-function atgSave(){ if(atgRef) atgRef.set({items:atg}).catch(()=>setMsg("Kunde inte spara åtgärdslistan.")); renderAtg(); }
+function atgSave(){
+  renderAtg(); if(!atgRef) return;
+  const skickat=JSON.parse(JSON.stringify(atg));
+  atgRef.set({items:skickat},{items:atgBas}).then(ut=>{ atgBas=JSON.parse(JSON.stringify(ut.items||[])); atg=window.sammanfoga(skickat,atg,atgBas); renderAtg(); })
+    .catch(()=>setMsg("Kunde inte spara åtgärdslistan."));
+}
 function renderAtg(){
   const ö=atg.filter(a=>!a.klar).sort((a,b)=>String(a.datum||"9999").localeCompare(String(b.datum||"9999")));
   const k=atg.filter(a=>a.klar).sort((a,b)=>String(b.klarDatum||"").localeCompare(String(a.klarDatum||"")));
@@ -1328,13 +1353,13 @@ function updateForm(){
 document.addEventListener("change",e=>{ if(e.target.name==="ctype") updateForm(); });
 updateForm();
 async function addTo(coll,store,item){
-  const ref=DB.doc(coll+"/"+me); const cur=store[me]||{items:[]};
+  const ref=DB.doc(coll+"/"+me); const cur=store[me]||{items:[]}, bas=JSON.parse(JSON.stringify(cur));
   const next={items:[...(cur.items||[]),item]};
-  await ref.set(next); store[me]=next;
+  store[me]=await ref.set(next,bas);
 }
 async function patchItem(coll,store,uid,id,patch){
-  const d=store[uid]; if(!d) return; const items=d.items.map(x=>x.id===id?{...x,...patch}:x);
-  store[uid]={items}; await DB.doc(coll+"/"+uid).set({items});
+  const d=store[uid]; if(!d) return; const bas=JSON.parse(JSON.stringify(d)), items=d.items.map(x=>x.id===id?{...x,...patch}:x);
+  store[uid]={items}; store[uid]=await DB.doc(coll+"/"+uid).set({items},bas);
 }
 q("#caseSend").addEventListener("click",async()=>{
   const f=caseType()==="fel", title=q("#caseTitle").value.trim(), text=q("#caseText").value.trim(), msg=q("#caseMsg");
@@ -1353,7 +1378,7 @@ document.addEventListener("click",async e=>{
   const b=e.target.closest("[data-feldel]"); if(!b) return;
   if(!confirmDel()) return;
   const d=fel[me]; if(!d) return; const items=d.items.filter(x=>x.id!==b.dataset.feldel);
-  try{ await DB.doc("felanmalan/"+me).set({items}); fel[me]={items}; renderFel(); }catch(err){ setMsg("Kunde inte ta bort."); }
+  try{ const bas=JSON.parse(JSON.stringify(fel[me]||{items:[]})); fel[me]=await DB.doc("felanmalan/"+me).set({items},bas); renderFel(); }catch(err){ setMsg("Kunde inte ta bort."); }
 });
 const ptimers={};
 document.addEventListener("input",e=>{
@@ -1382,15 +1407,15 @@ renderSite(); renderCases();
     try{ window.SB.channel("kommentarer").on("postgres_changes",{event:"*",schema:"public",table:"kommentarer"},()=>{ clearTimeout(kommTimer); kommTimer=setTimeout(loadKomm,300); }).subscribe(); }catch(e){}
     try{ window.SB.channel("medlemmar").on("postgres_changes",{event:"*",schema:"public",table:"medlemmar"},()=>{ clearTimeout(memTimer); memTimer=setTimeout(loadMem,400); }).subscribe(); }catch(e){}
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMem(); });
-    if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); loadMina(); },()=>{}); }
+    if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; atg=(sn.exists&&sn.data().items)||[]; atgBas=JSON.parse(JSON.stringify(atg)); renderAtg(); loadMina(); },()=>{}); }
     loadMina(); setTimeout(pushBanner,2500);
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMina(); });
-    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; sprotKlar=true; renderDok(); },()=>{}); }
+    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; sprotBas=JSON.parse(JSON.stringify(sprot)); sprotKlar=true; renderDok(); },()=>{}); }
     andelRef=DB.doc("vag/andelstal"); andelRef.onSnapshot(sn=>{ andelstal=sn.exists?JSON.parse(JSON.stringify(sn.data())):null; renderAndelstal(); renderAndelAdmin(); },()=>{});
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{
       if (snap.metadata&&snap.metadata.hasPendingWrites) return;
-      if (snap.exists && !siteDirty && !siteSaving && !busy()){ const d=JSON.parse(JSON.stringify(snap.data()||{})); delete d.medlemmar; const mm=site.medlemmar||[]; site={intro:"",nyheter:[],moten:[],styrelse:[],...d,medlemmar:mm}; siteJson=JSON.stringify((({medlemmar,...r})=>r)(site)); renderSite(); }
+      if (snap.exists) siteFranServer();
     },()=>{});
     DB.collection("felanmalan").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); fel=o; felKlar=true; if(!busy()) renderFel(); },()=>{});
     if (board){ DB.collection("synpunkter").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); syn=o; synKlar=true; if(!busy()) renderSyn(); },()=>{}); }

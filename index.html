@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
 <script src="forening.js"></script>
-<script src="sb.js?v=3.02"></script>
+<script src="sb.js?v=3.05"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -270,9 +270,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.04</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.05</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.05</b><time>2 nov 2026</time></div><ul><li>Säkrare sparning: ändrar två personer samtidigt slås ändringarna ihop i stället för att den sista skriver över den första. Gäller nyheter, möten, styrelsen, dokument, åtgärdslistan och ärenden.</li><li>Det andra i styrelsen sparar visas nu också när man själv har haft något osparat.</li></ul></li>
         <li><div><b>3.04</b><time>2 nov 2026</time></div><ul><li>Små notiser i appen: när något nytt läggs upp eller kommenteras visas en liten ruta som man kan trycka på, och menyn visar hur många nyheter, kommentarer, möten, dokument och ärenden man inte har sett.</li><li>Knapparna överst under Ämnen ligger nu samlade till höger.</li></ul></li>
         <li><div><b>3.03</b><time>2 nov 2026</time></div><ul><li>Dölj mina uppgifter: valet visas nu direkt och ligger kvar när man öppnar Mina uppgifter igen.</li></ul></li>
         <li><div><b>3.02</b><time>2 nov 2026</time></div><ul><li>Föreningens uppgifter (namn, väg, ort, kommun och databas) ligger nu i en egen inställningsfil. Appen och andelstalsverktyget är en egen produkt som andra vägföreningar kan installera med sina egna uppgifter, utan att påverka varandra.</li></ul></li>
@@ -485,6 +486,6 @@
 </main>
 
 
-<script src="app.js?v=3.04"></script>
+<script src="app.js?v=3.05"></script>
 </body>
 </html>

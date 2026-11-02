@@ -36,11 +36,56 @@ function realtime(){
   setInterval(()=>{ if(document.visibilityState==="visible") loadAll().catch(()=>{}); },30000);
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadAll().catch(()=>{}); });
 }
+/* Säker sparning: två som ändrar samtidigt ska inte skriva över varandra.
+   sammanfoga(bas, min, deras) slår ihop min och deras ändringar sedan bas. Listor med id slås ihop post för post;
+   ändrar båda samma enskilda värde vinner den som sparar sist. */
+const lika=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const arObj=x=>!!x&&typeof x==="object"&&!Array.isArray(x);
+const medId=a=>Array.isArray(a)&&a.every(x=>arObj(x)&&x.id!=null&&x.id!=="");
+function sammanfoga(bas,min,deras){
+  if(lika(min,deras)||lika(deras,bas)) return min;
+  if(lika(min,bas)) return deras;
+  if(arObj(min)&&arObj(deras)){
+    const b=arObj(bas)?bas:{}, ut={};
+    new Set([...Object.keys(min),...Object.keys(deras)]).forEach(k=>{ const v=sammanfoga(b[k],min[k],deras[k]); if(v!==undefined) ut[k]=v; });
+    return ut;
+  }
+  if(medId(min)&&medId(deras)&&(bas==null||medId(bas))){
+    const B=new Map((bas||[]).map(x=>[String(x.id),x])), M=new Map(min.map(x=>[String(x.id),x])), D=new Map(deras.map(x=>[String(x.id),x]));
+    const ord=[...M.keys(),...[...D.keys()].filter(id=>!M.has(id))], ut=[];
+    ord.forEach(id=>{ const b=B.get(id), m=M.get(id), d=D.get(id);
+      if(m&&d) ut.push(sammanfoga(b,m,d));
+      else if(m){ if(!b||!lika(m,b)) ut.push(m); }      /* borttagen av någon annan: behålls bara om jag har ändrat den */
+      else if(d){ if(!b||!lika(d,b)) ut.push(d); } });  /* borttagen av mig: behålls bara om någon annan har ändrat den */
+    return ut;
+  }
+  return min;
+}
+window.sammanfoga=sammanfoga;
+const sparKo=new Map();
 const db={
   doc(path){ return {
     onSnapshot(cb,err){ if(!docSubs.has(path)) docSubs.set(path,[]); docSubs.get(path).push(cb); cb(snap(path)); return ()=>{ const a=docSubs.get(path); a.splice(a.indexOf(cb),1); }; },
     async get(){ return snap(path); },
-    async set(data){ const clean=JSON.parse(JSON.stringify(data)); const {error}=await sb.from("docs").upsert({path,data:clean,uppdaterad:new Date().toISOString()}); if(error) throw error; cache.set(path,clean); notify(path); },
+    /* set(data, bas): bas är versionen ändringen utgick från. Då hämtas serverns senaste version och ändringarna slås ihop.
+       Skrivningen görs bara om ingen annan hunnit spara emellan (jämför uppdaterad), annars görs det om.
+       Utan bas ersätts dokumentet, men fortfarande utan att krocka med en samtidig skrivning. Returnerar det som sparades. */
+    set(data,bas){
+      const kor=async()=>{
+        const ny=JSON.parse(JSON.stringify(data)), b=bas===undefined?undefined:JSON.parse(JSON.stringify(bas));
+        for(let f=0;f<5;f++){
+          const {data:rad,error:e1}=await sb.from("docs").select("data,uppdaterad").eq("path",path).maybeSingle(); if(e1) throw e1;
+          const ts=new Date().toISOString();
+          if(!rad){ const {error}=await sb.from("docs").insert({path,data:ny,uppdaterad:ts}); if(!error){ cache.set(path,ny); notify(path); return ny; } if(error.code==="23505") continue; throw error; }
+          const ut=b===undefined?ny:sammanfoga(b,ny,rad.data);
+          const {data:upd,error}=await sb.from("docs").update({data:ut,uppdaterad:ts}).eq("path",path).eq("uppdaterad",rad.uppdaterad).select("path");
+          if(error) throw error;
+          if(upd&&upd.length){ cache.set(path,ut); notify(path); return ut; }
+        }
+        throw new Error("Dokumentet ändrades samtidigt av någon annan. Försök igen.");
+      };
+      const p=(sparKo.get(path)||Promise.resolve()).catch(()=>{}).then(kor); sparKo.set(path,p); return p;
+    },
     async delete(){ const {error}=await sb.from("docs").delete().eq("path",path); if(error) throw error; cache.delete(path); notify(path); }
   }; },
   collection(c){ return { doc:(id)=>db.doc(c+"/"+id),
@@ -315,7 +360,7 @@ const STYR_ROLLER=["Ordförande","Vice ordförande","Kassör","Sekreterare","Led
 /* Ask which board role a person has and add/update them in the board list on the Styrelsen page. Resolves to a message or null if skipped. */
 function boardDialog(email,namn){
   return new Promise(resolve=>{
-    const site=JSON.parse(JSON.stringify(cache.get("site/main")||{}));
+    const site=JSON.parse(JSON.stringify(cache.get("site/main")||{})), siteBas=JSON.parse(JSON.stringify(site));
     const lc=x=>String(x||"").trim().toLowerCase();
     const mem=(window.getMedlemmar?window.getMedlemmar():[]).find(m=>lc(m.epost)===email)||{};
     const cur=(site.styrelse||[]).find(m=>lc(m.epost)===email);
@@ -341,7 +386,7 @@ function boardDialog(email,namn){
       const list=site.styrelse||[]; const i=list.findIndex(m=>lc(m.epost)===email);
       if(i>=0) list[i]={...list[i],...it}; else list.push({id:Math.random().toString(36).slice(2,9),...it});
       site.styrelse=list; delete site.medlemmar;
-      try{ await db.doc("site/main").set(site); resolve(`${it.namn||email} är tillagd i styrelsen som ${roll}.`); }
+      try{ await db.doc("site/main").set(site,siteBas); resolve(`${it.namn||email} är tillagd i styrelsen som ${roll}.`); }
       catch(e){ resolve("Behörigheten är sparad, men det gick inte att lägga till personen i styrelselistan."); }
     });
     dlg.showModal();

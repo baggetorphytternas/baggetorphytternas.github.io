@@ -684,8 +684,13 @@ async function loadAmnen(){
   let a,k; try{ [a,k]=await Promise.all([window.SB.from("styr_amnen").select("id,rubrik,text,user_id,namn,skapad,senast,stangd").order("senast",{ascending:false}).limit(500),
     window.SB.from("styr_kommentarer").select("id,amne_id,user_id,namn,text,skapad").order("skapad",{ascending:true}).limit(10000)]); }catch(e){ return; }
   if(a.error||k.error){ amnOk=false; renderAmnen(); return; }
+  const fore=amnOk?new Set([...amnen.map(x=>"a:"+x.id),...[...amnKomm.values()].flat().map(x=>"c:"+x.id)]):null;
   amnOk=true; amnen=a.data||[]; amnKomm=new Map(); (k.data||[]).forEach(x=>{ if(!amnKomm.has(x.amne_id)) amnKomm.set(x.amne_id,[]); amnKomm.get(x.amne_id).push(x); });
-  renderAmnen(); const d=q("#amnDlg"); if(d&&amnOppen){ if(amnen.some(x=>x.id===amnOppen)){ amnRita(d); amnMarkera(amnOppen); renderAmnen(); } else d.close(); }
+  if(fore&&!(sidaNu()==="styrelse"&&!q("#st-amnen").hidden)){
+    amnen.filter(x=>x.user_id!==me&&!fore.has("a:"+x.id)).slice(0,3).forEach(x=>nyttNotis("Nytt ämne: "+x.rubrik,"styrelse"));
+    [...amnKomm.values()].flat().filter(x=>x.user_id!==me&&!fore.has("c:"+x.id)).slice(0,3).forEach(x=>nyttNotis(`${x.namn||"Någon"} i ${((amnen.find(y=>y.id===x.amne_id))||{}).rubrik||"ett ämne"}`,"styrelse"));
+  }
+  renderAmnen(); nyttStyrNav(); const d=q("#amnDlg"); if(d&&amnOppen){ if(amnen.some(x=>x.id===amnOppen)){ amnRita(d); amnMarkera(amnOppen); renderAmnen(); } else d.close(); }
   if(!amnLyssnar){ amnLyssnar=true; try{ window.SB.channel("styr_amnen").on("postgres_changes",{event:"*",schema:"public",table:"styr_amnen"},amnSnart).on("postgres_changes",{event:"*",schema:"public",table:"styr_kommentarer"},amnSnart).subscribe(); }catch(e){} }
 }
 const amnSnart=()=>{ clearTimeout(amnTimer); amnTimer=setTimeout(loadAmnen,300); };
@@ -774,6 +779,81 @@ document.addEventListener("keydown",e=>{
   if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("[data-amn]")){ e.preventDefault(); amnDialog(e.target.dataset.amn); return; }
   if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&e.target.id==="amnText"){ const b=q("#amnSend"); if(b) b.click(); }
 });
+
+/* ---------- Nytt i appen: räknare på menyn och små notiser ----------
+   Vad man har sett sparas per område i webbläsaren (id:n). Första gången räknas allt som redan finns som sett.
+   En liten notis visas när något nytt kommer in i ett område man inte tittar på just nu. Egna inlägg räknas aldrig. */
+const NYTT_OMR={start:"Start",moten:"Möten",dokument:"Dokument",arenden:"Fel och synpunkter",styrelse:"Styrelsen"};
+let nyttSett=(()=>{ try{ return JSON.parse(localStorage.getItem("vag_sett")||"{}"); }catch(e){ return {}; } })();
+const nyttKant=new Map(), nyttStart=Date.now();
+let felKlar=false, synKlar=false, sprotKlar=false;
+function nyttSpara(){ try{ localStorage.setItem("vag_sett",JSON.stringify(nyttSett)); }catch(e){} }
+const sidaNu=()=>{ const p=document.querySelector(".page:not([hidden])"); return p?p.id.replace("page-",""):""; };
+/* Allt som kan vara nytt, per område: [{id, text, sida}]. null = data inte inläst än. */
+function nyttPoster(){
+  const ut={};
+  if(siteJson){
+    const n=(site.nyheter||[]).map(x=>({id:"n:"+x.id,text:"Ny nyhet: "+(x.rubrik||"Utan rubrik")}));
+    const k=kommOk?[...komm.entries()].flatMap(([nid,l])=>l.filter(c=>c.user_id!==me).map(c=>({id:"k:"+c.id,text:`${c.namn||"Någon"} kommenterade: ${((site.nyheter||[]).find(x=>x.id===nid)||{}).rubrik||"en nyhet"}`}))):[];
+    ut.start=kommOk||!window.SB?[...n,...k]:null;
+    ut.moten=(site.moten||[]).map(x=>({id:"m:"+x.id,text:"Nytt möte: "+(x.rubrik||"Möte")+(x.datum?" "+dfmt(x.datum):"")}));
+    const d=(site.dokument||[]).map(x=>({id:"d:"+x.id,text:"Nytt dokument: "+(x.rubrik||"Dokument")}));
+    ut.dokument=d;
+    if(board) ut.styrelse=sprotKlar?sprot.map(x=>({id:"sd:"+x.id,text:"Nytt styrelsedokument: "+(x.rubrik||"Dokument")})):null;
+  }
+  if(felKlar&&(synKlar||!me)){
+    const a=[];
+    Object.entries(fel).forEach(([uid,dk])=>(dk.items||[]).forEach(it=>{
+      if(uid!==me) a.push({id:"f:"+it.id,text:"Ny felanmälan: "+(it.plats||String(it.text||"").slice(0,60))});
+      else if(it.svar) a.push({id:"fs:"+it.id+":"+String(it.svar).length,text:"Styrelsen har svarat på din felanmälan"});
+    }));
+    Object.entries(syn).forEach(([uid,dk])=>(dk.items||[]).forEach(it=>{
+      if(uid!==me) a.push({id:"s:"+it.id,text:"Ny synpunkt: "+(it.amne||String(it.text||"").slice(0,60))});
+      else if(it.svar) a.push({id:"ss:"+it.id+":"+String(it.svar).length,text:"Styrelsen har svarat på din synpunkt"});
+    }));
+    ut.arenden=a;
+  }
+  return ut;
+}
+function nyttKolla(){
+  if(!DB||!me) return;
+  const P=nyttPoster(), nu=sidaNu(), synlig=document.visibilityState==="visible";
+  let andrat=false;
+  Object.entries(P).forEach(([omr,lista])=>{
+    if(!lista) return;
+    if(!nyttSett[omr]){ nyttSett[omr]=lista.map(x=>x.id); andrat=true; }
+    const sett=new Set(nyttSett[omr]);
+    const nya=lista.filter(x=>!sett.has(x.id));
+    if(omr===nu&&synlig&&nya.length){ nyttSett[omr]=[...sett,...nya.map(x=>x.id)].slice(-800); andrat=true; }
+    const kanda=nyttKant.get(omr)||new Set();
+    if(Date.now()-nyttStart>4000&&omr!==nu) nya.filter(x=>!kanda.has(x.id)).slice(0,3).forEach(x=>nyttNotis(x.text,omr));
+    nyttKant.set(omr,new Set(lista.map(x=>x.id)));
+    const kvar=omr===nu&&synlig?0:nya.length;
+    document.querySelectorAll(`[data-nyttnav="${omr}"]`).forEach(el=>{ el.textContent=kvar>9?"9+":kvar; if(omr!=="styrelse") el.hidden=!kvar; });
+  });
+  if(andrat) nyttSpara();
+  nyttStyrNav();
+}
+/* Styrelsens flik summerar inkorgen, olästa ämnen och nya styrelsedokument. */
+function nyttStyrNav(){
+  const el=q("#navInCount"); if(!el) return;
+  const ink=inMail?inMail.filter(m=>!m.last&&!m.arkiv).length:0, amn=amnOk?amnen.filter(a=>!a.stangd&&amnOlast(a)).length:0;
+  const d=+((document.querySelector('[data-nyttnav="styrelse"]')||{}).textContent||0)||0;
+  const n=ink+amn+d; el.textContent=n>9?"9+":n; el.hidden=!n;
+}
+function nyttNotis(text,omr){
+  let box=q("#nyttBox"); if(!box){ box=document.createElement("div"); box.id="nyttBox"; box.setAttribute("aria-live","polite"); document.body.appendChild(box); }
+  while(box.children.length>=3) box.firstElementChild.remove();
+  const b=document.createElement("button"); b.type="button"; b.className="nyttnotis"; b.dataset.nyttgo=omr;
+  b.innerHTML=`<span class="nn-omr">${E(NYTT_OMR[omr]||"")}</span><span class="nn-text">${E(text)}</span>`;
+  box.appendChild(b); setTimeout(()=>{ b.classList.add("bort"); setTimeout(()=>b.remove(),400); },7000);
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-nyttgo]"); if(!b) return; const omr=b.dataset.nyttgo; b.remove();
+  go(omr); window.scrollTo({top:0}); if(omr==="styrelse"&&b.textContent.includes("ämne")){ const t=document.querySelector('.subnav [data-st="amnen"]'); if(t) t.click(); } nyttKolla(); });
+document.addEventListener("click",e=>{ if(e.target.closest(".navtab")) setTimeout(nyttKolla,0); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") setTimeout(nyttKolla,300); });
+setInterval(nyttKolla,2500);
+window.nyttTest={kolla:()=>nyttKolla(),notis:nyttNotis,kant:nyttKant};
 
 /* ---------- Mina uppgifter (startsidan): åtgärder där jag är ansvarig eller som jag lagt till ---------- */
 let mina=[], arVag=false;
@@ -1141,7 +1221,7 @@ async function loadInbox(){
   if(!q("#st-inkorg").hidden && !q("#inList").contains(document.activeElement)) renderInbox();
 }
 function updInCount(){ const n=inMail.filter(m=>!m.last&&!m.arkiv).length;
-  [q("#inCount"),q("#navInCount")].forEach(el=>{ if(!el) return; el.textContent=n; el.hidden=!n; }); }
+  const el=q("#inCount"); if(el){ el.textContent=n; el.hidden=!n; } nyttStyrNav(); }
 function mailText(m){ if(m.text) return m.text; if(!m.html) return ""; try{ const doc=new DOMParser().parseFromString(m.html.replace(/<(script|style|head)[\s\S]*?<\/\1>/gi,"").replace(/<br\s*\/?>/gi,"\n").replace(/<\/(p|div|tr|h[1-6]|li)>/gi,"\n"),"text/html"); return (doc.body.textContent||"").replace(/\n{3,}/g,"\n\n").trim(); }catch(e){ return ""; } }
 const dtfmt=d=>new Date(d).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 function renderInbox(){
@@ -1305,16 +1385,16 @@ renderSite(); renderCases();
     if (board && DB){ atgRef=DB.doc("styrelse/atgarder"); atgRef.onSnapshot(sn=>{ if(q("#st-atg").contains(document.activeElement)&&document.activeElement.tagName!=="INPUT") return; atg=(sn.exists&&sn.data().items)||[]; renderAtg(); loadMina(); },()=>{}); }
     loadMina(); setTimeout(pushBanner,2500);
     document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadMina(); });
-    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; renderDok(); },()=>{}); }
+    if (board && DB){ sprotRef=DB.doc("styrelse/protokoll"); sprotRef.onSnapshot(sn=>{ sprot=(sn.exists&&sn.data().items)||[]; sprotKlar=true; renderDok(); },()=>{}); }
     andelRef=DB.doc("vag/andelstal"); andelRef.onSnapshot(sn=>{ andelstal=sn.exists?JSON.parse(JSON.stringify(sn.data())):null; renderAndelstal(); renderAndelAdmin(); },()=>{});
     siteRef=DB.doc("site/main");
     siteRef.onSnapshot(snap=>{
       if (snap.metadata&&snap.metadata.hasPendingWrites) return;
       if (snap.exists && !siteDirty && !siteSaving && !busy()){ const d=JSON.parse(JSON.stringify(snap.data()||{})); delete d.medlemmar; const mm=site.medlemmar||[]; site={intro:"",nyheter:[],moten:[],styrelse:[],...d,medlemmar:mm}; siteJson=JSON.stringify((({medlemmar,...r})=>r)(site)); renderSite(); }
     },()=>{});
-    DB.collection("felanmalan").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); fel=o; if(!busy()) renderFel(); },()=>{});
-    if (board){ DB.collection("synpunkter").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); syn=o; if(!busy()) renderSyn(); },()=>{}); }
-    else if (me){ DB.doc("synpunkter/"+me).onSnapshot(snap=>{ syn = snap.exists? {[me]:JSON.parse(JSON.stringify(snap.data()))} : {}; renderSyn(); },()=>{}); }
+    DB.collection("felanmalan").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); fel=o; felKlar=true; if(!busy()) renderFel(); },()=>{});
+    if (board){ DB.collection("synpunkter").onSnapshot(qs=>{ const o={}; qs.forEach(d=>o[d.id]=JSON.parse(JSON.stringify(d.data()))); syn=o; synKlar=true; if(!busy()) renderSyn(); },()=>{}); }
+    else if (me){ DB.doc("synpunkter/"+me).onSnapshot(snap=>{ syn = snap.exists? {[me]:JSON.parse(JSON.stringify(snap.data()))} : {}; synKlar=true; renderSyn(); },()=>{}); }
     if (!canWrite){ ["#caseForm"].forEach(s=>{ const f=q(s); f.querySelectorAll("input,textarea,button").forEach(x=>x.disabled=true); f.insertAdjacentHTML("beforeend",'<p class="hint">Du kan inte skicka just nu. Kontakta styrelsen.</p>'); }); }
   }catch(e){}
 })();

@@ -803,6 +803,7 @@ dialog::backdrop{touch-action:none}
 .anslrad.on:not(.klar) .anslval small{color:var(--accent)}
 /* Sidorna har ingen egen rubrik: fliken i menyn och underflikarna visar var man är. */
 .pghead .pgknappar{justify-content:flex-end;min-height:0}
+.pghead .pgknappar>*{margin-left:0}
 @media (min-width:1000px){ #page-arenden>.subwrap{grid-column:1/-1} }
 #andelKarta{height:min(60vh,480px);min-height:300px;border-radius:10px;border:1px solid var(--line);margin-top:12px;z-index:0}
 .andeltbl small{color:var(--muted)}
@@ -949,3 +950,14 @@ dialog.impdlg{width:min(720px,calc(100vw - 24px))}
 .impforh th,.impforh td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .impforh td small{display:block;color:var(--muted)}
 .impsum{margin:0}
+/* Små notiser när något nytt kommer in (nyttNotis i app.js) */
+#nyttBox{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));z-index:40;display:flex;flex-direction:column;gap:8px;width:min(340px,calc(100vw - 24px));pointer-events:none}
+.nyttnotis{pointer-events:auto;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:10px 14px;box-shadow:var(--shadow-lg);font-size:.9rem;font-weight:600;min-height:0;width:100%;cursor:pointer;animation:nyttIn .25s ease-out;transition:opacity .35s,transform .35s}
+.nyttnotis:hover{background:var(--surface-2)}
+.nyttnotis .nn-omr{font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.nyttnotis .nn-text{line-height:1.35;overflow-wrap:anywhere}
+.nyttnotis.bort{opacity:0;transform:translateX(20px)}
+@keyframes nyttIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){ .nyttnotis{animation:none;transition:none} }
+.navtab{position:relative}
+.navtab .navcount + .navcount{margin-left:2px}

@@ -21,7 +21,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=3.01">
+<link rel="stylesheet" href="app.css?v=3.04">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -58,12 +58,12 @@
 </header>
 <div class="navbar">
   <nav class="nav" role="tablist" aria-label="Sidor">
-    <button type="button" role="tab" class="navtab" data-page="start" aria-selected="true"><svg class="ico"><use href="#i-home"/></svg><span>Start</span></button>
+    <button type="button" role="tab" class="navtab" data-page="start" aria-selected="true"><svg class="ico"><use href="#i-home"/></svg><span>Start</span><span class="navcount" data-nyttnav="start" hidden></span></button>
     <button type="button" role="tab" class="navtab" data-page="medlemmar"><svg class="ico"><use href="#i-users"/></svg><span>Medlemmar</span></button>
-    <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span><span class="navcount" id="navInCount" hidden></span></button>
-    <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span></button>
-    <button type="button" role="tab" class="navtab" data-page="dokument"><svg class="ico"><use href="#i-folder"/></svg><span>Dokument</span></button>
-    <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span></button>
+    <button type="button" role="tab" class="navtab" data-page="styrelse"><svg class="ico"><use href="#i-board"/></svg><span>Styrelsen</span><span class="navcount" id="navInCount" hidden></span><span data-nyttnav="styrelse" hidden></span></button>
+    <button type="button" role="tab" class="navtab" data-page="moten"><svg class="ico"><use href="#i-cal"/></svg><span>Möten</span><span class="navcount" data-nyttnav="moten" hidden></span></button>
+    <button type="button" role="tab" class="navtab" data-page="dokument"><svg class="ico"><use href="#i-folder"/></svg><span>Dokument</span><span class="navcount" data-nyttnav="dokument" hidden></span></button>
+    <button type="button" role="tab" class="navtab" data-page="arenden"><svg class="ico"><use href="#i-alert"/></svg><span class="long">Fel och synpunkter</span><span class="short">Ärenden</span><span class="navcount" data-nyttnav="arenden" hidden></span></button>
   </nav>
 </div>
 </div>
@@ -270,9 +270,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.03</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.04</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.04</b><time>2 nov 2026</time></div><ul><li>Små notiser i appen: när något nytt läggs upp eller kommenteras visas en liten ruta som man kan trycka på, och menyn visar hur många nyheter, kommentarer, möten, dokument och ärenden man inte har sett.</li><li>Knapparna överst under Ämnen ligger nu samlade till höger.</li></ul></li>
         <li><div><b>3.03</b><time>2 nov 2026</time></div><ul><li>Dölj mina uppgifter: valet visas nu direkt och ligger kvar när man öppnar Mina uppgifter igen.</li></ul></li>
         <li><div><b>3.02</b><time>2 nov 2026</time></div><ul><li>Föreningens uppgifter (namn, väg, ort, kommun och databas) ligger nu i en egen inställningsfil. Appen och andelstalsverktyget är en egen produkt som andra vägföreningar kan installera med sina egna uppgifter, utan att påverka varandra.</li></ul></li>
         <li><div><b>3.01</b><time>2 nov 2026</time></div><ul><li>Styrelsen → Register: importera medlemsregistret från Excel, CSV, LibreOffice, JSON eller telefonens kontakter, eller klistra in från ett kalkylark. Kolumnerna känns igen automatiskt, befintliga kontakter uppdateras i stället för att dubbleras, och importen kan ångras.</li></ul></li>
@@ -484,6 +485,6 @@
 </main>
 
 
-<script src="app.js?v=3.03"></script>
+<script src="app.js?v=3.04"></script>
 </body>
 </html>

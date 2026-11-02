@@ -394,6 +394,13 @@ function mal(){
   ut.forEach(m=>m.satt=!!m.pt); return ut;
 }
 window.kartaHarPunkt=(prop,g)=>{ const p=state.props.find(x=>x.id===prop); return !!(p&&punktFor(p,g)); };
+/* Rullistan i steg 4: välj gemensam anslutningspunkt för fastigheten (tomt = egen punkt på kartan). */
+document.addEventListener("change",e=>{ const v=e.target.dataset&&e.target.dataset.malval; if(!v) return;
+  const i=v.indexOf("|"), p=state.props.find(x=>x.id===v.slice(0,i)); if(!p) return;
+  const [o,f]=valFalt(p,v.slice(i+1)); if(!o||!f) return; o[f]=e.target.value;
+  if (e.target.value){ const m=mal(), j=m.findIndex(x=>x.val===v), nx=m.slice(j+1).concat(m.slice(0,j)).find(x=>!x.satt&&x.val!==v); if(aktivt===v) aktivt=nx?nx.val:""; }
+  else aktivt=v;
+  andrat(); });
 /* Från fastighetskortet: gå till steg 4 med just den punkten vald. */
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-kartmal]"); if(!b) return; aktivt=b.dataset.kartmal; openTab="ansl"; renderTabs(); window.scrollTo({top:0}); });
 window.kartaStatus=p=>{ const pt=punktFor(p,"route"); if(!pt) return {satt:false};
@@ -416,13 +423,15 @@ function renderLista(){
   renderPunktLista();
   const el=document.getElementById("anslLista");
   if (el){
-    const m=mal(), {G,D}=avstand(), klara=m.filter(x=>x.satt).length;
+    const m=mal(), {G,D}=avstand(), klara=m.filter(x=>x.satt).length, P=namnPunkter();
+    const egen=x=>{ const [prop,g]=x.val.split("|"); return KS().punkter.some(q=>q.typ==="anslutning"&&q.prop===prop&&(q.galler||"route")===g); };
     if (!aktivt || !m.some(x=>x.val===aktivt)) aktivt=(m.find(x=>!x.satt)||{}).val||"";
     el.innerHTML = !KS().vagar.length ? `<p class="notice">Rita vägen och sätt ut utfarten i steg 3 först.</p>`
       : !m.length ? `<p class="empty">Inga fastigheter ännu. Lägg in dem i steg 2.</p>`
       : `<p class="hint">${klara} av ${m.length} utsatta.</p><div class="anslrader">${m.map(x=>{ const n=x.pt&&G.pnod.get(x.pt.id), d=n&&D?D.dist.get(n):NaN;
         return `<div class="anslrad${x.val===aktivt?" on":""}${x.satt?" klar":""}"><button type="button" class="anslval" data-mal="${esc(x.val)}"><strong>${esc(x.namn)}${x.del?` – ${esc(x.del)}`:""}</strong><small>${x.satt?(x.via?`Ansluter vid ${esc(x.via)}`:"Utsatt")+(isFinite(d)?` · ${fmt(d/1000,3)} km till ${esc(utfartOf())}`:" · hittar ingen väg till utfarten"):(x.val===aktivt?"Tryck på kartan nu":"Inte utsatt")}</small></button>
-          ${x.satt&&!x.via?`<button type="button" class="ghost small" data-maldel="${esc(x.val)}">Ta bort</button>`:""}</div>`; }).join("")}</div>`;
+          <span class="anslval2">${P.length?`<select aria-label="Anslutningspunkt för ${esc(x.namn)}" data-malval="${esc(x.val)}"><option value="">${egen(x)?"Egen punkt på kartan":"Välj punkt …"}</option>${P.map(q=>`<option value="${q.id}" ${x.via&&x.pt&&x.pt.id===q.id?"selected":""}>${esc(q.namn||"Anslutningspunkt")}</option>`).join("")}</select>`:""}
+          ${x.satt&&!x.via?`<button type="button" class="ghost small" data-maldel="${esc(x.val)}">Ta bort</button>`:""}</span></div>`; }).join("")}</div>`;
     const a=document.getElementById("anslAktiv");
     if (a && steg==="ansl"){ const x=m.find(y=>y.val===aktivt); a.hidden=!x; a.textContent=x?`Tryck på kartan där ${x.namn}${x.del?` (${x.del})`:""} ansluter till vägen.`:""; if(!x&&m.length&&klara===m.length){ a.hidden=false; a.textContent="Alla är utsatta. Gå vidare till Resultat."; } }
   }

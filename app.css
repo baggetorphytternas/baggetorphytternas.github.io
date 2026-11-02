@@ -943,3 +943,6 @@ fieldset.fall.stangd>:not(legend){display:none!important}
 .punktrader{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
 .punktrad{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:end;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)}
 .punktrad small{grid-column:1/-1;color:var(--muted);order:3}
+.anslval2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.anslval2 select{max-width:220px;padding:6px 8px;font-size:.9rem}
+@media (max-width:560px){ .anslrad{flex-wrap:wrap} .anslval2{width:100%;justify-content:space-between;padding:0 4px 6px 8px} .anslval2 select{flex:1;max-width:none} }

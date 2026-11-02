@@ -973,3 +973,6 @@ details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
 .snurra{width:38px;height:38px;border-radius:50%;border:4px solid var(--accent-soft,#dfe9e3);border-top-color:var(--accent,#1f5c41);animation:snurra 0.9s linear infinite}
 @keyframes snurra{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){ .snurra{animation-duration:3s} }
+.kartverktyg .chipbtn.rensa{color:var(--danger,#b42318);border-color:currentColor}
+.vantabox .row .danger{background:var(--danger,#b42318);color:#fff;border-color:var(--danger,#b42318)}
+#kartHjalp .ghost.small{margin-left:8px}

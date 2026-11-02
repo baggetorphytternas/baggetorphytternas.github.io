@@ -306,6 +306,42 @@ function satPunkt(val,ll){
   if (!["utfart","delning","punkt"].includes(val)){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
   andrat();
 }
+/* Rensa kartan: tar bort vägen, utfarter, anslutnings- och delningspunkter samt delsträckor och vägval från kartan.
+   Fastigheternas uppgifter finns kvar. Kräver bekräftelse och kan ångras direkt efteråt. */
+let rensadKopia=null;
+function rensaKartan(){
+  const props=state.props.map(p=>({id:p.id,route:p.route,skogRoute:p.skogRoute,punktRoute:p.punktRoute,punktSkog:p.punktSkog,skiften:skiften(p).map(s=>({id:s.id,route:s.route,punkt:s.punkt,punktSlut:s.punktSlut,jamnKm:s.jamnKm}))}));
+  rensadKopia=JSON.parse(JSON.stringify({karta:KS(),segments:state.segments,props}));
+  if (ritar) ritar=null;
+  state.karta={vagar:[],punkter:[]};
+  state.segments=state.segments.filter(g=>!Array.isArray(g.geo));
+  state.props.forEach(p=>{ p.route=[]; p.skogRoute=[]; delete p.punktRoute; delete p.punktSkog; skiften(p).forEach(s=>{ s.route=[]; delete s.punkt; delete s.punktSlut; delete s.jamnKm; }); });
+  natCache=null; senaste=null; scheduleSave(); renderAll(); satMode("visa");
+  visaHjalp("Kartan är rensad.");
+  const h=document.getElementById("kartHjalp"); if(h){ h.hidden=false; h.innerHTML=`Kartan är rensad. <button type="button" class="ghost small" id="kartAngraRensa">Ångra</button>`; }
+}
+function angraRensa(){
+  if (!rensadKopia) return; const c=rensadKopia; rensadKopia=null;
+  state.karta=c.karta; state.segments=c.segments;
+  c.props.forEach(x=>{ const p=state.props.find(y=>y.id===x.id); if(!p) return; Object.assign(p,{route:x.route,skogRoute:x.skogRoute}); if(x.punktRoute) p.punktRoute=x.punktRoute; if(x.punktSkog) p.punktSkog=x.punktSkog;
+    x.skiften.forEach(sx=>{ const s=skiften(p).find(y=>y.id===sx.id); if(s) Object.assign(s,sx); }); });
+  natCache=null; scheduleSave(); renderAll(); passa(); visaHjalp("Kartan är återställd.");
+}
+function bekraftaRensa(){
+  const k=KS(); if(!k.vagar.length&&!k.punkter.length){ visaHjalp("Kartan är redan tom."); return; }
+  let el=document.getElementById("rensaRuta");
+  if (!el){ el=document.createElement("div"); el.id="rensaRuta"; el.className="vantaruta"; el.setAttribute("role","alertdialog"); el.setAttribute("aria-modal","true"); el.setAttribute("aria-labelledby","rensaRubrik");
+    document.body.appendChild(el); }
+  el.innerHTML=`<div class="vantabox"><strong id="rensaRubrik">Rensa kartan?</strong>
+    <small>Vägen, utfarterna, anslutningspunkterna och delningarna tas bort, liksom delsträckorna och fastigheternas vägval från kartan. Fastigheternas uppgifter finns kvar.</small>
+    <small>${k.vagar.length} ${k.vagar.length===1?"väglinje":"väglinjer"} och ${k.punkter.length} ${k.punkter.length===1?"punkt":"punkter"} tas bort. Du kan ångra direkt efteråt.</small>
+    <div class="row" style="justify-content:center"><button type="button" class="danger" id="rensaJa">Rensa kartan</button><button type="button" class="ghost" id="rensaNej">Avbryt</button></div></div>`;
+  el.hidden=false; setTimeout(()=>{ const n=document.getElementById("rensaNej"); if(n) n.focus(); },30);
+}
+document.addEventListener("click",e=>{ const b=e.target.closest("#kartRensa,#rensaJa,#rensaNej,#kartAngraRensa"); if(!b) return;
+  const st=()=>{ const r=document.getElementById("rensaRuta"); if(r) r.hidden=true; };
+  if (b.id==="kartRensa") bekraftaRensa(); else if (b.id==="rensaJa"){ st(); rensaKartan(); } else if (b.id==="rensaNej") st(); else angraRensa(); });
+document.addEventListener("keydown",e=>{ const r=document.getElementById("rensaRuta"); if(e.key==="Escape"&&r&&!r.hidden) r.hidden=true; });
 /* Ruta som täcker sidan medan linjen läggs på vägen, så att man inte trycker runt under tiden. */
 function vantar(pa){
   let el=document.getElementById("vantaRuta");

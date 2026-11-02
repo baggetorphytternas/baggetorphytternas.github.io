@@ -935,3 +935,17 @@ dialog.amndlg{width:min(620px,calc(100vw - 24px))}
 .amn-text{margin:0;white-space:pre-wrap}
 .amn-komm{display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:60px;max-height:45dvh;padding-right:2px}
 .amn-komm .kc p{margin:2px 0 0;white-space:pre-wrap}
+/* Import av medlemsregistret */
+dialog.impdlg{width:min(720px,calc(100vw - 24px))}
+.impdlg form{display:flex;flex-direction:column;gap:10px}
+.impdlg h2{font-size:1.2rem;margin:0}
+.impfil{display:flex;align-items:center;justify-content:center;min-height:52px;border:2px dashed var(--line-strong);border-radius:var(--radius);font-weight:600;color:var(--accent);cursor:pointer;position:relative}
+.impfil input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.impkarta{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,40%),1fr));gap:8px 12px;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;margin:0}
+.impkarta legend{font-weight:700;padding:0 4px}
+.impkarta label{font-size:.85rem;margin:0}
+.impforh{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.impforh table{width:100%;border-collapse:collapse;font-size:.85rem}
+.impforh th,.impforh td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.impforh td small{display:block;color:var(--muted)}
+.impsum{margin:0}

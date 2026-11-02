@@ -848,6 +848,13 @@ async function kontaktDialog(){
   };
   d.showModal();
 }
+/* Styrelsen → Register: import av registret från fil. Koden ligger i medlemsimport.js och laddas först när den behövs. */
+function oppnaImport(){
+  if(!board) return;
+  const kor=()=>window.oppnaMedlemsimport({get:()=>site.medlemmar||[], set:l=>{ site.medlemmar=l; renderLists(); renderReg(); saveSite(); }, nid, msg:setMsg});
+  if(window.oppnaMedlemsimport) return kor();
+  const s=document.createElement("script"); s.src="medlemsimport.js?v=3.01"; s.onload=kor; s.onerror=()=>setMsg("Importen kunde inte laddas. Kontrollera anslutningen."); document.head.appendChild(s);
+}
 /* Styrelsen → Register: översikt över medlemsregistret */
 function renderReg(){
   const el=q("#regStat"); if(!el) return; const m=site.medlemmar||[];
@@ -944,6 +951,7 @@ document.addEventListener("click",e=>{
   const add={addNews:["nyheter",{datum:today(),rubrik:"",text:""}],addMeet:["moten",{datum:"",rubrik:"",plats:"",text:"",lank:""}],addBoardBlank:["styrelse",{namn:"",roll:"",fastighet:"",telefon:"",epost:""}]}[b.id];
   if (add){ const it={id:nid(),...add[1]}; site[add[0]]=[...(site[add[0]]||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
   if (b.dataset.addcontact!==undefined){ const first=(site.medlemmar||[]).find(m=>m.fastighet===b.dataset.addcontact)||{}; const it={id:nid(),fastighet:b.dataset.addcontact,beteckning:first.beteckning||"",namn:"",telefon:"",epost:"",adress:first.adress||""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); renderLists(); saveSite(); return; }
+  if (b.id==="memImport"){ oppnaImport(); return; }
   if (b.id==="addMember"){ const it={id:nid(),fastighet:"",beteckning:"",namn:"",telefon:"",epost:"",adress:""}; site.medlemmar=[...(site.medlemmar||[]),it]; editing.add(it.id); go("medlemmar"); window.scrollTo({top:0}); renderLists(); saveSite(); showMemGroup(""); return; }
   const card=b.closest(".item[data-kind]"); if(!card) return;
   const kind=card.dataset.kind, id=card.dataset.id;

@@ -20,7 +20,7 @@
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=3.00">
+<link rel="stylesheet" href="app.css?v=3.01">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -122,6 +122,7 @@
       <div class="ph"><h2>Medlemsregister</h2></div>
       <div class="regbtns">
         <button type="button" class="tile" id="addMember"><span class="tico"><svg class="ico"><use href="#i-users"/></svg></span><span>Ny medlem<small>Lägg till en fastighet eller kontaktperson</small></span></button>
+        <button type="button" class="tile" id="memImport"><span class="tico"><svg class="ico"><use href="#i-folder"/></svg></span><span>Importera register<small>Från Excel, CSV, LibreOffice, JSON eller telefonens kontakter</small></span></button>
         <button type="button" class="tile" id="memPdf"><span class="tico"><svg class="ico"><use href="#i-file"/></svg></span><span>Adresslista (PDF)<small>Alla fastigheter och kontakter, för styrelsens arbete</small></span></button>
       </div>
       <div class="regstat" id="regStat"></div>
@@ -268,9 +269,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.00</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.01</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.01</b><time>2 nov 2026</time></div><ul><li>Styrelsen → Register: importera medlemsregistret från Excel, CSV, LibreOffice, JSON eller telefonens kontakter, eller klistra in från ett kalkylark. Kolumnerna känns igen automatiskt, befintliga kontakter uppdateras i stället för att dubbleras, och importen kan ångras.</li></ul></li>
         <li><div><b>3.00</b><time>2 nov 2026</time></div><ul><li>Styrelsen: ny flik Ämnen för intern diskussion. Skapa ett ämne, kommentera, avsluta när det är klart. Nya ämnen och kommentarer markeras och ger en notis till övriga i styrelsen.</li><li>Styrelsen får en notis när en medlem skickar en felanmälan eller synpunkt.</li><li>Medlemmar kan välja Dölj mina uppgifter under Mina uppgifter. Telefon, mejl och adress syns då bara för styrelsen.</li></ul></li>
         <li><div><b>2.99</b><time>2 nov 2026</time></div><ul><li>Andelstalsverktyget räknar om vägnätet ungefär åtta gånger snabbare, så att stora vägnät med många fastigheter inte känns tröga.</li></ul></li>
         <li><div><b>2.98</b><time>2 nov 2026</time></div><ul><li>Andelstalsverktyget: handvalda delsträckor finns kvar även när vägen tillfälligt inte hänger ihop, och punkter från borttagna fastigheter och skiften delar inte längre vägen.</li><li>Delsträckor får alltid unika beteckningar, verktyget varnar när andelarna inte kan gå ihop till 100 %, och tomt fält för minsta väglängd betyder 0,3 km.</li><li>Är projektet öppet i två flikar visas det, så att man kan välja vilken version som gäller.</li></ul></li>
@@ -479,6 +481,6 @@
 </main>
 
 
-<script src="app.js?v=3.00"></script>
+<script src="app.js?v=3.01"></script>
 </body>
 </html>

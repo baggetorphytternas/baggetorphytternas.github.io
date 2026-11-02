@@ -389,7 +389,7 @@ document.addEventListener("click",async e=>{
     const W=297, M=14, green=[31,92,65], ink=[23,34,28], muted=[95,107,100];
     const datum=new Date().toLocaleDateString("sv-SE",{year:"numeric",month:"long",day:"numeric"});
     doc.setFillColor(...green); doc.rect(0,0,W,30,"F");
-    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T("Baggetorp Hytternäs vägsamfällighet · väg 13986"),M,11);
+    doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T(window.foreningNamn+(window.FORENING&&window.FORENING.vag?" · väg "+window.FORENING.vag:"")),M,11);
     doc.setFont("helvetica","bold"); doc.setFontSize(20); doc.text(T("Adresslista"),M,22);
     doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(T("Utskriven "+datum),W-M,22,{align:"right"});
     const groups=new Map(); (site.medlemmar||[]).forEach(m=>{ const k=String(m.fastighet||"").trim(); if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(m); });
@@ -404,9 +404,9 @@ document.addEventListener("click",async e=>{
     let y=doc.lastAutoTable.finalY+6; doc.setFontSize(9); doc.setTextColor(...muted);
     doc.text(T(`${f} fastigheter, ${n} kontaktpersoner. Uppgifterna är till för vägföreningens arbete. Dela inte listan vidare.`),M,Math.min(y,195));
     const pages=doc.internal.getNumberOfPages();
-    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(T("Baggetorp Hytternäs vägsamfällighet · Adresslista "+datum+" · sida "+i+" av "+pages),M,203); }
+    for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(T(window.foreningNamn+" · Adresslista "+datum+" · sida "+i+" av "+pages),M,203); }
     const dl=await claude.use("downloads"); if(!dl) throw new Error("dl");
-    await dl.save({filename:"Adresslista-Baggetorp-Hytternas-"+new Date().toISOString().slice(0,10)+".pdf",data:doc.output("blob")});
+    await dl.save({filename:"Adresslista-"+String(window.foreningNamn).replace(/[^A-Za-z0-9ÅÄÖåäö]+/g,"-").replace(/[åä]/g,"a").replace(/[ÅÄ]/g,"A").replace(/ö/g,"o").replace(/Ö/g,"O")+"-"+new Date().toISOString().slice(0,10)+".pdf",data:doc.output("blob")});
     setMsg("Adresslistan är skapad.");
   }catch(err){ setMsg("Kunde inte skapa PDF:en."); }
 });
@@ -546,7 +546,7 @@ const STD_LANKAR=[
   {id:"l8",namn:"Guide vid stadgeändring",url:"https://lm.se/globalassets/fastigheter/samfalligheter/guide-vid-stadgeandring.pdf",beskr:"Lantmäteriets vägledning när föreningen vill ändra sina stadgar (PDF)."},
   {id:"l4",namn:"Min karta",url:"https://minkarta.lantmateriet.se",beskr:"Lantmäteriets karta med fastighetsgränser."},
   {id:"l5",namn:"Riksförbundet Enskilda Vägar",url:"https://www.revriks.se",beskr:"Råd och stöd för vägföreningar och samfälligheter."},
-  {id:"l6",namn:"Flens kommun",url:"https://www.flen.se",beskr:"Kommunalt bidrag till enskilda vägar och kontakt med kommunen."}];
+  ...(window.FORENING&&window.FORENING.kommun&&window.FORENING.kommun.url?[{id:"l6",namn:window.FORENING.kommun.namn||"Kommunen",url:window.FORENING.kommun.url,beskr:"Kommunalt bidrag till enskilda vägar och kontakt med kommunen."}]:[])];
 const lankar=()=>Array.isArray(site.lankar)?site.lankar:STD_LANKAR;
 const okUrl=u=>/^(https?:\/\/[^\s]+|tel:[+\d\s-]+|mailto:[^\s]+)$/i.test(String(u||"").trim());
 const visUrl=u=>{ if(/^tel:/i.test(u)) return u.slice(4); if(/^mailto:/i.test(u)) return u.slice(7); try{ return new URL(u).host.replace(/^www\./,""); }catch(e){ return u; } };
@@ -853,7 +853,7 @@ function oppnaImport(){
   if(!board) return;
   const kor=()=>window.oppnaMedlemsimport({get:()=>site.medlemmar||[], set:l=>{ site.medlemmar=l; renderLists(); renderReg(); saveSite(); }, nid, msg:setMsg});
   if(window.oppnaMedlemsimport) return kor();
-  const s=document.createElement("script"); s.src="medlemsimport.js?v=3.01"; s.onload=kor; s.onerror=()=>setMsg("Importen kunde inte laddas. Kontrollera anslutningen."); document.head.appendChild(s);
+  const s=document.createElement("script"); s.src="medlemsimport.js?v=3.02"; s.onload=kor; s.onerror=()=>setMsg("Importen kunde inte laddas. Kontrollera anslutningen."); document.head.appendChild(s);
 }
 /* Styrelsen → Register: översikt över medlemsregistret */
 function renderReg(){
@@ -993,8 +993,8 @@ document.addEventListener("input",e=>{
 
 /* ---------- utskick ---------- */
 const UTEMPL={
-  info:{amne:"Information från Baggetorp Hytternäs vägsamfällighet",text:"Hej!\n\n\n\nMed vänlig hälsning\nStyrelsen, Baggetorp Hytternäs vägsamfällighet"},
-  kallelse:{amne:"Kallelse till årsstämma, Baggetorp Hytternäs vägsamfällighet",text:"Hej!\n\nVälkommen till årsstämma i Baggetorp Hytternäs vägsamfällighet.\n\nDatum: \nTid: \nPlats: \n\nFörslag till dagordning\n1. Stämmans öppnande\n2. Val av ordförande och sekreterare för stämman\n3. Val av två justerare\n4. Frågan om stämman är behörigen kallad\n5. Styrelsens förvaltningsberättelse och räkenskaper\n6. Revisorernas berättelse\n7. Ansvarsfrihet för styrelsen\n8. Ersättning till styrelse och revisorer\n9. Styrelsens förslag och inkomna motioner\n10. Utgifts och inkomststat samt debiteringslängd\n11. Val av styrelse och suppleanter\n12. Val av revisorer\n13. Övriga frågor\n14. Meddelande om var protokollet hålls tillgängligt\n15. Stämmans avslutande\n\nMed vänlig hälsning\nStyrelsen"},
+  info:{amne:"Information från "+window.foreningNamn,text:"Hej!\n\n\n\nMed vänlig hälsning\nStyrelsen, "+window.foreningNamn},
+  kallelse:{amne:"Kallelse till årsstämma, "+window.foreningNamn,text:"Hej!\n\nVälkommen till årsstämma i "+window.foreningNamn+".\n\nDatum: \nTid: \nPlats: \n\nFörslag till dagordning\n1. Stämmans öppnande\n2. Val av ordförande och sekreterare för stämman\n3. Val av två justerare\n4. Frågan om stämman är behörigen kallad\n5. Styrelsens förvaltningsberättelse och räkenskaper\n6. Revisorernas berättelse\n7. Ansvarsfrihet för styrelsen\n8. Ersättning till styrelse och revisorer\n9. Styrelsens förslag och inkomna motioner\n10. Utgifts och inkomststat samt debiteringslängd\n11. Val av styrelse och suppleanter\n12. Val av revisorer\n13. Övriga frågor\n14. Meddelande om var protokollet hålls tillgängligt\n15. Stämmans avslutande\n\nMed vänlig hälsning\nStyrelsen"},
   ovrigt:{amne:"",text:""}
 };
 let uTouched=false;

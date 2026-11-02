@@ -280,10 +280,11 @@ function snap(latlng){
    som följer även skogs- och grusvägar). Går det inte ligger linjen kvar genom de utsatta punkterna. ---------- */
 let foljVag=true, soker=false, vagFel="";
 const RUTT_DIREKT="https://routing.openstreetmap.de/routed-foot/route/v1/driving/";
-const RUTT_VIA="https://xhoexctuopvragyqwofs.supabase.co/functions/v1/vagdata?route=";
+/* Reserv om webbläsaren inte når vägvisaren: installationens egen vagdata-funktion (forening.js), om den finns. */
+const RUTT_VIA=(window.FORENING&&window.FORENING.supabaseUrl)?window.FORENING.supabaseUrl+"/functions/v1/vagdata?route=":"";
 async function hamtaRutt(pts){
   const c=pts.map(p=>`${p[1].toFixed(6)},${p[0].toFixed(6)}`).join(";"), fel=[];
-  for (const [url,namn] of [[RUTT_DIREKT+c+"?overview=full&geometries=geojson","vägvisaren"],[RUTT_VIA+encodeURIComponent(c),"föreningens tjänst"]]){
+  for (const [url,namn] of [[RUTT_DIREKT+c+"?overview=full&geometries=geojson","vägvisaren"],...(RUTT_VIA?[[RUTT_VIA+encodeURIComponent(c),"föreningens tjänst"]]:[])]){
     const ac=new AbortController(), t=setTimeout(()=>ac.abort(),20000);
     try{ const r=await fetch(url,{signal:ac.signal}); clearTimeout(t);
       if(!r.ok){ fel.push(`${namn} svarade ${r.status}`); continue; }

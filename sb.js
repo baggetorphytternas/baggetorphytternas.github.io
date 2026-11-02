@@ -1,8 +1,14 @@
 /* Supabase adapter: provides window.claude.use(...) with the same API the page was built on,
    plus login with email link and access management for admin. */
 (function(){
-const SB_URL="https://xhoexctuopvragyqwofs.supabase.co";
-const SB_KEY="sb_publishable_BqABNxP7VA8mG-_-K6voQw_JsTR2yQv";
+/* Föreningens uppgifter kommer från forening.js (installationens egen fil). */
+const F=window.FORENING||{};
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SB_URL=F.supabaseUrl, SB_KEY=F.supabaseNyckel;
+const FNAMN=F.namn||"Vägföreningen", FRAD=[F.vag?"Väg "+F.vag:"",F.ort||""].filter(Boolean).join(" · ");
+window.foreningNamn=FNAMN; window.foreningRad=FRAD;
+const visaForening=()=>{ document.title=FNAMN; document.querySelectorAll("[data-fnamn]").forEach(e=>e.textContent=FNAMN); document.querySelectorAll("[data-frad]").forEach(e=>{ e.textContent=FRAD; e.hidden=!FRAD; }); };
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",visaForening); else visaForening();
 const sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,detectSessionInUrl:true,flowType:"implicit"}});
 window.SB=sb;
 /* filer-lagringen är låst: appen använder signerade adresser (se blobUrl i index.html) */
@@ -64,7 +70,7 @@ function gate(html){ let g=document.getElementById("gate"); if(!g){ g=document.c
 function ungate(){ const g=document.getElementById("gate"); if(g) g.remove(); document.body.classList.remove("gated"); }
 const LS={get:k=>{try{return localStorage.getItem(k)||"";}catch(e){return "";}},set:(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}}};
 function loginForm(msg){
-  gate(`<div class="gatebox"><p class="eyebrow">Väg 13986 · Mellösa, Flens kommun</p><h1>Baggetorp Hytternäs vägsamfällighet</h1>
+  gate(`<div class="gatebox">${FRAD?`<p class="eyebrow">${esc(FRAD)}</p>`:""}<h1>${esc(FNAMN)}</h1>
    <div class="seg2" role="radiogroup" aria-label="Sätt att logga in">
      <label class="opt"><input type="radio" name="gMode" value="pw"><span>Lösenord</span></label>
      <label class="opt"><input type="radio" name="gMode" value="link"><span>Mejllänk</span></label>
@@ -266,7 +272,7 @@ async function requestAccess(s){
   gate(`<div class="gatebox"><p class="eyebrow">Inloggad som ${email}</p><h1>Be om tillgång</h1>
    <p>Din mejladress finns inte bland vägföreningens medlemmar ännu. Skicka en förfrågan, så godkänner styrelsen dig.</p>
    <label for="rNamn">Ditt namn<input id="rNamn" autocomplete="name" maxlength="120"></label>
-   <label for="rFast">Fastighet eller adress längs vägen<input id="rFast" placeholder="t.ex. Hytternäs 1:5" maxlength="120"></label>
+   <label for="rFast">Fastighet eller adress längs vägen<input id="rFast" placeholder="t.ex. ${esc(F.exempelFastighet||"Byn 1:5")}" maxlength="120"></label>
    <label for="rMedd">Meddelande till styrelsen (valfritt)<textarea id="rMedd" rows="3" maxlength="1000"></textarea></label>
    <button type="button" id="rSend">Skicka förfrågan</button><button type="button" id="gOut" class="ghost">Logga ut</button><p class="gmsg" id="rMsg"></p></div>`);
   out();

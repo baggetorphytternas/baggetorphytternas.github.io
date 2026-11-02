@@ -2,9 +2,9 @@
 <html lang="sv">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://xhoexctuopvragyqwofs.supabase.co https://tile.openstreetmap.org; connect-src 'self' https://xhoexctuopvragyqwofs.supabase.co wss://xhoexctuopvragyqwofs.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://tile.openstreetmap.org; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Baggetorp Hytternäs vägsamfällighet</title>
+<title>Vägföreningen</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f5c41">
 <meta name="color-scheme" content="light only">
@@ -15,7 +15,8 @@
 <meta name="apple-mobile-web-app-title" content="Vägföreningen">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
-<script src="sb.js?v=2.46"></script>
+<script src="forening.js"></script>
+<script src="sb.js?v=3.02"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,8 +51,8 @@
       <button type="button" class="iconbtn" id="kontoBtn" hidden aria-label="Mitt konto" title="Mitt konto"><svg class="ico"><use href="#i-user"/></svg><span class="kbadge" id="kontoBadge" hidden></span></button>
     </div>
     <a class="mh-text" href="#start" data-goto="start">
-      <span class="eyebrow">Väg 13986 · Mellösa, Flens kommun</span>
-      <span class="mh-title">Baggetorp Hytternäs vägsamfällighet</span>
+      <span class="eyebrow" data-frad></span>
+      <span class="mh-title" data-fnamn>Vägföreningen</span>
     </a>
   </div>
 </header>
@@ -269,9 +270,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.01</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.02</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.02</b><time>2 nov 2026</time></div><ul><li>Föreningens uppgifter (namn, väg, ort, kommun och databas) ligger nu i en egen inställningsfil. Appen och andelstalsverktyget är en egen produkt som andra vägföreningar kan installera med sina egna uppgifter, utan att påverka varandra.</li></ul></li>
         <li><div><b>3.01</b><time>2 nov 2026</time></div><ul><li>Styrelsen → Register: importera medlemsregistret från Excel, CSV, LibreOffice, JSON eller telefonens kontakter, eller klistra in från ett kalkylark. Kolumnerna känns igen automatiskt, befintliga kontakter uppdateras i stället för att dubbleras, och importen kan ångras.</li></ul></li>
         <li><div><b>3.00</b><time>2 nov 2026</time></div><ul><li>Styrelsen: ny flik Ämnen för intern diskussion. Skapa ett ämne, kommentera, avsluta när det är klart. Nya ämnen och kommentarer markeras och ger en notis till övriga i styrelsen.</li><li>Styrelsen får en notis när en medlem skickar en felanmälan eller synpunkt.</li><li>Medlemmar kan välja Dölj mina uppgifter under Mina uppgifter. Telefon, mejl och adress syns då bara för styrelsen.</li></ul></li>
         <li><div><b>2.99</b><time>2 nov 2026</time></div><ul><li>Andelstalsverktyget räknar om vägnätet ungefär åtta gånger snabbare, så att stora vägnät med många fastigheter inte känns tröga.</li></ul></li>
@@ -378,7 +380,7 @@
           <li>Protokollen har flyttat från Möten till Dokument. Ett möte som har ett protokoll visar knappen Läs protokollet.</li>
           <li>Styrelsen → Protokoll heter nu Dokument och delas in i Styrelseprotokoll, Avtal och offerter samt Övrigt. Bara styrelsen och admin ser dem.</li>
           <li>Dokument kan vara PDF, Word, Excel, text eller bild (max 20 MB).</li>
-          <li>Länkar till Trafikverket, Lantmäteriet, Riksförbundet Enskilda Vägar och Flens kommun. Styrelsen kan lägga till, ändra och ta bort.</li>
+          <li>Länkar till Trafikverket, Lantmäteriet, Riksförbundet Enskilda Vägar och kommunen. Styrelsen kan lägga till, ändra och ta bort.</li>
           <li>Styrelsens och funktionärernas kort är mindre och visar bara symbol, roll och namn. Tryck på ett kort för telefon, mejl och fastighet.</li>
           <li>Rättat: testnotisen kom inte fram.</li></ul></li>
         <li><div><b>2.32</b><time>31 okt 2026</time></div><ul>
@@ -481,6 +483,6 @@
 </main>
 
 
-<script src="app.js?v=3.01"></script>
+<script src="app.js?v=3.02"></script>
 </body>
 </html>

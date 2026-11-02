@@ -198,7 +198,7 @@ window.oppnaMedlemsimport=function(api){
     d.innerHTML=`<form method="dialog"><h2>Importera medlemsregister</h2>
       <p class="hint">Välj en fil med en rad per kontaktperson. Fungerar med Excel (.xlsx), LibreOffice (.ods), CSV- eller textfiler, JSON och kontakter från telefonen (.vcf). Du kan också klistra in rader direkt från ett kalkylark.</p>
       <label class="impfil"><input type="file" id="impFil" accept=".xlsx,.xlsm,.ods,.csv,.txt,.tsv,.tab,.json,.vcf,text/csv,text/plain,application/json,text/vcard">Välj fil</label>
-      <details class="more"><summary>Klistra in i stället</summary><textarea id="impText" rows="6" placeholder="Fastighet;Namn;Telefon;Mejl&#10;Stavberga;Leif Svalgård;070-123 45 67;leif@example.se"></textarea><button type="button" class="small" id="impTextOk">Läs in</button></details>
+      <details class="more"><summary>Klistra in i stället</summary><textarea id="impText" rows="6" placeholder="Fastighet;Namn;Telefon;Mejl&#10;Ekbacken;Anna Andersson;070-123 45 67;anna@example.se"></textarea><button type="button" class="small" id="impTextOk">Läs in</button></details>
       <p class="hint">Saknar du en fil? <button type="button" class="linkbtn" id="impMall">Ladda ner en mall</button> och fyll i den i Excel.</p>
       <p class="status" id="impMsg">${fel?E(fel):""}</p>
       <div class="bdlg-btns"><button value="x" class="ghost">Avbryt</button></div></form>`;
@@ -206,7 +206,7 @@ window.oppnaMedlemsimport=function(api){
       try{ fil=await lasFil(f); fil.namn=f.name; borja(); }
       catch(err){ steg1({xls:"Det äldre Excel-formatet (.xls) kan inte läsas. Öppna filen i Excel och spara som .xlsx eller CSV.",format:"Den filtypen kan inte läsas. Exportera till Excel (.xlsx) eller CSV först.",json:"JSON-filen innehåller ingen lista att läsa."}[err&&err.message]||"Filen kunde inte läsas. Prova att spara den som .xlsx eller CSV."); } };
     g("#impTextOk").onclick=()=>{ const t=g("#impText").value; if(!t.trim()){ g("#impText").focus(); return; } fil=lasText(t); fil.namn="Inklistrad text"; borja(); };
-    g("#impMall").onclick=()=>{ const csv="﻿Fastighet;Fastighetsbeteckning;Namn;Telefon;Mejl;Adress;Postnummer;Ort\r\nStavberga;Flen Stav 1:5;Anna Andersson;070-123 45 67;anna@example.se;Stav 5;642 91;Flen\r\n";
+    g("#impMall").onclick=()=>{ const csv="﻿Fastighet;Fastighetsbeteckning;Namn;Telefon;Mejl;Adress;Postnummer;Ort\r\nEkbacken;Byn 1:5;Anna Andersson;070-123 45 67;anna@example.se;Ekbacksvägen 5;123 45;Byn\r\n";
       const u=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})), a=document.createElement("a"); a.href=u; a.download="medlemsregister-mall.csv"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),60000); };
   };
   const borja=()=>{

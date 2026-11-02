@@ -887,8 +887,13 @@ async function makePdf(){
     const pages=doc.getNumberOfPages();
     for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText((foreningOf()?foreningOf()+" · ":"")+"Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
     const blob=doc.output("blob");
-    sparaFil("Förslag nya andelstal"+(foreningOf()?" "+foreningOf():"")+".pdf",blob);
-    setStatus("PDF skapad");
+    /* PDF:en visas med egna knappar: Öppna (i ny flik) och Spara. Adressen ligger kvar tills nästa PDF skapas. */
+    const namn=("Förslag nya andelstal"+(foreningOf()?" "+foreningOf():"")).replace(/[\\/:*?"<>|]/g,"").trim()+".pdf";
+    if (makePdf.url) URL.revokeObjectURL(makePdf.url);
+    makePdf.url=URL.createObjectURL(new Blob([blob],{type:"application/pdf"}));
+    const ruta=document.getElementById("pdfKlar");
+    if (ruta){ ruta.hidden=false; ruta.innerHTML=`<span>PDF:en är klar.</span><a class="button" href="${makePdf.url}" target="_blank" rel="noopener">Öppna PDF</a><a class="button ghost" href="${makePdf.url}" download="${esc(namn)}">Spara PDF</a>`; ruta.scrollIntoView({behavior:"smooth",block:"nearest"}); }
+    setStatus("PDF:en är klar");
   }catch(e){
     if (e && e.code==="declined") setStatus("PDF sparades inte");
     else if (e && e.message==="lib") setStatus("PDF verktyget kunde inte laddas. Ladda om sidan.",true);
@@ -905,7 +910,7 @@ if (window.ResizeObserver){ const ro=new ResizeObserver(stickyHojder); [".vk-top
 window.addEventListener("resize",stickyHojder); stickyHojder();
 /* ---------- lagring: webbläsaren och projektfiler ---------- */
 const LS="andelstal_projekt";
-function sparaFil(filename,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
+function sparaFil(filename,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),120000); }
 function scheduleSave(){ dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(save,400); }
 function save(){
   try{ localStorage.setItem(LS,JSON.stringify(state)); dirty=false; visaNamn(); }

@@ -1253,10 +1253,11 @@ const fmtP=x=>Number(x||0).toLocaleString("sv-SE",{minimumFractionDigits:1,maxim
 const fmtKm=x=>Number(x||0).toLocaleString("sv-SE",{minimumFractionDigits:2,maximumFractionDigits:2})+" km";
 const dagFmt=iso=>{ const t=new Date(iso); return isNaN(t)?"":t.toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"}); };
 function sparaFil(namn,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=namn; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }
-function laddaLeaflet(){ if(window.L) return Promise.resolve(); if(laddaLeaflet.p) return laddaLeaflet.p;
-  laddaLeaflet.p=new Promise((res,rej)=>{ const l=document.createElement("link"); l.rel="stylesheet"; l.href="leaflet/leaflet.css"; document.head.appendChild(l);
-    const sc=document.createElement("script"); sc.src="leaflet/leaflet.js"; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
-  return laddaLeaflet.p; }
+function laddaLeaflet(){ if(window.L&&laddaLeaflet.css) return Promise.resolve(); if(laddaLeaflet.p) return laddaLeaflet.p;
+  /* Stilmallen måste vara inläst innan kartan ritas, annars hamnar kartrutorna fel. */
+  const css=new Promise(res=>{ const l=document.createElement("link"); l.rel="stylesheet"; l.href="leaflet/leaflet.css"; l.onload=()=>{ laddaLeaflet.css=true; res(); }; l.onerror=res; document.head.appendChild(l); });
+  const js=window.L?Promise.resolve():new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src="leaflet/leaflet.js"; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); });
+  laddaLeaflet.p=Promise.all([css,js]); return laddaLeaflet.p; }
 const KFARG=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
 function renderAndelstal(){
   const el=q("#andelInnehall"); if(!el) return;
@@ -1279,7 +1280,9 @@ function renderAndelstal(){
     (a.punkter||[]).forEach(p=>{ if(!Array.isArray(p.ll)) return; b.extend(p.ll);
       L.marker(p.ll,{icon:L.divIcon({className:"kp "+(p.typ==="utfart"?"utfart":"ansl"),html:`<i></i><b>${E(p.namn||"")}</b>`,iconSize:null}),title:p.namn||""}).addTo(lg).bindTooltip(E(p.namn||"")); });
     const nl=()=>andelKarta.getContainer().classList.toggle("namn",andelKarta.getZoom()>=16); andelKarta.off("zoomend"); andelKarta.on("zoomend",nl); setTimeout(nl,300);
-    andelKarta.invalidateSize(); if(b.isValid()) andelKarta.fitBounds(b.pad(0.12));
+    /* Zooma in på föreningens väg när kartan syns och har sin rätta storlek. */
+    const passa=()=>{ andelKarta.invalidateSize(); if(b.isValid()) andelKarta.fitBounds(b.pad(0.08),{maxZoom:16}); };
+    passa(); requestAnimationFrame(passa); setTimeout(passa,250);
   }).catch(()=>{ wrap.hidden=true; });
 }
 function renderAndelAdmin(){

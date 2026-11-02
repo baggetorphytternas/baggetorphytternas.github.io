@@ -184,9 +184,14 @@ function forslag(){
   return {segs, routes, varn};
 }
 function tillampa(f){
+  /* Delsträckor som lagts till för hand följer med när delsträckorna räknas om: de matchas mot de nya via läget på kartan. */
+  const gamla=state.segments, nyaId=id=>{ const g=gamla.find(x=>x.id===id); if(!g||!Array.isArray(g.geo)||g.geo.length<2) return [];
+    const mid=mittpunkt(g.geo); return f.segs.filter(n=>Array.isArray(n.geo)&&n.geo.some((q,i)=>i&&proj(mid,n.geo[i-1],q).d<5)).map(n=>n.id); };
+  state.props.forEach(p=>{ if(Array.isArray(p.extraRoute)&&p.extraRoute.length) p.extraRoute=[...new Set(p.extraRoute.flatMap(nyaId))]; });
   state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo}));
+  const ordning=ids=>state.segments.map(g=>g.id).filter(id=>ids.has(id));
   state.props.forEach(p=>{ const r=f.routes.get(p.id)||{};
-    p.route=r.route||[]; p.skogRoute=p.skogEgen?(r.skog||[]):[];
+    p.autoRoute=r.route||[]; p.route=ordning(new Set([...(r.route||[]),...(p.extraRoute||[])])); p.skogRoute=p.skogEgen?(r.skog||[]):[];
     skiften(p).forEach(s=>{ const v=r["sk:"+s.id]; if(v&&v.ids){ s.route=v.ids; s.jamnKm=Math.round(v.km*1e4)/1e4; } else { s.route=v||[]; delete s.jamnKm; } });
     delete p.inreRoute; });
   scheduleSave();
@@ -546,7 +551,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("change",e=>{
   if (e.target.id==="foljVag"){ foljVag=e.target.checked; return; }
   if (e.target.id==="kartImport"&&e.target.files[0]){ const fr=new FileReader(); fr.onload=()=>importera(fr.result); fr.readAsText(e.target.files[0]); e.target.value=""; }
-  if (e.target.dataset&&(["skogEgen","gardUtanfor","punktRoute","punktSkog"].includes(e.target.dataset.f)||["plats","punkt","punktSlut"].includes(e.target.dataset.skf))) andrat();
+  if (e.target.dataset&&(e.target.dataset.key==="extraRoute"||["skogEgen","gardUtanfor","punktRoute","punktSkog"].includes(e.target.dataset.f)||["plats","punkt","punktSlut"].includes(e.target.dataset.skf))) andrat();
 });
 /* Kartan flyttas till det steg som visas. */
 window.kartaSteg=function(s){

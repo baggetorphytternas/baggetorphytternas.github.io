@@ -518,7 +518,12 @@ function renderCards(){
     const kartlage=!state.manuell, ks=window.kartaStatus?window.kartaStatus(p):null;
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
       ${kartlage?`${punktVal("pr-"+p.id,`data-p="${p.id}" data-f="punktRoute"`,p.punktRoute||"",t==="jord"&&p.gardUtanfor?"Gårdens trafik kör in på vägen vid":"Ansluter till vägen vid")}
-        <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
+        <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.${(p.extraRoute||[]).length?` Med tillagda delsträckor räknas ${fmt(segKm(p.route),3)} km.`:""}`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
+        ${state.segments.length?(()=>{ const auto=new Set(p.autoRoute||[]), extra=new Set(p.extraRoute||[]);
+          return `<label>Använder delsträckor</label><div class="segs">${state.segments.map(g=>auto.has(g.id)
+            ? `<span class="seg on auto" title="Följer av anslutningspunkten">${esc(g.id)}</span>`
+            : `<label class="seg ${extra.has(g.id)?"on":""}" for="ex-${p.id}-${g.id}" title="${esc(g.namn||"")}"><input type="checkbox" id="ex-${p.id}-${g.id}" data-p="${p.id}" data-key="extraRoute" data-seg="${esc(g.id)}" ${extra.has(g.id)?"checked":""}>${esc(g.id)}</label>`).join("")}</div>
+          <p class="hint">Fyllda bokstäver följer av anslutningspunkten. Kryssa i fler om fastighetens trafik även kör där.</p>`; })():""}
 `
       :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>`}
       ${chk(p,"direkt","Fastigheten har egen utfart direkt till allmän väg")}

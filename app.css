@@ -981,3 +981,4 @@ details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
 .falt2 label small{display:block;font-weight:400;color:var(--muted);font-size:.8rem;margin-top:-5px}
 .hint.liten{font-size:.8rem;margin:0}
 .skogvag .check{margin:0}
+.seg.auto{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default}

@@ -803,6 +803,7 @@ async function kartbild(){
 }
 const hav2=(a,b)=>{ const R=6371008.8,r=x=>x*Math.PI/180,s=Math.sin(r(b[0]-a[0])/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(r(b[1]-a[1])/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(s))); };
 async function makePdf(){
+  const ub=document.getElementById("pdfUtkast"), utkast=!ub||ub.checked;
   const btn=$("#pdf"); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML="<strong>Skapar PDF…</strong>";
   try{
     if (!window.jspdf) throw new Error("lib");
@@ -819,7 +820,7 @@ async function makePdf(){
     doc.setFillColor(...green); doc.rect(0,0,W,38,"F");
     doc.setTextColor(255); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText(foreningOf()||"Gemensamhetsanläggning för väg"),M,13);
     doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text(pdfText("Förslag till nya andelstal"),M,25);
-    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText("Utkast för diskussion, "+today),M,32);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.text(pdfText((utkast?"Utkast för diskussion, ":"Förslag, ")+today),M,32);
     y=48;
     head("Sammanfattning");
     para("Förslaget är räknat med Lantmäteriets tonkilometermetod och schablonvärden enligt PM 2025 (LM2025/006319), på samma sätt som vid en förrättning."+(state.props.some(p=>String(p.andelNu??"").trim()!=="")?" Nuvarande andelar visas som jämförelse.":""));
@@ -886,6 +887,12 @@ async function makePdf(){
     ["Beräkningen följer Lantmäteriets tonkilometermetod och dess schablonvärden.",
      "Nya andelstal kan bestämmas vid en lantmäteriförrättning eller, där det är tillåtet, genom en överenskommelse mellan delägarna."].forEach(t=>para("•  "+t,9.5,ink,1.2));
     const pages=doc.getNumberOfPages();
+    /* Röd UTKAST-stämpel tvärs över varje sida, halvgenomskinlig så att texten under går att läsa. */
+    if (utkast) for(let i=1;i<=pages;i++){ doc.setPage(i); doc.saveGraphicsState(); doc.setGState(new doc.GState({opacity:0.22}));
+      doc.setFont("helvetica","bold"); doc.setFontSize(120); doc.setTextColor(200,16,16);
+      const txt="UTKAST", tw=doc.getTextWidth(txt), v=55*Math.PI/180, cx=W/2, cy=297/2, h=120*0.3528*0.35;
+      doc.text(txt, cx-(tw/2)*Math.cos(v)+h*Math.sin(v), cy+(tw/2)*Math.sin(v)+h*Math.cos(v), {angle:55});
+      doc.restoreGraphicsState(); }
     for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText((foreningOf()?foreningOf()+" · ":"")+"Förslag till nya andelstal · sida "+i+" av "+pages),M,292); }
     const blob=doc.output("blob");
     /* PDF:en visas med egna knappar: Öppna (i ny flik) och Spara. Adressen ligger kvar tills nästa PDF skapas. */
@@ -976,6 +983,8 @@ document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b
   else if (b.id==="fastLas") $("#fastFil").click();
   else if (b.id==="projNytt"){ if(confirm("Börja om med ett tomt projekt? Det du har nu försvinner om du inte sparat det som fil.")){ applyRemote({}); save(); openTab="omrade"; renderTabs(); } }
 });
+document.addEventListener("change",e=>{ if(e.target.id==="pdfUtkast"){ try{ localStorage.setItem("andelstal_utkast",e.target.checked?"1":"0"); }catch(x){} } });
+(()=>{ const u=document.getElementById("pdfUtkast"); if(u){ try{ u.checked=localStorage.getItem("andelstal_utkast")!=="0"; }catch(e){} } })();
 document.addEventListener("change",e=>{
   const f=e.target.files&&e.target.files[0]; if(!f) return;
   if (e.target.id==="projFil"||e.target.id==="fastFil"){ const fr=new FileReader(), id=e.target.id; fr.onload=()=>{ id==="projFil"?lasProjekt(fr.result):lasFastighetsfil(fr.result,f.name); }; fr.readAsText(f); e.target.value=""; }

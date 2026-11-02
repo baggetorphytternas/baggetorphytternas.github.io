@@ -841,15 +841,17 @@ async function makePdf(){
     // map
     doc.addPage(); y=M;
     head("Vägen och delsträckorna");
+    /* Kartan och tabellen ska rymmas på en sida: kartans höjd anpassas efter antalet delsträckor. */
+    const radH=5.6, tabH=8+(state.segments.length+1)*radH, ledigH=Math.max(60,Math.min(150,282-y-tabH-16));
     const bild=await kartbild();
-    if (bild){ const bw=CW, bh=Math.min(170,CW*bild.h/bild.w), bw2=bh*bild.w/bild.h;
+    if (bild){ const bw2=Math.min(CW,ledigH*bild.w/bild.h), bh=bw2*bild.h/bild.w;
       doc.addImage(bild.data,"JPEG",M+(CW-bw2)/2,y,bw2,bh); y+=bh+4;
-      doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Karta: © OpenStreetMap-bidragsgivare. Delsträckorna är inritade med bokstav."),M,y); y+=6; }
+      doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Karta: © OpenStreetMap-bidragsgivare. Längderna är mätta längs vägen på kartan."),M,y); y+=6; }
     { const geo=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1);
       if (!bild && geo.length && window.SWEREF){
         const P=ll=>window.SWEREF.till(ll), all=geo.flatMap(g=>g.geo.map(P));
         const minN=Math.min(...all.map(p=>p[0])), maxN=Math.max(...all.map(p=>p[0])), minE=Math.min(...all.map(p=>p[1])), maxE=Math.max(...all.map(p=>p[1]));
-        const H=130, sc=Math.min(CW/Math.max(1,maxE-minE), H/Math.max(1,maxN-minN)), ox=M+(CW-(maxE-minE)*sc)/2, y0=y;
+        const H=ledigH-8, sc=Math.min(CW/Math.max(1,maxE-minE), H/Math.max(1,maxN-minN)), ox=M+(CW-(maxE-minE)*sc)/2, y0=y;
         const X=p=>ox+(p[1]-minE)*sc, Y=p=>y0+(maxN-p[0])*sc;
         const F=[[31,92,65],[180,83,9],[37,99,235],[147,51,234],[190,18,60],[15,118,110],[77,124,15],[194,65,12]];
         geo.forEach((g,i)=>{ const q=g.geo.map(P); doc.setDrawColor(...F[i%F.length]); doc.setLineWidth(1.4);
@@ -863,18 +865,21 @@ async function makePdf(){
         y=y0+(maxN-minN)*sc+8; doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Norr är uppåt. Skiss ur vägnätet i verktyget."),M,y); y+=5;
       } }
     const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
-    table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,"cirka "+fmt(num(g.m))+" m"]).concat([["","Totalt","cirka "+fmt(segTot)+" m"]]),{columnStyles:{0:{cellWidth:24},2:{cellWidth:32,halign:"right"}}});
-    para(state.segments.some(g=>g.geo)?"Längderna är mätta längs vägen på kartan i verktyget.":"Längderna är uppmätta på karta.",9,muted);
+    table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,fmt(num(g.m))+" m"]).concat([["","Totalt",fmt(segTot)+" m"]]),{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.3,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:22},2:{cellWidth:26,halign:"right"}},rowPageBreak:"avoid",didParseCell:d=>{ if(d.section==="body"&&d.row.index===state.segments.length) d.cell.styles.fontStyle="bold"; }});
+    if (!bild) para("Längderna är uppmätta på karta.",8.5,muted);
     // properties
     doc.addPage(); y=M;
     head("Fastigheterna och föreslagna andelar");
-    const h1=["Fastighet","Typ","Kör på delsträcka","Väglängd","Nuvarande andel","Ny andel"].concat(showKr?["Kr per år"]:[]);
-    const b1=sorted.map(r=>{
-      const vl = r.fixed!==null ? "" : fmt(r.d,1)+" km";
-      return [pdfName(r.p.namn),typeText(r.p),routeText(r.p),vl,String(r.p.andelNu??"").trim()!==""?fmt(num(r.p.andelNu),1)+" %":"–",fmt(r.disp,1)+" %"].concat(showKr?[fmt(Math.round(r.kr))]:[]);
-    });
-    b1.push(["Totalt","","","","100 %",fmt(rows.reduce((s,r)=>s+r.disp,0),1)+" %"].concat(showKr?[fmt(Math.round(rows.reduce((s,r)=>s+r.kr,0)))]:[]));
-    table(h1,b1,{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.6,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:30,fontStyle:"bold"},3:{halign:"right",cellWidth:24},4:{halign:"right",cellWidth:17},5:{halign:"right",fontStyle:"bold",cellWidth:17},6:{halign:"right"}},didParseCell:d=>{ if(d.section==="body"&&d.row.index===b1.length-1){ d.cell.styles.fontStyle="bold"; } }});
+    /* Tabellen ska rymmas på en sida: kompakt text, kolumnen för nuvarande andel bara om någon finns. */
+    const harNu=rows.some(r=>String(r.p.andelNu??"").trim()!=="");
+    const h1=["Fastighet","Typ","Delsträckor","Väglängd"].concat(harNu?["Nu"]:[],["Ny andel"],showKr?["Kr per år"]:[]);
+    const b1=sorted.map(r=>[pdfName(r.p.namn),typeText(r.p),routeText(r.p),r.fixed!==null?"":fmt(r.d,2)+" km"]
+      .concat(harNu?[String(r.p.andelNu??"").trim()!==""?fmt(num(r.p.andelNu),1)+" %":"–"]:[],[fmt(r.disp,1)+" %"],showKr?[fmt(Math.round(r.kr))]:[]));
+    b1.push(["Totalt","","",""].concat(harNu?[fmt(rows.reduce((s,r)=>s+num(r.p.andelNu),0),1)+" %"]:[],[fmt(rows.reduce((s,r)=>s+r.disp,0),1)+" %"],showKr?[fmt(Math.round(rows.reduce((s,r)=>s+r.kr,0)))]:[]));
+    const ci={}; let c=4; if(harNu) ci[c++]={halign:"right",cellWidth:13}; ci[c++]={halign:"right",fontStyle:"bold",cellWidth:16}; if(showKr) ci[c++]={halign:"right",cellWidth:17};
+    table(h1,b1,{styles:{font:"helvetica",fontSize:8,cellPadding:1.3,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},headStyles:{fillColor:green,textColor:255,fontStyle:"bold",fontSize:8},
+      columnStyles:Object.assign({0:{cellWidth:28,fontStyle:"bold"},2:{cellWidth:24},3:{halign:"right",cellWidth:17}},ci),rowPageBreak:"avoid",
+      didParseCell:d=>{ if(d.section==="body"&&d.row.index===b1.length-1) d.cell.styles.fontStyle="bold"; if(d.section==="head"&&d.column.index>=3) d.cell.styles.halign="right"; }});
     if (showKr) para("Kronorna visar hur "+fmt(num(S.utdebitering))+" kr per år fördelas enligt de nya andelarna.",9,muted);
     head("Underlag");
     ["Beräkningen följer Lantmäteriets tonkilometermetod och dess schablonvärden.",

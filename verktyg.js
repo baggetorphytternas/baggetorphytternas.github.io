@@ -520,7 +520,8 @@ function renderCards(){
         <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
 `
       :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>`}
-      ${chk(p,"direkt","Direktutfart till allmän väg (minsta väglängd och reduktionsfaktor, PM 3.1.4)")}
+      ${chk(p,"direkt","Fastigheten har egen utfart direkt till allmän väg")}
+      ${p.direkt?`<p class="hint">Fastigheten använder knappt föreningens väg men har ändå nytta av den, till exempel för att nå andra delar av området. Den räknas därför med minsta väglängd (${fmt(num(state.schablon.minKm)||0.3,1)} km) gånger en reduktionsfaktor, i stället för att få andelen 0 (PM 3.1.4).</p>`:""}
       ${p.direkt?sel(p,"direktFaktor","Reduktionsfaktor",[["0.5","0,5 – gemensamma nyttigheter i normal omfattning"],["0.3","0,3 – gemensamma nyttigheter i mindre omfattning"]],"0.5"):""}
     </fieldset>`;
     return `<div class="panel card editing" data-card="${p.id}">

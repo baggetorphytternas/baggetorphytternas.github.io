@@ -712,8 +712,8 @@ const amnSett=()=>{ try{ return JSON.parse(localStorage.getItem("vag_amnen_sett"
 function amnMarkera(id){ const s=amnSett(); s[id]=new Date().toISOString(); try{ localStorage.setItem("vag_amnen_sett",JSON.stringify(s)); }catch(e){} }
 async function loadAmnen(){
   if(!window.SB||!board) return;
-  let a,k; try{ [a,k]=await Promise.all([window.SB.from("styr_amnen").select("id,rubrik,text,user_id,namn,skapad,senast,stangd").order("senast",{ascending:false}).limit(500),
-    window.SB.from("styr_kommentarer").select("id,amne_id,user_id,namn,text,skapad").order("skapad",{ascending:true}).limit(10000)]); }catch(e){ return; }
+  let a,k; try{ [a,k]=await Promise.all([window.SB.from("styr_amnen").select("id,rubrik,text,user_id,namn,skapad,senast,stangd,bilagor").order("senast",{ascending:false}).limit(500),
+    window.SB.from("styr_kommentarer").select("id,amne_id,user_id,namn,text,skapad,bilagor").order("skapad",{ascending:true}).limit(10000)]); }catch(e){ return; }
   if(a.error||k.error){ amnOk=false; renderAmnen(); return; }
   const fore=amnOk?new Set([...amnen.map(x=>"a:"+x.id),...[...amnKomm.values()].flat().map(x=>"c:"+x.id)]):null;
   amnOk=true; amnen=a.data||[]; amnKomm=new Map(); (k.data||[]).forEach(x=>{ if(!amnKomm.has(x.amne_id)) amnKomm.set(x.amne_id,[]); amnKomm.get(x.amne_id).push(x); });
@@ -738,18 +738,41 @@ function renderAmnen(){
     return `<div class="item amnkort" role="button" tabindex="0" data-amn="${E(a.id)}">
       <h3>${amnOlast(a)?'<span class="badge ny">Nytt</span> ':""}${E(a.rubrik)}</h3>
       <p class="amn-ut">${E(sist?sist.namn+": "+sist.text:(a.text||""))}</p>
-      <span class="meta">${E(a.namn)} · ${E(kommTid(a.senast||a.skapad))} · ${k.length?`${k.length} ${k.length===1?"kommentar":"kommentarer"}`:"Inga kommentarer"}</span></div>`; }).join("")
+      <span class="meta">${E(a.namn)} · ${E(kommTid(a.senast||a.skapad))} · ${k.length?`${k.length} ${k.length===1?"kommentar":"kommentarer"}`:"Inga kommentarer"}${(()=>{ const n=(a.bilagor||[]).length+k.reduce((s,x)=>s+(x.bilagor||[]).length,0); return n?` · ${n} ${n===1?"bilaga":"bilagor"}`:""; })()}</span></div>`; }).join("")
     :`<p class="empty">${amnArkiv?"Inga avslutade ämnen.":"Inga ämnen än."}</p>`;
 }
+/* Länkar i text blir klickbara (bara http och https). Google-länkar får en tydlig etikett. */
+const LANKRE=/\bhttps?:\/\/[^\s<>"']+/g;
+function lankNamn(u){
+  try{ const x=new URL(u), p=x.pathname;
+    if(x.hostname==="docs.google.com") return p.startsWith("/spreadsheets")?"Google-kalkylark":p.startsWith("/presentation")?"Google-presentation":p.startsWith("/forms")?"Google-formulär":"Google-dokument";
+    if(x.hostname==="drive.google.com") return "Fil i Google Drive";
+    const t=(x.hostname.replace(/^www\./,"")+p).replace(/\/$/,""); return t.length>50?t.slice(0,47)+"…":t;
+  }catch(e){ return u; }
+}
+function lankText(t){
+  const s=String(t||""); let ut="", i=0;
+  s.replace(LANKRE,(m,pos)=>{ const u=m.replace(/[),.;:!?]+$/,""); ut+=E(s.slice(i,pos))+`<a class="lank" href="${E(u)}" target="_blank" rel="noopener" title="${E(u)}">${E(lankNamn(u))}</a>`; i=pos+u.length; return m; });
+  return ut+E(s.slice(i));
+}
+/* Bilagor ligger i den låsta lagringsplatsen "styrelse" och öppnas med en signerad adress som gäller i tio minuter. */
+function bilagorHtml(l,kanTa,amneId){
+  if(!Array.isArray(l)||!l.length) return "";
+  return `<div class="amnbil">${l.map((b,i)=>`<span class="attchip"><button type="button" class="linkbtn" data-bilopen="${E(b.path)}">${ico("file")}${E(b.namn)}</button>${kanTa?`<button type="button" class="danger" data-bilrm="${E(amneId)}|${i}" aria-label="Ta bort ${E(b.namn)}">✕</button>`:""}</span>`).join("")}</div>`;
+}
+const amnAtt=key=>(mailAtt[key]||[]).map(a=>({namn:a.namn,path:a.path,size:a.size}));
 function amnRita(d){
   const a=amnen.find(x=>x.id===amnOppen); if(!a) return;
   const k=amnKomm.get(a.id)||[], egen=a.user_id===me, ta=d.querySelector("#amnText"), utkast=ta?ta.value:"", fokus=ta&&document.activeElement===ta;
   const lista=d.querySelector(".amn-komm"), nere=lista?lista.scrollHeight-lista.scrollTop-lista.clientHeight<40:true;
   d.innerHTML=`<form method="dialog"><div class="amn-h"><h2>${E(a.rubrik)}</h2>${a.stangd?'<span class="badge">Avslutat</span>':""}</div>
     <p class="meta">${E(a.namn)} · ${E(kommTid(a.skapad))}</p>
-    ${a.text?`<p class="amn-text">${E(a.text)}</p>`:""}
-    <div class="amn-komm">${k.map(x=>`<div class="kc" data-skid="${E(x.id)}"><div class="kc-h"><strong>${E(x.namn||"Styrelsen")}</strong><time>${E(kommTid(x.skapad))}</time>${x.user_id===me||isAdmin()?`<button type="button" class="linkbtn kc-del" data-skdel>Ta bort</button>`:""}</div><p>${E(x.text)}</p></div>`).join("")||`<p class="empty">Inga kommentarer än.</p>`}</div>
+    ${a.text?`<p class="amn-text">${lankText(a.text)}</p>`:""}
+    ${bilagorHtml(a.bilagor,egen||isAdmin(),a.id)}
+    <div class="amn-komm">${k.map(x=>`<div class="kc" data-skid="${E(x.id)}"><div class="kc-h"><strong>${E(x.namn||"Styrelsen")}</strong><time>${E(kommTid(x.skapad))}</time>${x.user_id===me||isAdmin()?`<button type="button" class="linkbtn kc-del" data-skdel>Ta bort</button>`:""}</div><p>${lankText(x.text)}</p>${bilagorHtml(x.bilagor,false)}</div>`).join("")||`<p class="empty">Inga kommentarer än.</p>`}</div>
     <div class="kommform"><textarea id="amnText" rows="2" maxlength="3000" placeholder="Skriv en kommentar…" aria-label="Kommentar"></textarea><button type="button" class="small" id="amnSend">Skicka</button></div>
+    <div class="mailatt amnatt" data-attkey="amnk-${E(a.id)}">${attInner("amnk-"+a.id)}</div>
+    <p class="hint amntips">Klistra in en länk, till exempel till ett Google-dokument, så blir den klickbar.</p>
     <p class="status" id="amnMsg"></p>
     <details class="more"><summary>Fler val</summary><div class="row">
       ${egen||isAdmin()?`<button type="button" class="ghost small" id="amnAndra">Ändra</button>`:""}
@@ -771,15 +794,21 @@ function amnRedigera(a){
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>${ny?"Nytt ämne":"Ändra ämne"}</h2>
     <label>Rubrik<input id="anR" maxlength="150" value="${E(a.rubrik||"")}" placeholder="t.ex. Grusning i vår"></label>
-    <label>Text<textarea id="anT" rows="6" maxlength="5000">${E(a.text||"")}</textarea></label>
+    <label>Text<textarea id="anT" rows="6" maxlength="5000" placeholder="Länkar, till exempel till ett Google-dokument, blir klickbara.">${E(a.text||"")}</textarea></label>
+    ${!ny&&(a.bilagor||[]).length?`<p class="hint">Bifogat sedan tidigare: ${a.bilagor.map(b=>E(b.namn)).join(", ")}</p>`:""}
+    <div class="mailatt" data-attkey="${ny?"amn-ny":"amn-"+E(a.id)}">${attInner(ny?"amn-ny":"amn-"+a.id)}</div>
     <p class="status" id="anMsg"></p>
     <div class="bdlg-btns"><button type="button" id="anOk">${ny?"Skapa":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
-  document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
+  const attKey=ny?"amn-ny":"amn-"+a.id; let sparat=false;
+  document.body.appendChild(d); d.addEventListener("close",()=>{ if(!sparat) clearAtt(attKey,true); d.remove(); });
   const g=x=>d.querySelector(x);
   g("#anOk").onclick=async()=>{ const r=g("#anR").value.trim(), t=g("#anT").value.trim(); if(!r){ g("#anMsg").textContent="Skriv en rubrik."; g("#anR").focus(); return; }
+    const bil=[...(ny?[]:(a.bilagor||[])),...amnAtt(attKey)];
+    if(bil.length>10){ g("#anMsg").textContent="Ett ämne kan ha högst 10 bilagor."; return; }
     g("#anOk").disabled=true;
-    const res = ny ? await window.SB.from("styr_amnen").insert({rubrik:r,text:t}).select("id").single() : await window.SB.from("styr_amnen").update({rubrik:r,text:t}).eq("id",a.id);
+    const res = ny ? await window.SB.from("styr_amnen").insert({rubrik:r,text:t,bilagor:bil}).select("id").single() : await window.SB.from("styr_amnen").update({rubrik:r,text:t,bilagor:bil}).eq("id",a.id);
     if(res.error){ g("#anOk").disabled=false; g("#anMsg").textContent="Det gick inte att spara."; return; }
+    sparat=true; clearAtt(attKey,false);
     d.close(); await loadAmnen();
     if(ny&&res.data){ amnNotis("amne",res.data.id); amnDialog(res.data.id); } else setMsg("Ämnet är sparat."); };
   d.showModal(); g("#anR").focus();
@@ -793,18 +822,33 @@ document.addEventListener("click",async e=>{
   const kort=e.target.closest("[data-amn]"); if(kort){ amnDialog(kort.dataset.amn); return; }
   const d=e.target.closest("#amnDlg"); if(!d) return;
   const a=amnen.find(x=>x.id===amnOppen); if(!a) return; const msg=d.querySelector("#amnMsg");
-  if(e.target.closest("#amnSend")){ const t=d.querySelector("#amnText"), txt=t.value.trim(); if(!txt){ t.focus(); return; }
+  if(e.target.closest("#amnSend")){ const t=d.querySelector("#amnText"), bil=amnAtt("amnk-"+a.id), txt=t.value.trim()||(bil.length?(bil.length===1?"Bifogad fil":"Bifogade filer"):""); if(!txt){ t.focus(); return; }
     const b=e.target.closest("#amnSend"); b.disabled=true;
-    const {data,error}=await window.SB.from("styr_kommentarer").insert({amne_id:a.id,text:txt}).select("id").single();
+    const {data,error}=await window.SB.from("styr_kommentarer").insert({amne_id:a.id,text:txt,bilagor:bil}).select("id").single();
     b.disabled=false; if(error){ msg.textContent="Det gick inte att skicka kommentaren."; return; }
-    t.value=""; amnNotis("kommentar",data.id); await loadAmnen(); const nl=d.querySelector(".amn-komm"); if(nl) nl.scrollTop=nl.scrollHeight; return; }
+    t.value=""; clearAtt("amnk-"+a.id,false); amnNotis("kommentar",data.id); await loadAmnen(); const nl=d.querySelector(".amn-komm"); if(nl) nl.scrollTop=nl.scrollHeight; return; }
   if(e.target.closest("#amnAndra")){ amnRedigera(a); return; }
   if(e.target.closest("#amnStang")){ const stang=!a.stangd; const {error}=await window.SB.from("styr_amnen").update({stangd:stang}).eq("id",a.id); if(error){ msg.textContent="Det gick inte att spara."; return; } setMsg(stang?"Ämnet är avslutat och ligger under Visa avslutade.":"Ämnet är öppnat igen."); if(stang) d.close(); await loadAmnen(); return; }
   const del=e.target.closest("#amnBort,[data-skdel]"); if(!del) return;
   if(!del.classList.contains("armed")){ del.classList.add("armed"); const t0=del.textContent; del.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(del.isConnected){ del.classList.remove("armed"); del.textContent=t0; } },4000); return; }
-  if(del.id==="amnBort"){ const {error}=await window.SB.from("styr_amnen").delete().eq("id",a.id); if(error){ msg.textContent="Det gick inte att ta bort."; return; } d.close(); setMsg("Ämnet är borttaget."); await loadAmnen(); return; }
-  const kid=del.closest("[data-skid]").dataset.skid; const {error}=await window.SB.from("styr_kommentarer").delete().eq("id",kid);
+  if(del.id==="amnBort"){ const filer=[...(a.bilagor||[]),...(amnKomm.get(a.id)||[]).flatMap(x=>x.bilagor||[])].map(b=>b.path);
+    const {error}=await window.SB.from("styr_amnen").delete().eq("id",a.id); if(!error&&filer.length) window.SB.storage.from("styrelse").remove(filer).catch(()=>{}); if(error){ msg.textContent="Det gick inte att ta bort."; return; } d.close(); setMsg("Ämnet är borttaget."); await loadAmnen(); return; }
+  const kid=del.closest("[data-skid]").dataset.skid, kk=(amnKomm.get(a.id)||[]).find(x=>x.id===kid), kf=((kk&&kk.bilagor)||[]).map(b=>b.path);
+  const {error}=await window.SB.from("styr_kommentarer").delete().eq("id",kid); if(!error&&kf.length) window.SB.storage.from("styrelse").remove(kf).catch(()=>{});
   if(error){ msg.textContent="Det gick inte att ta bort kommentaren."; return; } await loadAmnen();
+});
+document.addEventListener("click",async e=>{
+  const o=e.target.closest("[data-bilopen]");
+  if(o){ const w=window.open("","_blank");
+    try{ const {data,error}=await window.SB.storage.from("styrelse").createSignedUrl(o.dataset.bilopen,600); if(error) throw error; if(w) w.location=data.signedUrl; else location.href=data.signedUrl; }
+    catch(err){ if(w) w.close(); setMsg("Det gick inte att öppna filen."); } return; }
+  const r=e.target.closest("[data-bilrm]"); if(!r||!board) return;
+  const [aid,i]=r.dataset.bilrm.split("|"), a=amnen.find(x=>x.id===aid); if(!a) return; const b=(a.bilagor||[])[+i]; if(!b) return;
+  if(!r.classList.contains("armed")){ r.classList.add("armed"); r.textContent="Ta bort?"; setTimeout(()=>{ if(r.isConnected){ r.classList.remove("armed"); r.textContent="✕"; } },4000); return; }
+  const ny=(a.bilagor||[]).filter((_,j)=>j!==+i);
+  const {error}=await window.SB.from("styr_amnen").update({bilagor:ny}).eq("id",aid);
+  if(error){ setMsg("Det gick inte att ta bort bilagan."); return; }
+  window.SB.storage.from("styrelse").remove([b.path]).catch(()=>{}); setMsg("Bilagan är borttagen."); await loadAmnen();
 });
 document.addEventListener("keydown",e=>{
   if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("[data-amn]")){ e.preventDefault(); amnDialog(e.target.dataset.amn); return; }
@@ -1245,7 +1289,7 @@ document.addEventListener("change",async e=>{
   for(const f of files){
     const l=mailAtt[key]||(mailAtt[key]=[]); const total=l.reduce((s,a)=>s+a.size,0)+f.size;
     if(total>MAXATT){ msg().textContent=`${f.name} får inte plats. Bilagorna får vara högst 15 MB tillsammans.`; continue; }
-    if(l.length>=10){ msg().textContent="Högst 10 bilagor per mejl."; break; }
+    if(l.length>=10){ msg().textContent="Högst 10 bilagor åt gången."; break; }
     msg().textContent="Laddar upp "+f.name+"…";
     const safe=(f.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\w.-]+/g,"_").replace(/^_+|_+$/g,"")||"bilaga").slice(0,80);
     const path=`bilagor/${crypto.randomUUID()}/${safe}`;

@@ -208,7 +208,7 @@
       <button type="button" class="chipbtn" data-cf="fel">Fel på vägen</button>
       <button type="button" class="chipbtn" data-cf="syn">Synpunkter</button>
     </div></div>
-    <header class="pghead board"><div class="ph pgknappar"><button type="button" class="ghost small board" data-showarch="all">Visa arkiv</button></div></header>
+    <header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small" data-showarch="all">Visa arkiv</button></div></header>
     <section class="panel" id="caseForm" data-fold="arende">
       <h2>Anmäl fel eller lämna synpunkt</h2>
       <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
@@ -271,9 +271,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.08</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.09</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.09</b><time>2 nov 2026</time></div><ul><li>Fel och synpunkter: ärenden som styrelsen har arkiverat syns inte längre bland de aktuella för medlemmen som skickade dem. Medlemmar kan se sina arkiverade ärenden med Visa arkiv.</li></ul></li>
         <li><div><b>3.08</b><time>2 nov 2026</time></div><ul><li>Styrelsens ämnen: bifoga filer till ämnen och kommentarer. Filerna ligger i styrelsens låsta lagring. Länkar blir klickbara, och länkar till Google-dokument, kalkylark och Drive får en tydlig etikett.</li></ul></li>
         <li><div><b>3.07</b><time>2 nov 2026</time></div><ul><li>Samma utseende på alla sidor: inga rubriker som upprepar flikarnas namn, filtret under Fel och synpunkter ligger överst, och Ändra ligger i kortets hörn även för länkar, åtgärder och kontakter. Ta bort finns inne i Ändra.</li><li>Skärmläsare får veta vilken flik som är vald, och piltangenterna byter flik.</li><li>Tydligt besked när nätet eller servern inte svarar, i stället för sidan för att be om tillgång.</li><li>Appen hämtar bara det som har ändrats, och sökningen bland medlemmarna går smidigare.</li><li>Andelstalsverktyget: hjälptexten följer inte längre med ner över kartan på mobilen.</li></ul></li>
         <li><div><b>3.06</b><time>2 nov 2026</time></div><ul><li>Superadmin kan under Mitt konto välja Visa appen som medlem, styrelse eller admin och se appen precis som den rollen, i högst två timmar. En lila rad överst visar vilken vy som gäller och leder tillbaka.</li></ul></li>
@@ -490,6 +491,6 @@
 </main>
 
 
-<script src="app.js?v=3.08"></script>
+<script src="app.js?v=3.09"></script>
 </body>
 </html>

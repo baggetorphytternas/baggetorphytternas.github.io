@@ -1368,7 +1368,8 @@ function actions(coll,it,done){
 }
 document.addEventListener("click",async e=>{
   const f=e.target.closest("[data-cf]"); if(f){ cfilter=f.dataset.cf; document.querySelectorAll("[data-cf]").forEach(x=>x.classList.toggle("on",x===f)); renderCases(); return; }
-  const b=e.target.closest("[data-done],[data-arch],[data-showarch]"); if(!b||!board) return;
+  const b=e.target.closest("[data-done],[data-arch],[data-showarch]"); if(!b) return;
+  if (!board&&!b.dataset.showarch) return;
   if (b.dataset.showarch){ arch.all=!arch.all; b.textContent=arch.all?"Visa aktuella":"Visa arkiv"; renderCases(); return; }
   const card=b.closest("[data-uid]"); const uid=card.dataset.uid, id=card.dataset.fid||card.dataset.sid;
   const coll=b.dataset.done||b.dataset.arch, store=coll==="felanmalan"?fel:syn;
@@ -1400,7 +1401,8 @@ async function renderCases(){
   const all=[];
   Object.entries(fel).forEach(([uid,d])=>(d.items||[]).forEach(it=>all.push({...it,uid,kind:"fel"})));
   Object.entries(syn).forEach(([uid,d])=>(d.items||[]).forEach(it=>all.push({...it,uid,kind:"syn"})));
-  let list=all.filter(it=> it.kind==="syn"&&!board ? true : !!it.arkiv===arch.all);
+  /* Arkiverade ärenden ligger i arkivet för alla, även medlemmens egna synpunkter. */
+  let list=all.filter(it=>!!it.arkiv===arch.all);
   if (cfilter!=="alla") list=list.filter(it=>it.kind===cfilter);
   list.sort((a,b)=>String(b.datum).localeCompare(String(a.datum)));
   q("#caseHead").textContent = arch.all? "Arkiv" : board? "Alla ärenden" : "Fel och dina synpunkter";

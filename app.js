@@ -197,7 +197,7 @@ const person=(top,name,sub,it,av)=>`<div class="person">${av||`<span class="avat
 const memView=it=>person(E(it.fastighet||"Fastighet saknas"),it.namn||"Namn ej ifyllt",it.adress,it);
 /* compact card per fastighet; tap to open all contact persons in a dialog */
 let memGroups=new Map();
-/* Fastighetens namn (t.ex. Stavberga) och beteckning (t.ex. Stav 1:5). Beteckningen visas bara om den skiljer sig från namnet. */
+/* Fastighetens namn (t.ex. Ekbacken) och beteckning (t.ex. Byn 1:5). Beteckningen visas bara om den skiljer sig från namnet. */
 const betOf=ps=>{ const b=String((ps.find(m=>m.beteckning)||{}).beteckning||"").trim(), f=String(ps[0].fastighet||"").trim(); return b&&b!==f?b:""; };
 function memCard(k,ps){
   const adr=(ps.find(m=>m.adress)||{}).adress, named=ps.filter(m=>m.namn), bet=betOf(ps);
@@ -218,7 +218,7 @@ function memGroup(ps){
   const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress, bet=betOf(ps);
   const rows=ps.map(it=>{
     if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
-    return `<div class="item sub" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}${it.dold&&board?`<span class="badge typ">Dolda för medlemmar</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:it.dold&&!board?`<p class="empty">Kontaktuppgifterna är dolda. Styrelsen kan nå personen.</p>`:""}</div>`;
+    return `<div class="item sub${board?" harandra":""}" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}${it.dold&&board?`<span class="badge typ">Dolda för medlemmar</span>`:""}</div></div>${board?`<button type="button" class="ghost small kortandra" data-act="edit">Ändra</button>`:""}${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:it.dold&&!board?`<p class="empty">Kontaktuppgifterna är dolda. Styrelsen kan nå personen.</p>`:""}</div>`;
   }).join("");
   return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div></div>${rows}
     ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
@@ -575,10 +575,10 @@ const okUrl=u=>/^(https?:\/\/[^\s]+|tel:[+\d\s-]+|mailto:[^\s]+)$/i.test(String(
 const visUrl=u=>{ if(/^tel:/i.test(u)) return u.slice(4); if(/^mailto:/i.test(u)) return u.slice(7); try{ return new URL(u).host.replace(/^www\./,""); }catch(e){ return u; } };
 function renderLankar(){
   const el=q("#lnkList"); if(!el) return; const l=lankar();
-  el.innerHTML=l.length? l.map(x=>`<div class="item lnk" data-lid="${E(x.id)}">
+  el.innerHTML=l.length? l.map(x=>`<div class="item lnk${board?" harandra":""}" data-lid="${E(x.id)}">
     <a class="lnkmain" href="${okUrl(x.url)?E(x.url):"#"}" ${/^https?:/i.test(x.url)?'target="_blank" rel="noopener"':""}><span class="lnkico">${ico(/^tel:/i.test(x.url)?"phone":"link")}</span>
       <span class="lnktxt"><strong>${E(x.namn)}</strong>${x.beskr?`<small>${E(x.beskr)}</small>`:""}<span class="lnkurl">${E(visUrl(x.url))}</span></span></a>
-    ${board?`<div class="row"><button type="button" class="ghost small" data-lnkedit>Ändra</button><button type="button" class="danger" data-lnkdel>Ta bort</button></div>`:""}</div>`).join("")
+    ${board?`<button type="button" class="ghost small kortandra" data-lnkedit>Ändra</button>`:""}</div>`).join("")
   : `<p class="empty">Inga länkar ännu.</p>`;
 }
 function lnkDialog(old){
@@ -588,8 +588,11 @@ function lnkDialog(old){
     <label>Adress<input id="lnU" required value="${old?E(old.url):""}" placeholder="https://… eller tel:…"></label>
     <label>Beskrivning<input id="lnB" value="${old?E(old.beskr||""):""}" placeholder="Kort om vad man hittar där"></label>
     <p class="status" id="lnMsg"></p>
-    <div class="bdlg-btns"><button value="ok" id="lnOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+    <div class="bdlg-btns"><button value="ok" id="lnOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div>
+    ${old?`<button type="button" class="danger linkbtn" id="lnDel">Ta bort länken</button>`:""}</form>`;
   document.body.appendChild(dlg); const g=id=>dlg.querySelector(id);
+  if(g("#lnDel")) g("#lnDel").onclick=()=>{ const b=g("#lnDel"); if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(b.isConnected){ b.classList.remove("armed"); b.textContent="Ta bort länken"; } },4000); return; }
+    site.lankar=lankar().filter(y=>y.id!==old.id); saveSite(); renderLankar(); dlg.close(); setMsg("Länken är borttagen."); };
   g("#lnOk").onclick=ev=>{ ev.preventDefault();
     let u=g("#lnU").value.trim(); const n=g("#lnN").value.trim(), bsk=g("#lnB").value.trim();
     if(u&&!/^[a-z]+:/i.test(u)) u="https://"+u;
@@ -629,10 +632,10 @@ function renderAtg(){
       : !a.datum ? `<span class="badge typ">Inget datum</span>`
       : st==="sen" ? `<span class="badge sen">Försenad · ${E(kortDatum(a.datum))}</span>`
       : `<span class="badge ${st==="snart"?"ny":"typ"}">${n===0?"Idag":n===1?"Imorgon":"Senast "+E(kortDatum(a.datum))}</span>`;
-    return `<div class="item atg ${st}" data-aid="${E(a.id)}"><div class="atg-row">
+    return `<div class="item atg ${st} harandra" data-aid="${E(a.id)}"><div class="atg-row">
       <label class="atg-check" title="${a.klar?"Markera som ej klar":"Markera som klar"}"><input type="checkbox" data-atgdone ${a.klar?"checked":""}><span></span></label>
       <div class="atg-body"><h3>${E(a.uppgift)}</h3><div class="meta">${whoChips(a)}${dag}</div>${a.notering?`<p class="atg-note">${E(a.notering)}</p>`:""}</div></div>
-      <div class="row"><button type="button" class="ghost small" data-atgedit>Ändra</button><button type="button" class="danger" data-atgdel>Ta bort</button></div></div>`; };
+      <button type="button" class="ghost small kortandra" data-atgedit>Ändra</button></div>`; };
   const l=q("#atgList"); if(!l) return;
   l.innerHTML = ö.length ? ö.map(row).join("") : `<p class="empty">${atg.length?"Alla åtgärder är klara. Bra jobbat!":"Inga åtgärder ännu. Tryck på Ny åtgärd för att lägga till."}</p>`;
   q("#atgDoneBox").hidden=!k.length; q("#atgDoneSum").textContent=`Klara (${k.length})`; q("#atgDoneList").innerHTML=k.map(row).join("");
@@ -668,9 +671,12 @@ function atgDialog(a){
     <label>Klart senast<input id="aD" type="date" value="${E(a.datum||"")}"></label>
     <label>Anteckning (valfritt)<textarea id="aN" rows="3" maxlength="1000">${E(a.notering||"")}</textarea></label>
     <p class="status" id="aMsg"></p>
-    <div class="bdlg-btns"><button type="button" id="aOk">${ny?"Lägg till":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+    <div class="bdlg-btns"><button type="button" id="aOk">${ny?"Lägg till":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div>
+    ${!ny&&board?`<button type="button" class="danger linkbtn" id="aDel">Ta bort åtgärden</button>`:""}</form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
   const g=id=>d.querySelector(id);
+  if(g("#aDel")) g("#aDel").onclick=()=>{ const b=g("#aDel"); if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(b.isConnected){ b.classList.remove("armed"); b.textContent="Ta bort åtgärden"; } },4000); return; }
+    atg=atg.filter(x=>x.id!==a.id); atgSave(); d.close(); setMsg("Åtgärden är borttagen."); };
   g("#aAnnan").onclick=()=>{ g("#aNy").hidden=!g("#aNy").hidden; if(!g("#aNy").hidden) g("#aAn").focus(); };
   g("#aAnOk").onclick=()=>{ const n=g("#aAn").value.trim(); if(!n){ g("#aAn").focus(); return; }
     const x={namn:n,epost:g("#aAe").value.trim().toLowerCase(),grupp:""};
@@ -803,6 +809,23 @@ document.addEventListener("click",async e=>{
 document.addEventListener("keydown",e=>{
   if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("[data-amn]")){ e.preventDefault(); amnDialog(e.target.dataset.amn); return; }
   if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&e.target.id==="amnText"){ const b=q("#amnSend"); if(b) b.click(); }
+});
+
+/* ---------- Underflikar och filter för skärmläsare och tangentbord ----------
+   role="tab" och aria-selected följer klassen "on". Piltangenterna, Home och End flyttar mellan flikarna. */
+function flikAria(){
+  document.querySelectorAll(".subnav").forEach(l=>{
+    const bs=[...l.querySelectorAll(".chipbtn")], on=bs.find(b=>b.classList.contains("on"));
+    bs.forEach(b=>{ b.setAttribute("role","tab"); b.setAttribute("aria-selected",String(b===on)); b.tabIndex=(b===on||(!on&&b===bs[0]))?0:-1; });
+  });
+}
+document.querySelectorAll(".subnav").forEach(l=>new MutationObserver(flikAria).observe(l,{subtree:true,attributes:true,attributeFilter:["class"]}));
+flikAria();
+document.addEventListener("keydown",e=>{
+  const b=e.target.closest&&e.target.closest(".subnav .chipbtn"); if(!b||!["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+  const bs=[...b.parentElement.querySelectorAll(".chipbtn")].filter(x=>x.offsetParent!==null), i=bs.indexOf(b);
+  const n=e.key==="Home"?0:e.key==="End"?bs.length-1:(i+(e.key==="ArrowRight"?1:-1)+bs.length)%bs.length;
+  e.preventDefault(); bs[n].focus(); bs[n].click();
 });
 
 /* ---------- Nytt i appen: räknare på menyn och små notiser ----------
@@ -1346,7 +1369,7 @@ function updateForm(){
   const f=caseType()==="fel";
   q("#caseHint").textContent = f? "Till exempel hål, trasig trumma, fallna träd eller dåligt plogat. Alla medlemmar ser felanmälningarna." : "Bara styrelsen läser det du skriver. Du ser själv dina synpunkter och styrelsens svar här nedanför.";
   q("#caseTitleLbl").textContent = f? "Var på vägen" : "Ämne";
-  q("#caseTitle").placeholder = f? "t.ex. sträcka F, strax efter Stavbergavägen" : "t.ex. andelstal, snöröjning, mina kontaktuppgifter";
+  q("#caseTitle").placeholder = f? "t.ex. sträcka B, strax efter korsningen" : "t.ex. andelstal, snöröjning, mina kontaktuppgifter";
   q("#caseTextLbl").textContent = f? "Vad har hänt" : "Din synpunkt eller fråga";
   q("#caseSend").textContent = f? "Skicka felanmälan" : "Skicka till styrelsen";
 }
@@ -1387,7 +1410,8 @@ document.addEventListener("input",e=>{
   if (f&&t.dataset.ff){ const k=f.dataset.uid+f.dataset.fid; clearTimeout(ptimers[k]); ptimers[k]=setTimeout(()=>patchItem("felanmalan",fel,f.dataset.uid,f.dataset.fid,{[t.dataset.ff]:t.value}).catch(()=>setMsg("Kunde inte spara.")),t.tagName==="SELECT"?0:700); }
   if (s&&t.dataset.sf){ const k=s.dataset.uid+s.dataset.sid; clearTimeout(ptimers[k]); ptimers[k]=setTimeout(()=>patchItem("synpunkter",syn,s.dataset.uid,s.dataset.sid,{[t.dataset.sf]:t.value}).catch(()=>setMsg("Kunde inte spara.")),700); }
 });
-document.addEventListener("input",e=>{ if(e.target.id==="memSearch") renderLists(); });
+let sokTimer=null;
+document.addEventListener("input",e=>{ if(e.target.id==="memSearch"){ clearTimeout(sokTimer); sokTimer=setTimeout(renderLists,150); } });
 document.addEventListener("change",e=>{ if(e.target.dataset&&e.target.dataset.ff==="status") e.target.dispatchEvent(new Event("input",{bubbles:true})); });
 
 function busy(){ const a=document.activeElement; return a && /INPUT|TEXTAREA|SELECT/.test(a.tagName) && a.closest(".page"); }

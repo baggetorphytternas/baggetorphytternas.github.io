@@ -21,20 +21,42 @@ function notify(path){
   (docSubs.get(path)||[]).forEach(cb=>{ try{cb(snap(path));}catch(e){} });
   colSubs.forEach((cbs,c)=>{ if(path.startsWith(c+"/")) cbs.forEach(cb=>{ try{cb(colSnap(c));}catch(e){} }); });
 }
+/* Hämtar dokumenten. Först bara namn och tid; sedan bara de dokument som är nya eller ändrade.
+   Andelstalsverktygets arbetsdata (vag/config, vag/projekt) hämtas bara för admin. */
+const tider=new Map();
+const behovs=p=>roll==="admin"||(p!=="vag/config"&&p!=="vag/projekt");
 async function loadAll(){
-  const {data,error}=await sb.from("docs").select("path,data");
-  if(error) throw error;
-  const seen=new Set();
-  data.forEach(r=>{ seen.add(r.path); const old=JSON.stringify(cache.get(r.path)); cache.set(r.path,r.data); if(old!==JSON.stringify(r.data)) notify(r.path); });
-  [...cache.keys()].forEach(k=>{ if(!seen.has(k)){ cache.delete(k); notify(k); } });
+  const {data:lista,error:e1}=await sb.from("docs").select("path,uppdaterad");
+  if(e1) throw e1;
+  const finns=new Set(lista.map(r=>r.path));
+  const hamta=lista.filter(r=>behovs(r.path)&&(tider.get(r.path)!==r.uppdaterad||!cache.has(r.path))).map(r=>r.path);
+  for(let i=0;i<hamta.length;i+=40){
+    const {data,error}=await sb.from("docs").select("path,data,uppdaterad").in("path",hamta.slice(i,i+40));
+    if(error) throw error;
+    data.forEach(r=>{ tider.set(r.path,r.uppdaterad); const old=JSON.stringify(cache.get(r.path)); cache.set(r.path,r.data); if(old!==JSON.stringify(r.data)) notify(r.path); });
+  }
+  [...cache.keys()].forEach(k=>{ if(!finns.has(k)){ cache.delete(k); tider.delete(k); notify(k); } });
+  natFel(false);
 }
+/* Besked när nätet eller servern inte svarar. Försvinner av sig själv när kontakten är tillbaka. */
+function natFel(pa){
+  let b=document.getElementById("natRad");
+  if(!pa){ if(b) b.remove(); return; }
+  if(!b){ b=document.createElement("div"); b.id="natRad"; b.setAttribute("role","status"); document.body.appendChild(b); }
+  b.textContent=navigator.onLine===false?"Ingen internetanslutning. Det du ser kan vara gammalt, och ändringar sparas inte förrän du är ansluten igen.":"Servern svarar inte just nu. Försöker igen …";
+}
+window.addEventListener("offline",()=>natFel(true));
+window.addEventListener("online",()=>{ natFel(false); if(session&&roll) loadAll().catch(()=>natFel(true)); });
+let rtOk=null;
 function realtime(){
   sb.channel("docs").on("postgres_changes",{event:"*",schema:"public",table:"docs"},p=>{
     if(p.eventType==="DELETE"){ const k=p.old&&p.old.path; if(k){ cache.delete(k); notify(k); } }
-    else { cache.set(p.new.path,p.new.data); notify(p.new.path); }
-  }).subscribe();
-  setInterval(()=>{ if(document.visibilityState==="visible") loadAll().catch(()=>{}); },30000);
-  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadAll().catch(()=>{}); });
+    else { if(!behovs(p.new.path)) return; tider.set(p.new.path,p.new.uppdaterad); cache.set(p.new.path,p.new.data); notify(p.new.path); }
+  }).subscribe(st=>{ rtOk=st==="SUBSCRIBED"; });
+  /* Ändringar kommer direkt via realtid. Kontrollen var 30:e sekund är bara en reserv och hämtar bara ändrade dokument. */
+  let senast=Date.now();
+  setInterval(()=>{ if(document.visibilityState!=="visible"||(rtOk&&Date.now()-senast<90000)) return; senast=Date.now(); loadAll().catch(()=>natFel(true)); },30000);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadAll().catch(()=>natFel(true)); });
 }
 /* Säker sparning: två som ändrar samtidigt ska inte skriva över varandra.
    sammanfoga(bas, min, deras) slår ihop min och deras ändringar sedan bas. Listor med id slås ihop post för post;
@@ -295,14 +317,16 @@ async function start(s){
   if (document.readyState==="loading") await new Promise(r=>document.addEventListener("DOMContentLoaded",r,{once:true}));
   session=s;
   if(!s){ loginForm(); return; }
-  const {data}=await sb.rpc("min_roll"); roll=data||null;
+  const {data,error:rollFel}=await sb.rpc("min_roll"); roll=data||null;
+  /* Utan kontakt med servern ska man inte hamna på sidan för att be om tillgång. */
+  if(rollFel&&!data){ gate(`<div class="gatebox"><h1>${esc(FNAMN)}</h1><p class="notice">${navigator.onLine===false?"Ingen internetanslutning.":"Servern svarar inte just nu."} Kontrollera anslutningen och försök igen.</p><button type="button" id="gIgen">Försök igen</button></div>`); document.getElementById("gIgen").onclick=()=>location.reload(); return; }
   /* Superadmin kan se appen som en annan roll (databasen gäller då den rollens regler). */
   try{ const v=await sb.rpc("min_vy"); window.VAG_VY=(v&&v.data)||null; }catch(e){ window.VAG_VY=null; }
   if(window.VAG_VY&&window.VAG_VY.visa_som) visaSomRad(window.VAG_VY);
   if(roll==="admin"){ try{ const r=await sb.rpc("ar_superadmin"); window.VAG_SUPER=r.data===true; }catch(e){} }
   document.body.classList.toggle("is-super",!!window.VAG_SUPER);
   if(!roll){ requestAccess(s); return; }
-  try{ await loadAll(); }catch(e){}
+  try{ await loadAll(); }catch(e){ natFel(true); }
   realtime(); ungate(); readyRes();
   const kb=document.getElementById("kontoBtn"); if(kb){ kb.hidden=false; kb.onclick=()=>kontoDialog(session,false); }
   if(!(s.user.user_metadata&&s.user.user_metadata.har_losen) && LS.get("vag_losen_fraga")!=="nej") setTimeout(()=>kontoDialog(session,true),1200);

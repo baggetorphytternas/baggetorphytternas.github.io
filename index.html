@@ -16,12 +16,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <script src="supabase.js"></script>
 <script src="forening.js"></script>
-<script src="sb.js?v=3.06"></script>
+<script src="sb.js?v=3.07"></script>
 <script src="jspdf.umd.min.js"></script>
 <script src="jspdf.plugin.autotable.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css?v=3.06">
+<link rel="stylesheet" href="app.css?v=3.07">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -112,7 +112,7 @@
       <button type="button" class="chipbtn" data-st="amnen">Ämnen <span class="count" id="amnCount" hidden></span></button>
     </div></div>
     <section id="st-led">
-      <div class="ph"><h2>Ledamöter</h2><button type="button" class="ghost small board" id="addBoard">+ Ny</button></div>
+      <h2 class="sr-only">Ledamöter</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small board" id="addBoard">+ Ny</button></div></header>
       <div id="boardList" class="cards"></div>
       <div id="funkBox" class="funkbox">
         <div class="ph"><h2>Funktionärer</h2><button type="button" class="ghost small board" id="addFunk">+ Ny</button></div>
@@ -120,7 +120,7 @@
       </div>
     </section>
     <section id="st-reg" class="board" hidden>
-      <div class="ph"><h2>Medlemsregister</h2></div>
+      <h2 class="sr-only">Medlemsregister</h2>
       <div class="regbtns">
         <button type="button" class="tile" id="addMember"><span class="tico"><svg class="ico"><use href="#i-users"/></svg></span><span>Ny medlem<small>Lägg till en fastighet eller kontaktperson</small></span></button>
         <button type="button" class="tile" id="memImport"><span class="tico"><svg class="ico"><use href="#i-folder"/></svg></span><span>Importera register<small>Från Excel, CSV, LibreOffice, JSON eller telefonens kontakter</small></span></button>
@@ -155,11 +155,11 @@
       <div id="uLog" class="list"></div>
     </section>
     <section id="st-inkorg" class="board" hidden>
-      <div class="ph"><h2>Inkorg</h2><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div>
+      <h2 class="sr-only">Inkorg</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small" id="inArchBtn">Visa arkiv</button></div></header>
       <div id="inList" class="list"></div>
     </section>
     <section id="st-atg" class="board" hidden>
-      <div class="ph"><h2>Åtgärdslista</h2><button type="button" class="ghost small" id="addAtg">+ Ny</button></div>
+      <h2 class="sr-only">Åtgärdslista</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small" id="addAtg">+ Ny</button></div></header>
       <div id="atgList" class="list"></div>
       <details class="more atgdone" id="atgDoneBox" hidden><summary id="atgDoneSum">Klara</summary><div id="atgDoneList" class="list"></div></details>
     </section>
@@ -168,14 +168,14 @@
       <div id="amnList" class="amnlist"></div>
     </section>
     <section id="st-prot" class="board" hidden>
-      <div class="ph"><h2>Styrelsens dokument</h2><button type="button" class="ghost small" data-dokadd="styrelse">+ Ladda upp</button></div>
+      <h2 class="sr-only">Styrelsens dokument</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small" data-dokadd="styrelse">+ Ladda upp</button></div></header>
       <div id="sprotList" class="list"></div>
     </section>
   </div>
 
   <div class="page" id="page-moten" hidden>
     <section id="mo-list">
-      <div class="ph"><h2>Möten</h2><button type="button" class="ghost small board" id="addMeet">+ Ny</button></div>
+      <h2 class="sr-only">Möten</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small board" id="addMeet">+ Ny</button></div></header>
       <div id="meetList" class="list"></div>
     </section>
   </div>
@@ -189,7 +189,7 @@
       <button type="button" class="chipbtn" data-dk="lankar">Länkar</button>
     </div></div>
     <section id="dk-docs">
-      <div class="ph"><h2 id="dkTitle">Protokoll</h2><button type="button" class="ghost small board" id="dkAdd">+ Ladda upp</button></div>
+      <h2 class="sr-only" id="dkTitle">Protokoll</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small board" id="dkAdd">+ Ladda upp</button></div></header>
       <div id="dkList" class="list"></div>
     </section>
     <section id="dk-andelstal" hidden>
@@ -197,12 +197,18 @@
       <div id="andelKartaWrap" hidden><div id="andelKarta" role="img" aria-label="Karta över vägen och delsträckorna"></div></div>
     </section>
     <section id="dk-lankar" hidden>
-      <div class="ph"><h2>Länkar</h2><button type="button" class="ghost small board" id="lnkAdd">+ Ny</button></div>
+      <h2 class="sr-only">Länkar</h2><header class="pghead"><div class="ph pgknappar"><button type="button" class="ghost small board" id="lnkAdd">+ Ny</button></div></header>
       <div id="lnkList" class="list lnklist"></div>
     </section>
   </div>
 
   <div class="page" id="page-arenden" hidden>
+    <div class="subwrap"><div class="filters subnav" id="caseFilter" role="tablist" aria-label="Ärenden">
+      <button type="button" class="chipbtn on" data-cf="alla">Alla</button>
+      <button type="button" class="chipbtn" data-cf="fel">Fel på vägen</button>
+      <button type="button" class="chipbtn" data-cf="syn">Synpunkter</button>
+    </div></div>
+    <header class="pghead board"><div class="ph pgknappar"><button type="button" class="ghost small board" data-showarch="all">Visa arkiv</button></div></header>
     <section class="panel" id="caseForm" data-fold="arende">
       <h2>Anmäl fel eller lämna synpunkt</h2>
       <div class="seg2" role="radiogroup" aria-label="Typ av ärende">
@@ -215,12 +221,7 @@
       <div class="row"><button type="button" id="caseSend">Skicka</button><span class="status" id="caseMsg"></span></div>
     </section>
     <section>
-      <div class="ph"><h2 id="caseHead">Ärenden</h2><button type="button" class="ghost small board" data-showarch="all">Visa arkiv</button></div>
-      <div class="filters subnav" id="caseFilter" role="tablist" aria-label="Visa">
-        <button type="button" class="chipbtn on" data-cf="alla">Alla</button>
-        <button type="button" class="chipbtn" data-cf="fel">Fel på vägen</button>
-        <button type="button" class="chipbtn" data-cf="syn">Synpunkter</button>
-      </div>
+      <h2 class="sr-only" id="caseHead">Ärenden</h2>
       <div id="caseList" class="list"></div>
     </section>
   </div>
@@ -270,9 +271,10 @@
       <div id="loggList" class="logglist"><p class="hint">Laddar…</p></div>
     </section>
     <section class="panel" id="version" data-fold="a-version" data-fold-default="closed">
-      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.06</span></div>
+      <div class="ph"><h2>Version och ändringslogg</h2><span class="ver">Version 3.07</span></div>
       <p class="hint">Versionen som visas här är den som är publicerad. Ser du ett äldre nummer, ladda om sidan.</p>
       <ol class="changelog">
+        <li><div><b>3.07</b><time>2 nov 2026</time></div><ul><li>Samma utseende på alla sidor: inga rubriker som upprepar flikarnas namn, filtret under Fel och synpunkter ligger överst, och Ändra ligger i kortets hörn även för länkar, åtgärder och kontakter. Ta bort finns inne i Ändra.</li><li>Skärmläsare får veta vilken flik som är vald, och piltangenterna byter flik.</li><li>Tydligt besked när nätet eller servern inte svarar, i stället för sidan för att be om tillgång.</li><li>Appen hämtar bara det som har ändrats, och sökningen bland medlemmarna går smidigare.</li><li>Andelstalsverktyget: hjälptexten följer inte längre med ner över kartan på mobilen.</li></ul></li>
         <li><div><b>3.06</b><time>2 nov 2026</time></div><ul><li>Superadmin kan under Mitt konto välja Visa appen som medlem, styrelse eller admin och se appen precis som den rollen, i högst två timmar. En lila rad överst visar vilken vy som gäller och leder tillbaka.</li></ul></li>
         <li><div><b>3.05</b><time>2 nov 2026</time></div><ul><li>Säkrare sparning: ändrar två personer samtidigt slås ändringarna ihop i stället för att den sista skriver över den första. Gäller nyheter, möten, styrelsen, dokument, åtgärdslistan och ärenden.</li><li>Det andra i styrelsen sparar visas nu också när man själv har haft något osparat.</li></ul></li>
         <li><div><b>3.04</b><time>2 nov 2026</time></div><ul><li>Små notiser i appen: när något nytt läggs upp eller kommenteras visas en liten ruta som man kan trycka på, och menyn visar hur många nyheter, kommentarer, möten, dokument och ärenden man inte har sett.</li><li>Knapparna överst under Ämnen ligger nu samlade till höger.</li></ul></li>
@@ -367,7 +369,7 @@
         <li><div><b>2.39</b><time>31 okt 2026</time></div><ul>
           <li>Mindre kort för medlemmar, styrelse och funktionärer. På mobilen ligger de två i bredd.</li></ul></li>
         <li><div><b>2.38</b><time>31 okt 2026</time></div><ul>
-          <li>Fastigheter har nu två fält: fastighetens namn (t.ex. Stavberga) och fastighetsbeteckning (t.ex. Stav 1:5). Beteckningen visas på korten, går att söka på och finns med i adresslistan.</li></ul></li>
+          <li>Fastigheter har nu två fält: fastighetens namn (t.ex. Ekbacken) och fastighetsbeteckning (t.ex. Byn 1:5). Beteckningen visas på korten, går att söka på och finns med i adresslistan.</li></ul></li>
         <li><div><b>2.37</b><time>31 okt 2026</time></div><ul>
           <li>Anmäl fel, Synpunkt och Kontakt är nu små flikar som ligger fast precis under sidhuvudet på startsidan.</li></ul></li>
         <li><div><b>2.36</b><time>31 okt 2026</time></div><ul>
@@ -487,6 +489,6 @@
 </main>
 
 
-<script src="app.js?v=3.05"></script>
+<script src="app.js?v=3.07"></script>
 </body>
 </html>

@@ -946,3 +946,22 @@ fieldset.fall.stangd>:not(legend){display:none!important}
 .anslval2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .anslval2 select{max-width:220px;padding:6px 8px;font-size:.9rem}
 @media (max-width:560px){ .anslrad{flex-wrap:wrap} .anslval2{width:100%;justify-content:space-between;padding:0 4px 6px 8px} .anslval2 select{flex:1;max-width:none} }
+/* Andelstalsverktyget: sidhuvud, steg och kartverktyg stannar kvar vid scroll */
+body.vk .subwrap{top:var(--tb-h,52px)}
+.kartverktyg-wrap{position:sticky;top:var(--kv-top,110px);z-index:14;background:var(--bg);margin:12px 0 0;padding:8px 0;display:flex;flex-direction:column;gap:6px;box-shadow:-40px 0 0 var(--bg),40px 0 0 var(--bg)}
+.kartverktyg-wrap .kartverktyg{gap:6px}
+.kartverktyg-wrap #kartKlar{display:flex;flex-direction:column;gap:6px}
+.kartverktyg-wrap #kartKlar[hidden]{display:none}
+.kartverktyg-wrap .notice{margin:0;padding:8px 12px;font-size:.9rem}
+@media (max-width:560px){ .kartverktyg-wrap .chipbtn{padding:6px 10px;font-size:.85rem} .kartverktyg-wrap .check{font-size:.85rem} }
+details.fallpanel>summary{list-style:none;cursor:pointer;display:flex;align-items:center}
+details.fallpanel>summary::-webkit-details-marker{display:none}
+details.fallpanel>summary h2{display:flex;align-items:center;gap:8px;margin:0}
+details.fallpanel>summary h2::after{content:"";width:8px;height:8px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg);margin-left:4px;transition:transform .15s}
+details.fallpanel[open]>summary h2::after{transform:rotate(45deg);margin-top:-4px}
+details.fallpanel[open]>summary{margin-bottom:10px}
+details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
+.punktrad{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--surface)}
+.punktrad input{padding:6px 10px;font-size:.95rem}
+.punktrad small{grid-column:1/-1;color:var(--muted);font-size:.82rem}
+.punktrader{gap:6px}

@@ -409,11 +409,13 @@ window.kartaStatus=p=>{ const pt=punktFor(p,"route"); if(!pt) return {satt:false
   const {G,D}=avstand(), n=G.pnod.get(pt.id), d=n&&D?D.dist.get(n):NaN; return {satt:true, km:isFinite(d)?d/1000:0}; };
 function renderPunktLista(){
   const el=document.getElementById("punktLista"); if(!el) return;
+  const pa=document.getElementById("punktAntal"); if(pa) pa.textContent=namnPunkter().length?`(${namnPunkter().length})`:"";
+  const sa=document.getElementById("segAntal"); if(sa) sa.textContent=state.segments.length?`(${state.segments.length}, ${fmt(state.segments.reduce((s,g)=>s+num(g.m),0))} m)`:"";
   const P=namnPunkter(), anv=id=>state.props.filter(p=>galler(p).some(g=>{ const [o,f]=valFalt(p,g); return o&&o[f]===id; })).map(p=>p.namn||"Namnlös");
   el.innerHTML = P.length ? `<div class="punktrader">${P.map(x=>{ const a=[...new Set(anv(x.id))];
-    return `<div class="punktrad"><label for="pn-${x.id}">Namn<input id="pn-${x.id}" data-pnamn="${x.id}" value="${esc(x.namn||"")}"></label>
-      <small>${a.length?esc(a.join(", ")):"Ingen fastighet ansluter här ännu"}</small>
-      <button type="button" class="ghost small" data-pdel="${x.id}">Ta bort</button></div>`; }).join("")}</div>`
+    return `<div class="punktrad"><input id="pn-${x.id}" aria-label="Namn på anslutningspunkten" data-pnamn="${x.id}" value="${esc(x.namn||"")}">
+      <button type="button" class="ghost small" data-pdel="${x.id}">Ta bort</button>
+      <small>${a.length?esc(a.join(", ")):"Ingen fastighet ansluter här ännu"}</small></div>`; }).join("")}</div>`
     : `<p class="hint">Inga anslutningspunkter ännu. Tryck <i>Anslutningspunkt</i> och sedan på vägen.</p>`;
 }
 document.addEventListener("input",e=>{ const id=e.target.dataset&&e.target.dataset.pnamn; if(!id) return; const x=KS().punkter.find(y=>y.id===id); if(!x) return; x.namn=e.target.value; scheduleSave(); });
@@ -504,6 +506,10 @@ window.kartaSteg=function(s){
 const orig=window.renderAll;
 function renderAllUtanKarta(){ orig(); }
 window.renderAll=function(){ orig(); if(map) rita(); renderLista(); };
+/* Hopfällbara paneler under kartan: valet sparas i webbläsaren. */
+(()=>{ let F={}; try{ F=JSON.parse(localStorage.getItem("andelstal_paneler")||"{}"); }catch(e){}
+  document.querySelectorAll("details[data-fallpanel]").forEach(d=>{ if(F[d.dataset.fallpanel]) d.open=true;
+    d.addEventListener("toggle",()=>{ F[d.dataset.fallpanel]=d.open; try{ localStorage.setItem("andelstal_paneler",JSON.stringify(F)); }catch(e){} }); }); })();
 window.kartaTest={natverk,forslag,tillampa,dijkstra,lasKoordinat,GK,satPunkt,avslutaLinje,mal,get map(){return map;}};
 if (typeof openTab!=="undefined") window.kartaSteg(openTab);
 })();

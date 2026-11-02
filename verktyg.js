@@ -876,6 +876,14 @@ async function makePdf(){
     else setStatus("Kunde inte skapa PDF. Ladda om sidan och försök igen.",true);
   }finally{ btn.disabled=false; btn.innerHTML=old; }
 }
+/* Höjder för det som stannar kvar överst: sidhuvudet, stegen och kartverktygen. */
+function stickyHojder(){
+  const top=document.querySelector(".vk-top"), sw=document.querySelector("#page-verktyg>.subwrap");
+  const th=top?top.getBoundingClientRect().height:0, sh=sw?sw.getBoundingClientRect().height:0;
+  document.documentElement.style.setProperty("--tb-h",th+"px"); document.documentElement.style.setProperty("--kv-top",(th+sh)+"px");
+}
+if (window.ResizeObserver){ const ro=new ResizeObserver(stickyHojder); [".vk-top","#page-verktyg>.subwrap"].forEach(s=>{ const el=document.querySelector(s); if(el) ro.observe(el); }); }
+window.addEventListener("resize",stickyHojder); stickyHojder();
 /* ---------- lagring: webbläsaren och projektfiler ---------- */
 const LS="andelstal_projekt";
 function sparaFil(filename,blob){ const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),5000); }

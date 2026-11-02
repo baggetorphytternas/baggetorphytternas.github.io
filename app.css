@@ -918,3 +918,20 @@ a.button.ghost{background:var(--surface);color:var(--accent);border-color:var(--
 .nyversion{flex-wrap:wrap}
 .nyversion button.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
 #annanFlik{bottom:72px}
+/* Styrelsens ämnen: lika stora kort som öppnar en dialog med kommentarerna. */
+.amnlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));grid-auto-rows:1fr;gap:12px}
+.amnlist>.empty{grid-column:1/-1}
+.amnkort{cursor:pointer;gap:6px}
+.amnkort:hover{border-color:var(--line-strong)}
+.amnkort:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.amnkort h3{font-size:1.05rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.amn-ut{margin:0;color:var(--muted);font-size:.85rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1}
+.amnkort .meta{font-size:.85rem}
+dialog.amndlg{width:min(620px,calc(100vw - 24px))}
+.amndlg form{display:flex;flex-direction:column;gap:10px;max-height:calc(100dvh - 48px)}
+.amn-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.amn-h h2{margin:0;font-size:1.2rem}
+.amndlg .meta{margin:0;font-size:.85rem}
+.amn-text{margin:0;white-space:pre-wrap}
+.amn-komm{display:flex;flex-direction:column;gap:8px;overflow-y:auto;min-height:60px;max-height:45dvh;padding-right:2px}
+.amn-komm .kc p{margin:2px 0 0;white-space:pre-wrap}

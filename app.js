@@ -30,7 +30,7 @@ document.addEventListener("click",e=>{
   if (t.classList.contains("navtab")){ go(t.dataset.page); window.scrollTo({top:0}); return; }
   if (t.dataset.goto){ go(t.dataset.goto); if(t.dataset.stab){ const sb=document.querySelector(`.subnav [data-st="${t.dataset.stab}"]`); if(sb) sb.click(); } window.scrollTo({top:0}); if(t.dataset.ctype){ const f=document.getElementById("caseTitle"); if(f&&matchMedia("(pointer:fine)").matches) f.focus({preventScroll:true}); } return; }
 });
-const start=(location.hash||"").slice(1); if (document.getElementById("page-"+start)) go(start);
+const [start,startFlik]=(location.hash||"").slice(1).split("/"); if (document.getElementById("page-"+start)){ go(start); if(startFlik) setTimeout(()=>{ const f=document.querySelector(`#page-${start} .subnav [data-st="${CSS.escape(startFlik)}"]`); if(f) f.click(); },0); }
 
 /* names of people who wrote reports */
 async function names(ids){ if(!U||!ids.length) return {}; try{ const ps=await U.profiles(ids); const o={}; ids.forEach(i=>o[i]=(ps[i]&&ps[i].name)||"En medlem"); return o; }catch(e){ return {}; } }
@@ -44,7 +44,11 @@ let memSnap=new Map(), memSyncing=false, memTimer=null;
 const memRow=m=>{ const o={}; MEM_COLS.forEach(k=>o[k]=String(m[k]??"")); o.epost=o.epost.trim().toLowerCase(); return o; };
 async function loadMem(){
   if(!window.SB||memSyncing) return;
-  const {data,error}=await window.SB.from("medlemmar").select(MEM_COLS.join(",")); if(error||!data) return;
+  /* Styrelsen läser registret direkt. Medlemmar får listan via medlemslista(), där dolda kontaktuppgifter redan är borttagna. */
+  let {data,error}=board ? await window.SB.from("medlemmar").select(MEM_COLS.join(",")+",dold") : await window.SB.rpc("medlemslista");
+  if(error&&!board) ({data,error}=await window.SB.from("medlemmar").select(MEM_COLS.join(",")));
+  if(error&&board) ({data,error}=await window.SB.from("medlemmar").select(MEM_COLS.join(",")));
+  if(error||!data) return;
   memSnap=new Map(data.map(r=>[r.id,JSON.stringify(memRow(r))]));
   const lokala=(site.medlemmar||[]).filter(m=>editing.has(m.id)), lk=new Map(lokala.map(m=>[m.id,m]));
   site.medlemmar=data.map(r=>lk.get(r.id)||r).concat(lokala.filter(m=>!data.some(r=>r.id===m.id)));
@@ -191,7 +195,7 @@ function memGroup(ps){
   const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress, bet=betOf(ps);
   const rows=ps.map(it=>{
     if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
-    return `<div class="item sub" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
+    return `<div class="item sub" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}${it.dold&&board?`<span class="badge typ">Dolda för medlemmar</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:it.dold&&!board?`<p class="empty">Kontaktuppgifterna är dolda. Styrelsen kan nå personen.</p>`:""}</div>`;
   }).join("");
   return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div></div>${rows}
     ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
@@ -666,6 +670,108 @@ document.addEventListener("change",e=>{
   a.klar=e.target.checked; a.klarDatum=a.klar?today():""; atgSave(); setMsg(a.klar?"Markerad som klar.":"Flyttad tillbaka till listan.");
 });
 
+/* ---------- Styrelsens ämnen (tabellerna styr_amnen och styr_kommentarer, bara styrelse och admin) ----------
+   Ett ämne har rubrik och text, och alla i styrelsen kommenterar. Namn och tid sätts av databasen.
+   Vad man läst sparas i webbläsaren, så att nya ämnen och kommentarer markeras. */
+let amnen=[], amnKomm=new Map(), amnOk=null, amnTimer=null, amnOppen=null, amnArkiv=false, amnLyssnar=false;
+const amnSett=()=>{ try{ return JSON.parse(localStorage.getItem("vag_amnen_sett")||"{}"); }catch(e){ return {}; } };
+function amnMarkera(id){ const s=amnSett(); s[id]=new Date().toISOString(); try{ localStorage.setItem("vag_amnen_sett",JSON.stringify(s)); }catch(e){} }
+async function loadAmnen(){
+  if(!window.SB||!board) return;
+  let a,k; try{ [a,k]=await Promise.all([window.SB.from("styr_amnen").select("id,rubrik,text,user_id,namn,skapad,senast,stangd").order("senast",{ascending:false}).limit(500),
+    window.SB.from("styr_kommentarer").select("id,amne_id,user_id,namn,text,skapad").order("skapad",{ascending:true}).limit(10000)]); }catch(e){ return; }
+  if(a.error||k.error){ amnOk=false; renderAmnen(); return; }
+  amnOk=true; amnen=a.data||[]; amnKomm=new Map(); (k.data||[]).forEach(x=>{ if(!amnKomm.has(x.amne_id)) amnKomm.set(x.amne_id,[]); amnKomm.get(x.amne_id).push(x); });
+  renderAmnen(); const d=q("#amnDlg"); if(d&&amnOppen){ if(amnen.some(x=>x.id===amnOppen)){ amnRita(d); amnMarkera(amnOppen); renderAmnen(); } else d.close(); }
+  if(!amnLyssnar){ amnLyssnar=true; try{ window.SB.channel("styr_amnen").on("postgres_changes",{event:"*",schema:"public",table:"styr_amnen"},amnSnart).on("postgres_changes",{event:"*",schema:"public",table:"styr_kommentarer"},amnSnart).subscribe(); }catch(e){} }
+}
+const amnSnart=()=>{ clearTimeout(amnTimer); amnTimer=setTimeout(loadAmnen,300); };
+const amnSenast=a=>(amnKomm.get(a.id)||[]).filter(k=>k.user_id!==me).map(k=>k.skapad).concat(a.user_id!==me?[a.skapad]:[]).sort().pop();
+const amnOlast=a=>{ const sen=amnSenast(a), s=amnSett()[a.id]; return !!sen&&(!s||new Date(sen)>new Date(s)); };
+function renderAmnen(){
+  const l=q("#amnList"); if(!l) return;
+  const n=amnOk?amnen.filter(a=>!a.stangd&&amnOlast(a)).length:0, c=q("#amnCount"); if(c){ c.textContent=n; c.hidden=!n; }
+  const ab=q("#amnArkBtn"); if(ab){ ab.textContent=amnArkiv?"Visa aktuella":"Visa avslutade"; ab.hidden=!amnOk; }
+  if(amnOk===false){ l.innerHTML=`<p class="empty">Ämnena är inte i gång än. Admin behöver köra databasfilen för styrelsens ämnen.</p>`; return; }
+  if(amnOk===null){ l.innerHTML=`<p class="empty">Laddar…</p>`; return; }
+  const visa=amnen.filter(a=>amnArkiv?a.stangd:!a.stangd);
+  l.innerHTML=visa.length?visa.map(a=>{ const k=amnKomm.get(a.id)||[], sist=k[k.length-1];
+    return `<div class="item amnkort" role="button" tabindex="0" data-amn="${E(a.id)}">
+      <h3>${amnOlast(a)?'<span class="badge ny">Nytt</span> ':""}${E(a.rubrik)}</h3>
+      <p class="amn-ut">${E(sist?sist.namn+": "+sist.text:(a.text||""))}</p>
+      <span class="meta">${E(a.namn)} · ${E(kommTid(a.senast||a.skapad))} · ${k.length?`${k.length} ${k.length===1?"kommentar":"kommentarer"}`:"Inga kommentarer"}</span></div>`; }).join("")
+    :`<p class="empty">${amnArkiv?"Inga avslutade ämnen.":"Inga ämnen än."}</p>`;
+}
+function amnRita(d){
+  const a=amnen.find(x=>x.id===amnOppen); if(!a) return;
+  const k=amnKomm.get(a.id)||[], egen=a.user_id===me, ta=d.querySelector("#amnText"), utkast=ta?ta.value:"", fokus=ta&&document.activeElement===ta;
+  const lista=d.querySelector(".amn-komm"), nere=lista?lista.scrollHeight-lista.scrollTop-lista.clientHeight<40:true;
+  d.innerHTML=`<form method="dialog"><div class="amn-h"><h2>${E(a.rubrik)}</h2>${a.stangd?'<span class="badge">Avslutat</span>':""}</div>
+    <p class="meta">${E(a.namn)} · ${E(kommTid(a.skapad))}</p>
+    ${a.text?`<p class="amn-text">${E(a.text)}</p>`:""}
+    <div class="amn-komm">${k.map(x=>`<div class="kc" data-skid="${E(x.id)}"><div class="kc-h"><strong>${E(x.namn||"Styrelsen")}</strong><time>${E(kommTid(x.skapad))}</time>${x.user_id===me||isAdmin()?`<button type="button" class="linkbtn kc-del" data-skdel>Ta bort</button>`:""}</div><p>${E(x.text)}</p></div>`).join("")||`<p class="empty">Inga kommentarer än.</p>`}</div>
+    <div class="kommform"><textarea id="amnText" rows="2" maxlength="3000" placeholder="Skriv en kommentar…" aria-label="Kommentar"></textarea><button type="button" class="small" id="amnSend">Skicka</button></div>
+    <p class="status" id="amnMsg"></p>
+    <details class="more"><summary>Fler val</summary><div class="row">
+      ${egen||isAdmin()?`<button type="button" class="ghost small" id="amnAndra">Ändra</button>`:""}
+      <button type="button" class="ghost small" id="amnStang">${a.stangd?"Öppna ämnet igen":"Avsluta ämnet"}</button>
+      ${egen||isAdmin()?`<button type="button" class="danger" id="amnBort">Ta bort ämnet</button>`:""}</div></details>
+    <div class="bdlg-btns"><button value="close" class="ghost">Stäng</button></div></form>`;
+  const ny=d.querySelector("#amnText"); ny.value=utkast; if(fokus) ny.focus();
+  const nl=d.querySelector(".amn-komm"); if(nl&&nere) nl.scrollTop=nl.scrollHeight;
+}
+const isAdmin=()=>document.body.classList.contains("is-admin");
+function amnDialog(id){
+  amnOppen=id; amnMarkera(id); renderAmnen();
+  const d=document.createElement("dialog"); d.className="bdlg amndlg"; d.id="amnDlg";
+  document.body.appendChild(d); d.addEventListener("close",()=>{ d.remove(); amnOppen=null; }); amnRita(d); d.showModal();
+  const nl=d.querySelector(".amn-komm"); if(nl) nl.scrollTop=nl.scrollHeight;
+}
+function amnRedigera(a){
+  const ny=!a; a=a||{};
+  const d=document.createElement("dialog"); d.className="bdlg";
+  d.innerHTML=`<form method="dialog"><h2>${ny?"Nytt ämne":"Ändra ämne"}</h2>
+    <label>Rubrik<input id="anR" maxlength="150" value="${E(a.rubrik||"")}" placeholder="t.ex. Grusning i vår"></label>
+    <label>Text<textarea id="anT" rows="6" maxlength="5000">${E(a.text||"")}</textarea></label>
+    <p class="status" id="anMsg"></p>
+    <div class="bdlg-btns"><button type="button" id="anOk">${ny?"Skapa":"Spara"}</button><button value="x" class="ghost" formnovalidate>Avbryt</button></div></form>`;
+  document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
+  const g=x=>d.querySelector(x);
+  g("#anOk").onclick=async()=>{ const r=g("#anR").value.trim(), t=g("#anT").value.trim(); if(!r){ g("#anMsg").textContent="Skriv en rubrik."; g("#anR").focus(); return; }
+    g("#anOk").disabled=true;
+    const res = ny ? await window.SB.from("styr_amnen").insert({rubrik:r,text:t}).select("id").single() : await window.SB.from("styr_amnen").update({rubrik:r,text:t}).eq("id",a.id);
+    if(res.error){ g("#anOk").disabled=false; g("#anMsg").textContent="Det gick inte att spara."; return; }
+    d.close(); await loadAmnen();
+    if(ny&&res.data){ amnNotis("amne",res.data.id); amnDialog(res.data.id); } else setMsg("Ämnet är sparat."); };
+  d.showModal(); g("#anR").focus();
+}
+/* Övriga i styrelsen får en notis. Servern väljer mottagare och skickar bara en gång per ämne eller kommentar. */
+function amnNotis(typ,id){ try{ window.SB.functions.invoke("notiser",{body:{action:"styrelse",typ,id}}).catch(()=>{}); }catch(e){} }
+document.addEventListener("click",async e=>{
+  if(!board) return;
+  if(e.target.closest("#addAmn")){ amnRedigera(null); return; }
+  if(e.target.closest("#amnArkBtn")){ amnArkiv=!amnArkiv; renderAmnen(); return; }
+  const kort=e.target.closest("[data-amn]"); if(kort){ amnDialog(kort.dataset.amn); return; }
+  const d=e.target.closest("#amnDlg"); if(!d) return;
+  const a=amnen.find(x=>x.id===amnOppen); if(!a) return; const msg=d.querySelector("#amnMsg");
+  if(e.target.closest("#amnSend")){ const t=d.querySelector("#amnText"), txt=t.value.trim(); if(!txt){ t.focus(); return; }
+    const b=e.target.closest("#amnSend"); b.disabled=true;
+    const {data,error}=await window.SB.from("styr_kommentarer").insert({amne_id:a.id,text:txt}).select("id").single();
+    b.disabled=false; if(error){ msg.textContent="Det gick inte att skicka kommentaren."; return; }
+    t.value=""; amnNotis("kommentar",data.id); await loadAmnen(); const nl=d.querySelector(".amn-komm"); if(nl) nl.scrollTop=nl.scrollHeight; return; }
+  if(e.target.closest("#amnAndra")){ amnRedigera(a); return; }
+  if(e.target.closest("#amnStang")){ const stang=!a.stangd; const {error}=await window.SB.from("styr_amnen").update({stangd:stang}).eq("id",a.id); if(error){ msg.textContent="Det gick inte att spara."; return; } setMsg(stang?"Ämnet är avslutat och ligger under Visa avslutade.":"Ämnet är öppnat igen."); if(stang) d.close(); await loadAmnen(); return; }
+  const del=e.target.closest("#amnBort,[data-skdel]"); if(!del) return;
+  if(!del.classList.contains("armed")){ del.classList.add("armed"); const t0=del.textContent; del.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(del.isConnected){ del.classList.remove("armed"); del.textContent=t0; } },4000); return; }
+  if(del.id==="amnBort"){ const {error}=await window.SB.from("styr_amnen").delete().eq("id",a.id); if(error){ msg.textContent="Det gick inte att ta bort."; return; } d.close(); setMsg("Ämnet är borttaget."); await loadAmnen(); return; }
+  const kid=del.closest("[data-skid]").dataset.skid; const {error}=await window.SB.from("styr_kommentarer").delete().eq("id",kid);
+  if(error){ msg.textContent="Det gick inte att ta bort kommentaren."; return; } await loadAmnen();
+});
+document.addEventListener("keydown",e=>{
+  if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("[data-amn]")){ e.preventDefault(); amnDialog(e.target.dataset.amn); return; }
+  if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)&&e.target.id==="amnText"){ const b=q("#amnSend"); if(b) b.click(); }
+});
+
 /* ---------- Mina uppgifter (startsidan): åtgärder där jag är ansvarig eller som jag lagt till ---------- */
 let mina=[], arVag=false;
 async function loadMina(){
@@ -704,7 +810,7 @@ async function kontaktDialog(){
   await minEpostH(); const mk=minaKontakter(), m=mk[0], fast=[...new Set((site.medlemmar||[]).map(x=>x.fastighet).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"sv"));
   const d=document.createElement("dialog"); d.className="bdlg";
   d.innerHTML=`<form method="dialog"><h2>Mina uppgifter</h2>
-    <p class="hint">${m?`Det här står om dig i medlemsregistret${m.fastighet?` för <strong>${E(m.fastighet)}</strong>`:""}. Grannar och styrelsen ser uppgifterna.`:"Du finns inte i medlemsregistret än. Välj din fastighet och fyll i dina uppgifter."}</p>
+    <p class="hint">${m?`Det här står om dig i medlemsregistret${m.fastighet?` för <strong>${E(m.fastighet)}</strong>`:""}. ${m.dold?"Bara styrelsen ser telefon, mejl och adress.":"Grannar och styrelsen ser uppgifterna."}`:"Du finns inte i medlemsregistret än. Välj din fastighet och fyll i dina uppgifter."}</p>
     ${m?"":`<label>Fastighet<select id="kuF" required><option value="">Välj fastighet</option>${fast.map(f=>{ const bt=((site.medlemmar||[]).find(x=>x.fastighet===f&&x.beteckning)||{}).beteckning; return `<option value="${E(f)}">${E(f)}${bt&&bt!==f?" ("+E(bt)+")":""}</option>`; }).join("")}</select></label>
       <label id="kuVemL" hidden>Vem är du?<select id="kuVem"></select></label>`}
     <label>Namn<input id="kuN" required autocomplete="name" value="${m?E(m.namn||""):""}"></label>
@@ -712,6 +818,8 @@ async function kontaktDialog(){
     <label>Adress<input id="kuA" autocomplete="street-address" value="${m?E(m.adress||""):""}"></label>
     <label>Mejl<input value="${E(minEpost)}" disabled></label>
     <p class="hint">Mejladressen är den du loggar in med. Vill du byta den, kontakta styrelsen.${m?"":" Finns inte din fastighet i listan? Kontakta styrelsen."}</p>
+    <label class="check"><input type="checkbox" id="kuD" ${m&&m.dold?"checked":""}>Dölj mina uppgifter för andra medlemmar</label>
+    <p class="hint">Telefon, mejl och adress visas då bara för styrelsen. Namnet och fastigheten syns fortfarande i medlemslistan.</p>
     <p class="status" id="kuMsg"></p>
     <div class="bdlg-btns"><button value="ok" id="kuOk">Spara</button><button value="cancel" class="ghost" formnovalidate>Avbryt</button></div></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
@@ -732,6 +840,8 @@ async function kontaktDialog(){
     const r= m ? await window.SB.rpc("uppdatera_min_kontakt",{p_id:m.id,p_namn:namn,p_telefon:tel,p_adress:adr})
                : await window.SB.rpc("lagg_till_min_kontakt",{p_fastighet:g("#kuF").value,p_namn:namn,p_telefon:tel,p_adress:adr});
     if(r.error){ g("#kuOk").disabled=false; msg.textContent="Det gick inte att spara. Försök igen."; return; }
+    const dold=g("#kuD").checked;
+    if(dold!==!!(m&&m.dold)){ const rd=await window.SB.rpc("dolj_mina_uppgifter",{p_dold:dold}); if(rd.error){ g("#kuOk").disabled=false; msg.textContent="Uppgifterna är sparade, men det gick inte att ändra om de ska döljas. Försök igen."; return; } }
     await loadMem();
     renderLists(); d.close(); setMsg("Dina uppgifter är sparade.");
     const kt=q("#kKontTxt"); if(kt) kt.textContent=[namn,tel].filter(Boolean).join(" · ");
@@ -939,7 +1049,7 @@ function mailsPicked(){ return [...new Set(picked().map(m=>(m.epost||"").trim().
 function picked(){ return (site.medlemmar||[]).filter(m=>uSel&&uSel.has(m.id)); }
 document.addEventListener("change",e=>{ const c=e.target.dataset&&e.target.dataset.rc; if(!c) return; e.target.checked?uSel.add(c):uSel.delete(c); updSend(); });
 document.addEventListener("click",async e=>{
-  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","reg","utskick","inkorg","prot","atg"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="reg") renderReg(); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderDok(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
+  const st=e.target.closest("[data-st]"); if(st){ document.querySelectorAll("[data-st]").forEach(x=>x.classList.toggle("on",x===st)); ["led","reg","utskick","inkorg","prot","atg","amnen"].forEach(k=>q("#st-"+k).hidden=st.dataset.st!==k); if(st.dataset.st==="amnen"){ renderAmnen(); loadAmnen(); } if(st.dataset.st==="reg") renderReg(); try{ st.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(e){} if(st.dataset.st==="prot") renderDok(); if(st.dataset.st==="atg") renderAtg(); if(st.dataset.st==="utskick") { renderRcpt(); renderULog(); renderFrom(); } if(st.dataset.st==="inkorg"){ renderInbox(); loadInbox(); } return; }
   const b=e.target.closest("#uAll,#uSend,#uMail,#uSms,#uCopyAddr,#uCopyText"); if(!b||!board) return;
   const msg=q("#uMsg"); const amne=q("#uAmne").value.trim(), text=q("#uText").value;
   if (b.id==="uAll"){ const mem=(site.medlemmar||[]).filter(m=>m.epost||m.telefon); const all=mem.every(m=>uSel.has(m.id)); uSel=new Set(all?[]:mem.map(m=>m.id)); b.textContent=all?"Markera alla":"Avmarkera alla"; renderRcpt(); updSend(); return; }
@@ -1140,8 +1250,11 @@ q("#caseSend").addEventListener("click",async()=>{
   if(!text){ msg.textContent= f?"Skriv vad som har hänt.":"Skriv din synpunkt."; return; }
   if(!DB||!me||!canWrite){ msg.textContent="Du behöver vara inbjuden som medlem för att kunna skicka."; return; }
   try{
-    if (f) await addTo("felanmalan",fel,{id:nid(),datum:today(),plats:title,text,status:"ny",svar:""});
-    else await addTo("synpunkter",syn,{id:nid(),datum:today(),amne:title,text,svar:""});
+    const id=nid();
+    if (f) await addTo("felanmalan",fel,{id,datum:today(),plats:title,text,status:"ny",svar:""});
+    else await addTo("synpunkter",syn,{id,datum:today(),amne:title,text,svar:""});
+    /* Styrelsen får en notis. Servern läser ärendet ur medlemmens eget dokument och väljer mottagarna. */
+    try{ window.SB.functions.invoke("notiser",{body:{action:"arende",typ:f?"felanmalan":"synpunkter",id}}).catch(()=>{}); }catch(x){}
     q("#caseTitle").value=""; q("#caseText").value=""; msg.textContent= f?"Tack! Felanmälan är skickad.":"Tack! Styrelsen har fått din synpunkt."; renderCases();
   }catch(e){ msg.textContent="Kunde inte skicka. Försök igen."; }
 });
@@ -1171,7 +1284,7 @@ renderSite(); renderCases();
     let owner=false;
     if (U){ owner=(await U.isOwner())===true; board=owner||(await U.canEdit())===true; const cw=await U.can("data.write"); canWrite = cw!==false; me=await U.id(); }
     document.body.classList.toggle("is-board",board); document.body.classList.toggle("is-admin",owner===true); { const st=q("#status"); if(st&&st.textContent==="Laddar…") st.textContent=""; }
-    if (board){ setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
+    if (board){ setTimeout(loadAmnen,1200); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadAmnen(); }); setTimeout(loadInbox,1500); setInterval(()=>{ if(document.visibilityState==="visible") loadInbox(); },60000); document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") loadInbox(); }); }
     q("#role").textContent = owner? "" : board? "Styrelse" : canWrite&&U? "Medlem" : (U? "Läsare" : "");
     DB=await claude.use("db"); if(!DB) return;
     loadMem(); loadKomm();

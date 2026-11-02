@@ -28,7 +28,6 @@ function go(page){
 document.addEventListener("click",e=>{
   const t=e.target.closest("button,a"); if(!t) return;
   if (t.classList.contains("navtab")){ go(t.dataset.page); window.scrollTo({top:0}); return; }
-  if (t.dataset.ctype){ const r=document.querySelector(`input[name=ctype][value="${t.dataset.ctype}"]`); if(r&&!r.checked){ r.checked=true; r.dispatchEvent(new Event("change",{bubbles:true})); } }
   if (t.dataset.goto){ go(t.dataset.goto); if(t.dataset.stab){ const sb=document.querySelector(`.subnav [data-st="${t.dataset.stab}"]`); if(sb) sb.click(); } window.scrollTo({top:0}); if(t.dataset.ctype){ const f=document.getElementById("caseTitle"); if(f&&matchMedia("(pointer:fine)").matches) f.focus({preventScroll:true}); } return; }
 });
 const start=(location.hash||"").slice(1); if (document.getElementById("page-"+start)) go(start);
@@ -80,13 +79,13 @@ function renderIntro(){
 function sorted(arr,desc){ return [...(arr||[])].sort((a,b)=>desc? String(b.datum).localeCompare(String(a.datum)) : String(a.datum).localeCompare(String(b.datum))); }
 function itemCard(kind,it,fields,view){
   if (board && editing.has(it.id)){
-    return `<div class="item" data-kind="${kind}" data-id="${it.id}">${fields.map(([k,l,t])=>`<label>${l}${t==="area"?`<textarea rows="4" data-f="${k}">${E(it[k])}</textarea>`:`<input ${t==="date"?'type="date"':t==="tel"?'type="tel" inputmode="tel"':t==="email"?'type="email" inputmode="email"':''} data-f="${k}" value="${E(it[k])}">`}</label>`).join("")}
+    return `<div class="item" data-kind="${kind}" data-id="${E(it.id)}">${fields.map(([k,l,t])=>`<label>${l}${t==="area"?`<textarea rows="4" data-f="${k}">${E(it[k])}</textarea>`:`<input ${t==="date"?'type="date"':t==="tel"?'type="tel" inputmode="tel"':t==="email"?'type="email" inputmode="email"':''} data-f="${k}" value="${E(it[k])}">`}</label>`).join("")}
       ${ATT_KINDS.includes(kind)?attEdit(it):""}
       ${kind==="moten"?`<button type="button" class="ghost tonews" data-act="tonews">${(site.nyheter||[]).some(n=>n.mote===it.id)?"Uppdatera under Aktuellt":"Lägg upp i Aktuellt"}</button>`:""}
       ${kind==="nyheter"?`<div class="row notisrad"><button type="button" class="ghost small" data-act="notis">${it.notis?"Skicka notis igen":"Skicka notis till medlemmarna"}</button>${it.notis?`<span class="meta notismeta">Notis skickad ${E(kortDatum(it.notis))}</span>`:""}</div>`:""}
       <div class="row"><button type="button" data-act="done">Spara och stäng</button><button type="button" class="danger" data-act="del">Ta bort</button></div></div>`;
   }
-  return `<div class="item${kind==="nyheter"?" news":""}${board?" harandra":""}" data-kind="${kind}" data-id="${it.id}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${kind==="nyheter"?kommBlock(it.id):""}${board?`<button type="button" class="ghost small kortandra" data-act="edit">Ändra</button>`:""}</div>`;
+  return `<div class="item${kind==="nyheter"?" news":""}${board?" harandra":""}" data-kind="${kind}" data-id="${E(it.id)}">${view(it)}${ATT_KINDS.includes(kind)?attView(it):""}${kind==="nyheter"?kommBlock(it.id):""}${board?`<button type="button" class="ghost small kortandra" data-act="edit">Ändra</button>`:""}</div>`;
 }
 const ATT_KINDS=["nyheter","moten"];
 /* Bilagor och startbild ligger i en låst lagringsplats ("filer"). Appen hämtar tillfälliga,
@@ -192,7 +191,7 @@ function memGroup(ps){
   const f=ps[0].fastighet, adr=(ps.find(m=>m.adress)||{}).adress, bet=betOf(ps);
   const rows=ps.map(it=>{
     if (board && editing.has(it.id)) return itemCard("medlemmar",it,MEM_F,memView).replace('<div class="item"','<div class="item sub edit"');
-    return `<div class="item sub" data-kind="medlemmar" data-id="${it.id}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
+    return `<div class="item sub" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}</div>${board?`<button type="button" class="ghost small" data-act="edit">Ändra</button>`:""}</div>${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:""}</div>`;
   }).join("");
   return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div></div>${rows}
     ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
@@ -225,7 +224,7 @@ document.addEventListener("click",e=>{
   d.innerHTML=`<form method="dialog"><div class="item bperson">${boardView(it)}</div>${!(it.telefon||it.epost)?`<p class="hint">Inga kontaktuppgifter inlagda.</p>`:""}
     <div class="bdlg-btns">${board?`<button type="button" class="ghost" id="bpEdit">Ändra</button>`:""}<button value="close">Stäng</button></div></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>d.remove());
-  const ed=d.querySelector("#bpEdit"); if(ed) ed.onclick=()=>{ d.close(); editing.add(it.id); renderLists(); const el=document.querySelector(`.item[data-id="${it.id}"]`); if(el) el.scrollIntoView({block:"center"}); };
+  const ed=d.querySelector("#bpEdit"); if(ed) ed.onclick=()=>{ d.close(); editing.add(it.id); renderLists(); const el=document.querySelector(`.item[data-id="${CSS.escape(String(it.id))}"]`); if(el) el.scrollIntoView({block:"center"}); };
   d.showModal();
   if(kind==="styrelse"&&document.body.classList.contains("is-admin")) adminRad(d,it);
 });
@@ -434,7 +433,6 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-pdfopen]"
 /* ---------- dokument: medlemmarnas (site.dokument, låst lagring "dokument", alla medlemmar läser)
    och styrelsens (styrelse/protokoll, låst lagring "styrelse", bara styrelse och admin) ---------- */
 const DK={protokoll:"Protokoll",stadgar:"Stadgar och beslut",ekonomi:"Ekonomi"};
-const DK_HINT={protokoll:"Protokoll från årsstämmor och extra stämmor.",stadgar:"Stadgar, anläggningsbeslut, andelslängd och andra viktiga beslut.",ekonomi:"Årsredovisning, budget, revisionsberättelse och debiteringslängd."};
 const SK={protokoll:"Styrelseprotokoll",avtal:"Avtal och offerter",ovrigt:"Övrigt"};
 const DOK_ACCEPT=".pdf,.doc,.docx,.xls,.xlsx,.odt,.ods,.txt,.jpg,.jpeg,.png";
 let sprot=[], sprotRef=null, dkKat="protokoll";
@@ -442,7 +440,7 @@ const isPdf=f=>f&&(/\.pdf$/i.test(f.namn||"")||f.typ==="application/pdf");
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-dk]"); if(!t) return; dkKat=t.dataset.dk;
   document.querySelectorAll("[data-dk]").forEach(x=>x.classList.toggle("on",x===t)); try{ t.scrollIntoView({block:"nearest",inline:"nearest"}); }catch(x){}
   q("#dk-docs").hidden=dkKat==="lankar"||dkKat==="andelstal"; q("#dk-lankar").hidden=dkKat!=="lankar"; q("#dk-andelstal").hidden=dkKat!=="andelstal";
-  const dn=q(".dknote"); if(dn) dn.hidden=dkKat==="andelstal"; if(dkKat==="andelstal") renderAndelstal(); else renderDok(); });
+  if(dkKat==="andelstal") renderAndelstal(); else renderDok(); });
 function dokRows(list,kind){
   if(!list.length) return `<p class="empty">Inga dokument uppladdade ännu.</p>`;
   return sorted(list,true).map(p=>`<div class="item prot${board?" harandra":""}" data-pid="${E(p.id)}" data-pkind="${kind}">
@@ -472,7 +470,7 @@ document.addEventListener("click",async e=>{
   try{ await oppnaDok("medlem",p); }catch(err){ setMsg("Kunde inte öppna filen."); }
 });
 document.addEventListener("click",async e=>{
-  const b=e.target.closest("[data-protopen],[data-protdl],[data-protdel],[data-dokedit]"); if(!b) return;
+  const b=e.target.closest("[data-protopen],[data-protdl],[data-dokedit]"); if(!b) return;
   const card=b.closest("[data-pid]"), kind=card.dataset.pkind, list=kind==="medlem"?(site.dokument||[]):sprot, p=list.find(x=>x.id===card.dataset.pid); if(!p) return;
   try{
     if(b.dataset.protopen!==undefined){ await oppnaDok(kind,p); return; }
@@ -480,12 +478,6 @@ document.addEventListener("click",async e=>{
   }catch(err){ setMsg("Kunde inte öppna filen."); return; }
   if(!board) return;
   if(b.dataset.dokedit!==undefined){ dokDialog(kind,p); return; }
-  if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ b.classList.remove("armed"); b.textContent="Ta bort"; },4000); return; }
-  try{
-    if(kind==="medlem"){ site.dokument=(site.dokument||[]).filter(x=>x.id!==p.id); saveSite(); if(p.fil.path) await window.SB.storage.from("dokument").remove([p.fil.path]); }
-    else { sprot=sprot.filter(x=>x.id!==p.id); await sprotRef.set({items:sprot}); await window.SB.storage.from("styrelse").remove([p.fil.path]); }
-  }catch(err){ setMsg("Kunde inte ta bort."); }
-  renderDok(); renderLists(); setMsg("Dokumentet är borttaget.");
 });
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-dokadd],#dkAdd"); if(!b||!board) return;
@@ -1071,7 +1063,7 @@ document.addEventListener("click",async e=>{
 const UTYP={info:"Information",kallelse:"Kallelse",ovrigt:"Övrigt"};
 function renderULog(){
   const l=site.utskick||[];
-  q("#uLog").innerHTML = l.length? l.map(u=>`<details class="item"><summary><span class="meta">${dfmt(u.datum)} · ${UTYP[u.typ]||""} · ${u.kanal} till ${u.antal}${u.fran?" från "+E(u.fran):""}</span> <strong>${E(u.amne||"Utan ämne")}</strong></summary><p>${E(u.text)}</p>${(u.bilagor||[]).length?`<p class="meta">Bilagor: ${u.bilagor.map(E).join(", ")}</p>`:""}</details>`).join("") : `<p class="empty">Inga utskick ännu.</p>`;
+  q("#uLog").innerHTML = l.length? l.map(u=>`<details class="item"><summary><span class="meta">${dfmt(u.datum)} · ${UTYP[u.typ]||""} · ${E(u.kanal)} till ${E(u.antal)}${u.fran?" från "+E(u.fran):""}</span> <strong>${E(u.amne||"Utan ämne")}</strong></summary><p>${E(u.text)}</p>${(u.bilagor||[]).length?`<p class="meta">Bilagor: ${u.bilagor.map(E).join(", ")}</p>`:""}</details>`).join("") : `<p class="empty">Inga utskick ännu.</p>`;
 }
 /* ---------- fault reports and feedback ---------- */
 const STATUS={ny:"Ny",pagar:"Åtgärdas",klar:"Åtgärdad"};
@@ -1097,7 +1089,7 @@ document.addEventListener("click",async e=>{
 });
 function felCard(it,nm){
   return `<div class="item" data-uid="${E(it.uid)}" data-fid="${E(it.id)}">
-    <span class="meta"><span class="badge typ">Fel på vägen</span> ${dfmt(it.datum)} · ${E(nm[it.uid]||"En medlem")} <span class="badge ${it.status||"ny"}">${STATUS[it.status||"ny"]}</span></span>
+    <span class="meta"><span class="badge typ">Fel på vägen</span> ${dfmt(it.datum)} · ${E(nm[it.uid]||"En medlem")} <span class="badge ${STATUS[it.status]?it.status:"ny"}">${STATUS[it.status]||STATUS.ny}</span></span>
     <h3>${E(it.plats||"Plats ej angiven")}</h3><p>${E(it.text)}</p>
     ${it.svar&&!board?`<div class="reply"><strong>Styrelsen:</strong> ${E(it.svar)}</div>`:""}
     ${board?`<div class="grid2"><label>Status<select data-ff="status">${Object.entries(STATUS).map(([k,v])=>`<option value="${k}" ${k===(it.status||"ny")?"selected":""}>${v}</option>`).join("")}</select></label><label>Svar från styrelsen<input data-ff="svar" value="${E(it.svar)}"></label></div>${actions("felanmalan",it,(it.status||"ny")==="klar")}`:""}

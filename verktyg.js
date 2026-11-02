@@ -1,4 +1,3 @@
-const DOC_PATH = "vag/config";
 /* Schabloner enligt Lantmäteriets PM 2025 "Tonkilometermetoden" (LM2025/006319) med bilaga 1. */
 const PM = {
   perm:2500, komp:1300, frit:{intensiv:1800, normal:900, lag:450}, lgh:1500, smahusbr:2000, obebyggd:100,
@@ -36,10 +35,11 @@ const DEFAULT = {
 };
 let state = structuredClone(DEFAULT);
 let selected = null;
-let db = null, ref = null, saveTimer = null, dirty = false, saving = false, pendingRemote = null;
+let saveTimer = null, dirty = false;
 
 const $ = s => document.querySelector(s);
-const num = v => { const n = parseFloat(String(v).replace(",", ".")); return isFinite(n) ? n : 0; };
+/* Tal som skrivs på svenska: mellanslag som tusentalsavgränsare och komma som decimaltecken. */
+const num = v => { const n = parseFloat(String(v??"").replace(/[\s\u00a0\u202f]/g,"").replace(",", ".")); return isFinite(n) ? n : 0; };
 const fmt = (n, d=0) => n.toLocaleString("sv-SE",{minimumFractionDigits:d,maximumFractionDigits:d});
 const uid = () => Math.random().toString(36).slice(2,9);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -215,15 +215,7 @@ function typeChips(p){
 }
 
 /* ---------- rendering ---------- */
-function renderPublic(){
-  const el=document.getElementById("pubShares"); if(!el) return;
-  const {rows}=calc(); const sorted=[...rows].sort((a,b)=>b.share-a.share);
-  const kr=num(state.schablon.utdebitering)>0;
-  el.innerHTML = sorted.length ? sorted.map(r=>`<div class="share-row"><span class="sname">${esc(r.p.namn)}</span><span class="sval">${fmt(r.disp,1)} %${kr?`<small>${fmt(Math.round(r.kr))} kr per år</small>`:""}</span></div>`).join("")
-    + `<div class="share-row total"><span class="sname">Totalt</span><span class="sval">${fmt(rows.reduce((s,r)=>s+r.disp,0),1)} %</span></div>` : `<p class="empty">Inga andelstal ännu.</p>`;
-}
 function renderSummary(){
-  renderPublic();
   const {rows,total} = calc();
   const showKr = num(state.schablon.utdebitering)>0;
   const sorted = [...rows].sort((a,b)=>b.share-a.share);
@@ -280,7 +272,7 @@ function calcText(r){
 }
 const getR=(p,k)=> k.startsWith("sk:") ? ((skiften(p).find(s=>s.id===k.slice(3))||{}).route||[]) : (p[k]||[]);
 const setR=(p,k,v)=>{ if(k.startsWith("sk:")){ const s=skiften(p).find(s=>s.id===k.slice(3)); if(s) s.route=v; } else p[k]=v; };
-function mapRoutes(fn){ state.props.forEach(p=>{ ["route","skogRoute","inreRoute"].forEach(k=>{ if(p[k]) p[k]=fn(p[k]); }); skiften(p).forEach(s=>{ if(s.route) s.route=fn(s.route); }); }); }
+function mapRoutes(fn){ state.props.forEach(p=>{ ["route","skogRoute","autoRoute","extraRoute"].forEach(k=>{ if(Array.isArray(p[k])) p[k]=fn(p[k]); }); skiften(p).forEach(s=>{ if(s.route) s.route=fn(s.route); }); }); }
 function segBoxes(p, key){
   const val=getR(p,key);
   return state.segments.map(g=>{
@@ -367,7 +359,6 @@ const MALLAR={
   djur:{namn:"Djurproduktion som inte beror på arealen (3.7.1.5)",gods:"",rader:[["Djurtransporter","",1,""],["Fodertransporter","",1,""],["Gödsel","",1,""],["Veterinär och service",2.9,1,""]]}
 };
 const MALL_FOR={kombi:["kombi","hastbesok"],jord:["hastbesok","djur","kombi"],egen:["skola","golf","camping","hotell","friluft","idrott","samling","kyrka","aldre","butik","rening"]};
-let editProp=null;
 const fld=(p,f,label,mode="decimal",extra="")=>`<label for="${f}-${p.id}">${label}<input id="${f}-${p.id}" inputmode="${mode}" data-p="${p.id}" data-f="${f}" value="${esc(String(p[f]??"").replace(".",","))}"${extra}></label>`;
 const sel=(p,f,label,opts,def)=>`<label for="${f}-${p.id}">${label}<select id="${f}-${p.id}" data-p="${p.id}" data-f="${f}">${opts.map(([v,l])=>`<option value="${v}" ${String(p[f]??def)===v?"selected":""}>${esc(l)}</option>`).join("")}</select></label>`;
 const chk=(p,f,label)=>`<label class="check" for="${f}-${p.id}"><input type="checkbox" id="${f}-${p.id}" data-p="${p.id}" data-f="${f}" ${p[f]?"checked":""}>${label}</label>`;
@@ -484,7 +475,7 @@ function renderCards(){
     if (t==="perm"||t==="kombi") f+=`<fieldset class="fs"><legend>Bostad</legend><div class="grid2">${fld(p,"perm","Antal hushåll (permanentbostäder)","numeric")}${fld(p,"komp","Varaktigt uthyrda komplementbostäder","numeric")}</div></fieldset>`;
     if (t==="frit") f+=`<fieldset class="fs"><legend>Fritidsbostad</legend><div class="grid2">${fld(p,"frit","Antal fritidsbostäder","numeric")}${sel(p,"fritNiva","Användning",nivOpt,"")}</div></fieldset>`;
     if (t==="jord") f+=`<fieldset class="fs"><legend>Gården</legend>${chk(p,"gardUtanfor","Gården ligger utanför vägens område. Bara skiften längs vägen använder föreningens väg.")}
-      ${p.gardUtanfor?`<p class="hint">Bostäder, företagsutfart, mjölk, anställda och hästar på gården räknas inte, eftersom de inte använder föreningens väg. Skiftenas transporter räknas från där man kör in på föreningens väg till varje skifte (PM 3.7.1.2 och 3.7.2.2). Infarten sätter du ut i steg 4.</p>`:""}</fieldset>`;
+      ${p.gardUtanfor?`<p class="hint">Bostäder, företagsutfart, mjölk, anställda och hästar på gården räknas inte, eftersom de inte använder föreningens väg. Skiftenas transporter räknas från där man kör in på föreningens väg till varje skifte (PM 3.7.1.2 och 3.7.2.2). Infarten väljer du under Vägen och i steg 4.</p>`:""}</fieldset>`;
     if (t==="jord"&&!p.gardUtanfor) f+=`<fieldset class="fs"><legend>Bostäder på gården</legend><div class="grid2">${fld(p,"perm","Permanentbostäder","numeric")}${fld(p,"komp","Uthyrda komplementbostäder","numeric")}${fld(p,"frit","Fritidsbostäder","numeric")}${(num(p.frit)?sel(p,"fritNiva","Fritidsbostadens användning",nivOpt,""):"")}</div></fieldset>`;
     if (t==="flerfam") f+=`<fieldset class="fs"><legend>Flerfamiljshus</legend>${fld(p,"lgh","Antal lägenheter","numeric")}</fieldset>`;
     if (t==="smahusbr") f+=`<fieldset class="fs"><legend>Småhus i förening</legend>${fld(p,"smahus","Antal hus","numeric")}</fieldset>`;
@@ -731,8 +722,6 @@ document.addEventListener("click", e=>{
 
 
 /* Verktyget är fristående: allt går att ändra, och arbetet sparas i webbläsaren och som projektfil. */
-const readOnly=false;
-function applyReadOnly(){}
 function nyFastighet(namn,bet){ return {id:uid(),namn,beteckning:bet||"",typ:"perm",perm:1,frit:0,fritNiva:"",akerHa:0,beteHa:0,skogHa:0,route:[],skogRoute:[],skogJamn:false,fast:"",note:""}; }
 function visaDetalj(){
   const el=document.getElementById("resDetalj"); if(!el) return;
@@ -903,8 +892,7 @@ async function makePdf(){
     if (ruta){ ruta.hidden=false; ruta.innerHTML=`<span>PDF:en är klar.</span><a class="button" href="${makePdf.url}" target="_blank" rel="noopener">Öppna PDF</a><a class="button ghost" href="${makePdf.url}" download="${esc(namn)}">Spara PDF</a>`; ruta.scrollIntoView({behavior:"smooth",block:"nearest"}); }
     setStatus("PDF:en är klar");
   }catch(e){
-    if (e && e.code==="declined") setStatus("PDF sparades inte");
-    else if (e && e.message==="lib") setStatus("PDF verktyget kunde inte laddas. Ladda om sidan.",true);
+    if (e && e.message==="lib") setStatus("PDF verktyget kunde inte laddas. Ladda om sidan.",true);
     else setStatus("Kunde inte skapa PDF. Ladda om sidan och försök igen.",true);
   }finally{ btn.disabled=false; btn.innerHTML=old; }
 }

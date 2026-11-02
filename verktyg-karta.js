@@ -196,7 +196,7 @@ function tillampa(f){
   state.props.forEach(p=>{ const r=f.routes.get(p.id)||{};
     p.autoRoute=r.route||[]; p.route=ordning(new Set([...(r.route||[]),...(p.extraRoute||[])])); p.skogRoute=p.skogEgen?(r.skog||[]):[];
     skiften(p).forEach(s=>{ const v=r["sk:"+s.id]; if(v&&v.ids){ s.route=v.ids; s.jamnKm=Math.round(v.km*1e4)/1e4; } else { s.route=v||[]; delete s.jamnKm; } });
-    delete p.inreRoute; });
+  });
   scheduleSave();
 }
 
@@ -299,7 +299,6 @@ function klick(e){
   if (mode==="utfart"){ satPunkt("utfart",ll); return; }
   if (mode==="punkt"){ if(!KS().vagar.length){ visaHjalp("Rita vägen först."); return; } satPunkt("punkt",ll); return; }
   if (mode==="dela"){ if(!KS().vagar.length){ visaHjalp("Rita vägen först."); return; } satPunkt("delning",ll); return; }
-  if (mode==="ansl") return; /* I steg 4 ändras inget på kartan; punkter sätts ut i steg 3. */
 }
 function satPunkt(val,ll){
   const k=KS(); let pt;
@@ -403,7 +402,7 @@ function satMode(m){
   if (mode==="vag"&&m!=="vag") avslutaLinje();
   mode=m; document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",b.dataset.km===m));
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=m!=="vag";
-  if (map){ ["vag","utfart","ansl","dela","punkt"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","ansl","dela","punkt"].includes(m)); }
+  if (map){ ["vag","utfart","dela","punkt"].includes(m)?map.doubleClickZoom.disable():map.doubleClickZoom.enable(); map.getContainer().classList.toggle("ritlage",["vag","utfart","dela","punkt"].includes(m)); }
   if (steg==="vag") visaHjalp(HJALP[m]||"");
   rita();
 }
@@ -468,8 +467,6 @@ document.addEventListener("change",e=>{ const v=e.target.dataset&&e.target.datas
   if (e.target.value){ const m=mal(), j=m.findIndex(x=>x.val===v), nx=m.slice(j+1).concat(m.slice(0,j)).find(x=>!x.satt&&x.val!==v); if(aktivt===v) aktivt=nx?nx.val:""; }
   else aktivt=v;
   andrat(); });
-/* Från fastighetskortet: gå till steg 4 med just den punkten vald. */
-document.addEventListener("click",e=>{ const b=e.target.closest("[data-kartmal]"); if(!b) return; aktivt=b.dataset.kartmal; openTab="ansl"; renderTabs(); window.scrollTo({top:0}); });
 window.kartaStatus=p=>{ const pt=punktFor(p,"route"); if(!pt) return {satt:false};
   const {G,D}=avstand(), n=G.pnod.get(pt.id), d=n&&D?D.dist.get(n):NaN; return {satt:true, km:isFinite(d)?d/1000:0}; };
 function renderPunktLista(){

@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="leaflet/leaflet.css">
-<link rel="stylesheet" href="app.css?v=2.95">
+<link rel="stylesheet" href="app.css?v=2.97">
 </head>
 <body class="vk is-admin">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -86,7 +86,7 @@
         <li><b>Sätt utfart:</b> tryck där vägen ansluter till allmän väg. Har vägen flera anslutningar sätter du ut alla.</li>
         <li><b>Anslutningspunkt:</b> tryck där en eller flera fastigheter ansluter till vägen och ge punkten ett namn under kartan. I steg 4 väljer du sedan punkt för varje fastighet.</li>
       </ol>
-      <p class="hint">Delsträckor och längder räknas fram automatiskt. Vägen delas vid korsningar och där fastigheter ansluter. Vill du dela på fler ställen trycker du <i>Dela</i> och sedan på vägen. Var fastigheterna ansluter sätter du ut i nästa steg.</p>
+      <p class="hint">Delsträckor och längder räknas fram automatiskt. Vägen delas vid korsningar och där fastigheter ansluter. Vill du dela på fler ställen trycker du <i>Dela</i> och sedan på vägen. Vid vilken punkt varje fastighet ansluter väljer du i nästa steg.</p>
     </div>
     <div class="kartverktyg-wrap" id="kartVerktyg">
       <div class="row kartverktyg">
@@ -141,7 +141,6 @@
 
   <section class="steg" id="steg-res" hidden>
     <div class="panel row"><label for="utdeb" style="max-width:280px">Belopp att fördela, kr per år (frivilligt)<input id="utdeb" inputmode="decimal" data-s="utdebitering" placeholder="t.ex. 25000"></label></div>
-    <div id="vkn-res"></div>
     <div class="panel scroll" style="margin-top:12px">
       <table id="summary">
         <thead><tr><th>Fastighet</th><th>Typ</th><th class="num">Väglängd</th><th class="num">Tonkm</th><th class="num">Nuvarande</th><th class="num">Andel</th><th class="num kr">Kr per år</th></tr></thead>
@@ -167,12 +166,11 @@
 
   <div class="row stegnav"><button type="button" class="ghost" id="stegForra">← Föregående</button><button type="button" id="stegNasta">Nästa →</button></div>
   <div id="kartaHem" hidden><div id="karta" role="application" aria-label="Karta över vägen"></div></div>
-  <select id="pick" hidden></select>
   </div>
 </main>
 <span class="status" id="status" role="status" aria-live="polite"></span>
-<script src="verktyg.js?v=2.96"></script>
+<script src="verktyg.js?v=2.97"></script>
 <script src="leaflet/leaflet.js"></script>
-<script src="verktyg-karta.js?v=2.92"></script>
+<script src="verktyg-karta.js?v=2.97"></script>
 </body>
 </html>

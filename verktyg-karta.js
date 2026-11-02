@@ -225,10 +225,15 @@ function initKarta(){
   const foto=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:'Flygfoto: © Esri, Maxar, Earthstar Geographics'});
   const fotoNamn=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxZoom:19});
   const flyg=L.layerGroup([foto,fotoNamn]);
-  let bas=(()=>{ try{ return localStorage.getItem("andelstal_bas")||"Vägkarta"; }catch(e){ return "Vägkarta"; } })();
-  const lager0={"Vägkarta":osm,"Terrängkarta":topo,"Flygfoto":flyg};
-  (lager0[bas]||osm).addTo(map); L.control.layers(lager0,null,{position:"topright"}).addTo(map);
-  map.on("baselayerchange",e=>{ try{ localStorage.setItem("andelstal_bas",e.name); }catch(x){} });
+  /* Hybrid: flygfoto med vägar och ortnamn ovanpå. Standardvy. */
+  const foto2=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:'Flygfoto och vägar: © Esri, Maxar, Earthstar Geographics, HERE, OpenStreetMap-bidragsgivare'});
+  const vagar=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",{maxZoom:19});
+  const namn2=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxZoom:19});
+  const hybrid=L.layerGroup([foto2,vagar,namn2]);
+  let bas=(()=>{ try{ return localStorage.getItem("andelstal_bas2")||"Hybrid"; }catch(e){ return "Hybrid"; } })();
+  const lager0={"Hybrid (flygfoto med vägar)":hybrid,"Vägkarta":osm,"Terrängkarta":topo,"Flygfoto":flyg};
+  (lager0[bas]||hybrid).addTo(map); L.control.layers(lager0,null,{position:"topright"}).addTo(map);
+  map.on("baselayerchange",e=>{ try{ localStorage.setItem("andelstal_bas2",e.name); }catch(x){} });
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
   new VisaKontroll().addTo(map);

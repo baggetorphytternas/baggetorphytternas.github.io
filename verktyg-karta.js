@@ -186,7 +186,10 @@ function forslag(){
 function tillampa(f){
   /* Delsträckor som lagts till för hand följer med när delsträckorna räknas om: de matchas mot de nya via läget på kartan. */
   const gamla=state.segments, nyaId=id=>{ const g=gamla.find(x=>x.id===id); if(!g||!Array.isArray(g.geo)||g.geo.length<2) return [];
-    const mid=mittpunkt(g.geo); return f.segs.filter(n=>Array.isArray(n.geo)&&n.geo.some((q,i)=>i&&proj(mid,n.geo[i-1],q).d<5)).map(n=>n.id); };
+    /* En ny delsträcka hör till den gamla om dess mittpunkt ligger på den gamla (delad sträcka),
+       eller om den gamlas mittpunkt ligger på den nya (sammanslagen sträcka). */
+    const pa=(pt,geo)=>geo.some((q,i)=>i&&proj(pt,geo[i-1],q).d<5), mid=mittpunkt(g.geo);
+    return f.segs.filter(n=>Array.isArray(n.geo)&&n.geo.length>1&&(pa(mittpunkt(n.geo),g.geo)||pa(mid,n.geo))).map(n=>n.id); };
   state.props.forEach(p=>{ if(Array.isArray(p.extraRoute)&&p.extraRoute.length) p.extraRoute=[...new Set(p.extraRoute.flatMap(nyaId))]; });
   state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo}));
   const ordning=ids=>state.segments.map(g=>g.id).filter(id=>ids.has(id));

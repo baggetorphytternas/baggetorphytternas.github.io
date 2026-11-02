@@ -74,7 +74,7 @@ function natverk(){
       if (r.d<3 && hav(w[i],e)>2 && hav(w[i+1],e)>2 && r.t>0 && r.t<1){ w.splice(i+1,0,e); break; } } }); }));
   linjer.forEach(p=>{ for(let i=0;i+1<p.length;i++){ const a=nod(p[i]), b=nod(p[i+1]); if(a!==b) E.push({a,b,len:hav(a.ll,b.ll)}); } });
   const pnod=new Map(), avst=new Map();
-  k.punkter.forEach(pt=>{
+  k.punkter.filter(iBruk).forEach(pt=>{
     let best=null; E.forEach(e=>{ const r=proj(pt.ll,e.a.ll,e.b.ll); if(!best||r.d<best.r.d) best={e,r}; });
     if (!best) return;
     const {e,r}=best, da=r.t*e.len, db=(1-r.t)*e.len; let n;
@@ -87,6 +87,13 @@ function natverk(){
   });
   N.forEach(n=>n.e=[]); E.forEach(e=>{ e.a.e.push(e); e.b.e.push(e); });
   return {N,E,pnod,avst};
+}
+/* En fastighets egen punkt räknas bara om fastigheten finns kvar och fortfarande använder den
+   (inte efter borttaget skifte, ändrad typ eller vald gemensam punkt). Annars delar den inte vägen. */
+function iBruk(pt){
+  if (pt.typ!=="anslutning") return true;
+  const p=state.props.find(x=>x.id===pt.prop), g=pt.galler||"route";
+  return !!p && galler(p).includes(g) && punktFor(p,g)===pt;
 }
 function dijkstra(G,starts){
   const dist=new Map(), prev=new Map(), Q=new Set(G.N);
@@ -130,6 +137,7 @@ function galler(p){
   return ut;
 }
 window.kartaPunkter=valbara;
+window.kartaAndrat=()=>andrat();
 const BOKST="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const kedjeId=i=>i<26 ? BOKST[i] : BOKST[i%26]+(Math.floor(i/26)+1);
 /* Förslag på delsträckor och vägval utifrån kartan. Ändrar inget förrän det tillämpas. */
@@ -185,13 +193,14 @@ function forslag(){
 }
 function tillampa(f){
   /* Delsträckor som lagts till för hand följer med när delsträckorna räknas om: de matchas mot de nya via läget på kartan. */
-  const gamla=state.segments, nyaId=id=>{ const g=gamla.find(x=>x.id===id); if(!g||!Array.isArray(g.geo)||g.geo.length<2) return [];
+  const minne=Array.isArray(state.geoMinne)?state.geoMinne:[];
+  const gamla=state.segments, nyaId=id=>{ const g=gamla.find(x=>x.id===id&&Array.isArray(x.geo))||minne.find(x=>x.id===id); if(!g||!Array.isArray(g.geo)||g.geo.length<2) return [];
     /* En ny delsträcka hör till den gamla om dess mittpunkt ligger på den gamla (delad sträcka),
        eller om den gamlas mittpunkt ligger på den nya (sammanslagen sträcka). */
     const pa=(pt,geo)=>geo.some((q,i)=>i&&proj(pt,geo[i-1],q).d<5), mid=mittpunkt(g.geo);
     return f.segs.filter(n=>Array.isArray(n.geo)&&n.geo.length>1&&(pa(mittpunkt(n.geo),g.geo)||pa(mid,n.geo))).map(n=>n.id); };
   state.props.forEach(p=>{ if(Array.isArray(p.extraRoute)&&p.extraRoute.length) p.extraRoute=[...new Set(p.extraRoute.flatMap(nyaId))]; });
-  state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo}));
+  state.segments=f.segs.map(({id,namn,m,mot,geo})=>({id,namn,m,mot,geo})); delete state.geoMinne;
   const ordning=ids=>state.segments.map(g=>g.id).filter(id=>ids.has(id));
   state.props.forEach(p=>{ const r=f.routes.get(p.id)||{};
     p.autoRoute=r.route||[]; p.route=ordning(new Set([...(r.route||[]),...(p.extraRoute||[])])); p.skogRoute=p.skogEgen?(r.skog||[]):[];
@@ -379,9 +388,13 @@ let senaste=null;
 /* Finns ingen väg eller utfart kvar tas delsträckor som räknats fram från kartan bort, så att inget gammalt visas. */
 function rensaKartsegment(){
   if (!state.segments.some(g=>Array.isArray(g.geo))) return false;
+  /* Läget på de borttagna sträckorna sparas, så att handvalda delsträckor kan matchas igen när vägen hänger ihop. */
+  state.geoMinne=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1).map(({id,geo})=>({id,geo}));
   state.segments=state.segments.filter(g=>!Array.isArray(g.geo));
   const ids=new Set(state.segments.map(g=>g.id));
+  const extra=new Map(state.props.map(p=>[p.id,p.extraRoute]));
   mapRoutes(r=>r.filter(x=>ids.has(x)));
+  state.props.forEach(p=>{ if(extra.get(p.id)) p.extraRoute=extra.get(p.id); });
   return true;
 }
 function andrat(){

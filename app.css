@@ -915,3 +915,6 @@ a.button.ghost{background:var(--surface);color:var(--accent);border-color:var(--
 .vkver{font-size:.75rem;opacity:.75;margin-left:auto;white-space:nowrap}
 .nyversion{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1500;background:#1f2a24;color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
 .nyversion button{background:#fff;color:#1f2a24;border:0;min-height:0;padding:6px 12px}
+.nyversion{flex-wrap:wrap}
+.nyversion button.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
+#annanFlik{bottom:72px}

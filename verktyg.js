@@ -166,8 +166,10 @@ function poster(p){
   }
   return ut;
 }
+/* Minsta väglängd: tomt fält betyder PM:s 0,3 km. */
+const minKmOf=()=>{ const v=String(state.schablon.minKm??"").trim(); return v===""?0.3:num(v); };
 function calc(){
-  const S=state.schablon, minKm=num(S.minKm), minA=num(S.minAndel);
+  const S=state.schablon, minKm=minKmOf(), minA=num(S.minAndel);
   const rows = state.props.map(p=>{
     const t=typOf(p), fixed = t==="annan" && String(p.fast??"").trim()!=="" ? num(p.fast) : null;
     const dR=segKm(p.route), egenSkog=p.skogRoute&&p.skogRoute.length;
@@ -192,7 +194,7 @@ function calc(){
   /* Lägsta andelstal (PM 3.1.5): fastigheter under gränsen får gränsen, övriga delar på resten. */
   const low=new Set();
   for (let i=0;i<=rows.length;i++){
-    const rest=100-fixedSum-low.size*minA;
+    const rest=Math.max(0,100-fixedSum-low.size*minA);
     const S0=rows.filter(r=>r.fixed===null&&!low.has(r)).reduce((s,r)=>s+r.tkm,0);
     rows.forEach(r=>{ r.low=low.has(r); r.share = r.fixed!==null ? r.fixed : r.low ? minA : (S0>0 ? r.tkm/S0*rest : 0); });
     if (!(minA>0)) break;
@@ -216,7 +218,7 @@ function typeChips(p){
 
 /* ---------- rendering ---------- */
 function renderSummary(){
-  const {rows,total} = calc();
+  const c=calc(), {rows,total} = c;
   const showKr = num(state.schablon.utdebitering)>0;
   const sorted = [...rows].sort((a,b)=>b.share-a.share);
   $("#summary tbody").innerHTML = sorted.map(r=>`<tr data-row="${r.p.id}" class="${r.p.id===selected?"sel":""}">
@@ -230,7 +232,7 @@ function renderSummary(){
   $("#summary tfoot").innerHTML = `<tr><td>Totalt</td><td></td><td></td><td class="num">${fmt(total)}</td><td></td><td class="num">${fmt(sumShare,1)} %</td>${showKr?`<td class="num">${fmt(Math.round(sumKr))}</td>`:""}</tr>`;
   document.querySelector("#summary th.kr").style.display = showKr?"":"none";
   rows.forEach(r=>{ const el=document.getElementById("calc-"+r.p.id); if(el) el.textContent = calcText(r); const nv=document.getElementById("vkn-"+r.p.id); if(nv) nv.innerHTML=varningar(r.p,r).map(x=>`<p class="notice">${esc(x)}</p>`).join(""); });
-  const g=document.getElementById("vkn-global"); if(g) g.innerHTML=globalVarningar().map(x=>`<p class="notice">${esc(x)}</p>`).join("");
+  const g=document.getElementById("vkn-global"); if(g) g.innerHTML=globalVarningar(c).map(x=>`<p class="notice">${esc(x)}</p>`).join("");
 }
 /* Kontroller mot PM 2025. Returnerar en lista med texter. */
 function varningar(p,r){
@@ -254,9 +256,14 @@ function varningar(p,r){
   if (t==="egen"&&!rader(p).length&&!num(p.egenTon)) v.push("Lägg till poster eller välj en beräkningsmall.");
   return v;
 }
-function globalVarningar(){
+function globalVarningar(c){
   const v=[], niv=new Set(state.props.filter(p=>num(p.frit)>0).map(fritNivaOf));
   if (niv.size>1) v.push("Fritidsbostäderna har olika användningsnivå. Normalt ska samma nivå gälla hela området (PM 3.3.2).");
+  if (!state.props.length) return v;
+  const {rows,fixedSum,total}=c||calc(), minA=num(state.schablon.minAndel), rakna=rows.filter(r=>r.fixed===null);
+  if (fixedSum>100) v.push(`De fasta andelarna är tillsammans ${fmt(fixedSum,1)} %, mer än 100 %. Övriga fastigheter får då ingen andel.`);
+  else if (minA>0&&fixedSum+minA*rakna.length>100) v.push(`Lägsta andelstal ${fmt(minA,1)} % för ${rakna.length} fastigheter och de fasta andelarna blir mer än 100 %. Sänk lägsta andelstalet.`);
+  if (rakna.length&&total===0&&fixedSum<100) v.push("Ingen fastighet har både trafik och väglängd ännu, så andelarna kan inte räknas fram.");
   return v;
 }
 function calcText(r){
@@ -265,7 +272,7 @@ function calcText(r){
   const S=state.schablon;
   const rad=r.poster.map(x=>`${x.namn} = ${fmt(x.ton)} ton × ${fmt(x.km,3)} km${x.f!==1?` × ${fmt(x.f,1)}`:""} = ${fmt(x.tkm)} tonkm${x.ref?` (PM ${x.ref})`:""}`).join("\n");
   const not=[];
-  if (r.min) not.push(`Minsta väglängd ${fmt(num(S.minKm),3)} km används där vägen är kortare (PM 3.1.3).`);
+  if (r.min) not.push(`Minsta väglängd ${fmt(minKmOf(),3)} km används där vägen är kortare (PM 3.1.3).`);
   if (r.direkt) not.push(`Direktutfart: minsta väglängd och reduktionsfaktor ${fmt(r.faktor,1)} (PM 3.1.4).`);
   if (r.low) not.push(`Lägsta andelstal ${fmt(num(S.minAndel),1)} % används (PM 3.1.5).`);
   return rad + (not.length?"\n"+not.join("\n"):"") + `\nSumma ${fmt(r.ton)} ton per år, ${fmt(r.tkm)} tonkm, andel ${fmt(r.disp,1)} %.`;
@@ -310,6 +317,12 @@ function typOf(p){
 const nyttSkifte=(namn,aker,bete,plats,route)=>({id:uid(),namn,aker:aker||0,bete:bete||0,plats:plats||"bc",fu:true,route:route||[]});
 /* Äldre sparade uppgifter: jordbrukets åker och bete flyttas till ett skifte. */
 function normalisera(st){
+  if (!Array.isArray(st.props)) st.props=[];
+  if (!Array.isArray(st.segments)) st.segments=[];
+  st.props=st.props.filter(p=>p&&typeof p==="object"); st.props.forEach(p=>{ if(!p.id) p.id=uid(); });
+  st.segments=st.segments.filter(g=>g&&g.id!=null).map(g=>Object.assign(g,{id:String(g.id)}));
+  if (st.karta&&typeof st.karta==="object"){ if(!Array.isArray(st.karta.vagar)) st.karta.vagar=[]; if(!Array.isArray(st.karta.punkter)) st.karta.punkter=[]; }
+  else delete st.karta;
   const S=st.schablon||{};
   (st.props||[]).forEach(p=>{
     const t=typOf(p);
@@ -522,7 +535,7 @@ function renderCards(){
 `
       :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>`}
       ${chk(p,"direkt","Fastigheten har egen utfart direkt till allmän väg")}
-      ${p.direkt?`<p class="hint">Fastigheten använder knappt föreningens väg men har ändå nytta av den, till exempel för att nå andra delar av området. Den räknas därför med minsta väglängd (${fmt(num(state.schablon.minKm)||0.3,1)} km) gånger en reduktionsfaktor, i stället för att få andelen 0 (PM 3.1.4).</p>`:""}
+      ${p.direkt?`<p class="hint">Fastigheten använder knappt föreningens väg men har ändå nytta av den, till exempel för att nå andra delar av området. Den räknas därför med minsta väglängd (${fmt(minKmOf(),1)} km) gånger en reduktionsfaktor, i stället för att få andelen 0 (PM 3.1.4).</p>`:""}
       ${p.direkt?sel(p,"direktFaktor","Reduktionsfaktor",[["0.5","0,5 – gemensamma nyttigheter i normal omfattning"],["0.3","0,3 – gemensamma nyttigheter i mindre omfattning"]],"0.5"):""}
     </fieldset>`;
     return `<div class="panel card editing" data-card="${p.id}">
@@ -549,7 +562,7 @@ function renderCards(){
 document.addEventListener("change", e=>{
   const id=e.target.dataset&&e.target.dataset.typ; if(!id) return;
   const p=state.props.find(x=>x.id===id); if(!p) return;
-  setTyp(p,e.target.value); renderCards(); renderSummary(); scheduleSave();
+  setTyp(p,e.target.value); if(window.kartaAndrat) window.kartaAndrat(); else { renderCards(); renderSummary(); } scheduleSave();
 });
 document.addEventListener("change", e=>{
   const id=e.target.dataset&&e.target.dataset.mall; if(!id||!e.target.value) return;
@@ -668,8 +681,9 @@ document.addEventListener("input", e=>{
     r[t.dataset.rf] = t.type==="checkbox" ? t.checked : t.value;
     const sum=t.closest(".radpost")&&t.closest(".radpost").querySelector(".radsum"); if(sum) sum.textContent=fmt(radTon(r))+" ton";
   } else if (t.dataset.segI!==undefined){
-    const g=state.segments[+t.dataset.segI]; const old=g.id; g[t.dataset.sf]=t.value;
-    if (t.dataset.sf==="id") mapRoutes(r=>r.map(x=>x===old?t.value:x));
+    /* Beteckningen byts först när fältet lämnas (change), så att den inte slås ihop med en annan medan man skriver. */
+    if (t.dataset.sf==="id") return;
+    const g=state.segments[+t.dataset.segI]; if(!g) return; g[t.dataset.sf]=t.value;
   } else if (t.dataset.s){
     state.schablon[t.dataset.s]=t.value;
   } else return;
@@ -678,7 +692,16 @@ document.addEventListener("input", e=>{
 /* Fält som ändrar formuläret ritar om kortet efteråt, och fokus behålls i det fält man gått vidare till. */
 const OMRITA=["gardUtanfor","skogEgen","direkt","frit","mjolk","boxar","hastEgna","hastInack","skogHa","skogFjallHa","skogRestrHa","arealHa","akerHa","beteHa","gods","antalAnl"];
 document.addEventListener("change", e=>{ const f=e.target.dataset.f; if(OMRITA.includes(f)||e.target.dataset.skf==="plats"){ setTimeout(()=>{ const a=document.activeElement, id=a&&a.id, pos=a&&a.selectionStart; renderCards(); renderSummary(); const n=id&&document.getElementById(id); if(n){ n.focus(); try{ if(pos!=null) n.setSelectionRange(pos,pos); }catch(x){} } },0); } if(["prodOmr","tillvOmr","fritNiva","utfart"].includes(e.target.dataset.s)){ renderSchablon(); renderCards(); renderSummary(); } });
-document.addEventListener("change", e=>{ if (e.target.dataset.sf==="id"||e.target.dataset.sf==="namn") renderCards(), renderSummary(); if (e.target.dataset.f==="namn") renderPick(); });
+document.addEventListener("change", e=>{
+  const t=e.target;
+  if (t.dataset.sf==="id"&&t.dataset.segI!==undefined){
+    const g=state.segments[+t.dataset.segI]; if(!g) return;
+    const ny=t.value.trim(), old=g.id;
+    if (!ny||state.segments.some(x=>x!==g&&x.id===ny)){ t.value=old; t.setCustomValidity(ny?"Beteckningen "+ny+" används redan.":"Delsträckan måste ha en beteckning."); t.reportValidity(); setTimeout(()=>t.setCustomValidity(""),2500); return; }
+    if (ny!==old){ g.id=ny; mapRoutes(r=>r.map(x=>x===old?ny:x)); scheduleSave(); }
+    renderAll(); return;
+  }
+  if (t.dataset.sf==="namn") renderCards(), renderSummary(); if (t.dataset.f==="namn") renderPick(); });
 
 document.addEventListener("click", e=>{
   const tr=e.target.closest("#summary tbody tr[data-row]");
@@ -687,7 +710,7 @@ document.addEventListener("click", e=>{
   if (t.id==="pdf"){ makePdf(); return; }
   if (t.dataset.del){
     if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Tryck igen för att ta bort"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort fastigheten";}},3000); return; }
-    state.props=state.props.filter(p=>p.id!==t.dataset.del); if(state.karta&&state.karta.punkter) state.karta.punkter=state.karta.punkter.filter(x=>x.prop!==t.dataset.del); selected=null; renderPick(); renderCards(); renderSummary(); scheduleSave();
+    state.props=state.props.filter(p=>p.id!==t.dataset.del); if(state.karta&&state.karta.punkter) state.karta.punkter=state.karta.punkter.filter(x=>x.prop!==t.dataset.del); selected=null; renderPick(); if(window.kartaAndrat) window.kartaAndrat(); else { renderCards(); renderSummary(); } scheduleSave();
   } else if (t.dataset.segdel!==undefined){
     if (t.dataset.confirm!=="1"){ t.dataset.confirm="1"; t.textContent="Bekräfta"; setTimeout(()=>{ if(t.isConnected){t.dataset.confirm="";t.textContent="Ta bort";}},3000); return; }
     const g=state.segments.splice(+t.dataset.segdel,1)[0];
@@ -702,7 +725,9 @@ document.addEventListener("click", e=>{
     p.skiften=[...skiften(p), nyttSkifte("Skifte "+(skiften(p).length+1),0,0,"bc")]; renderCards(); renderSummary(); scheduleSave();
   } else if (t.dataset.delsk){
     const [pid,sid]=t.dataset.delsk.split("|"), p=state.props.find(x=>x.id===pid); if(!p) return;
-    p.skiften=skiften(p).filter(x=>x.id!==sid); renderCards(); renderSummary(); scheduleSave();
+    p.skiften=skiften(p).filter(x=>x.id!==sid);
+    if (state.karta&&Array.isArray(state.karta.punkter)) state.karta.punkter=state.karta.punkter.filter(x=>!(x.prop===pid&&String(x.galler||"").replace(/:slut$/,"")==="sk:"+sid));
+    if (window.kartaAndrat) window.kartaAndrat(); else { renderCards(); renderSummary(); } scheduleSave();
   } else if (t.dataset.addrad){
     const p=state.props.find(x=>x.id===t.dataset.addrad); if(!p) return;
     p.rader=[...rader(p), {id:uid(),namn:"",antal:"",dagar:"",vikt:"1.5",farder:1,tor:true,gods:true}]; renderCards(); renderSummary(); scheduleSave();
@@ -711,7 +736,9 @@ document.addEventListener("click", e=>{
     const [pid,rid]=t.dataset.delrad.split("|"), p=state.props.find(x=>x.id===pid); if(!p) return;
     p.rader=rader(p).filter(x=>x.id!==rid); renderCards(); renderSummary(); scheduleSave();
   } else if (t.id==="addSeg"){
-    state.segments.push({id:String.fromCharCode(65+state.segments.length),namn:"Ny delsträcka",m:0}); renderAll(); scheduleSave();
+    const B="ABCDEFGHIJKLMNOPQRSTUVWXYZ", tagna=new Set(state.segments.map(g=>g.id)); let i=0, id;
+    do { id=i<26?B[i]:B[i%26]+(Math.floor(i/26)+1); i++; } while(tagna.has(id));
+    state.segments.push({id,namn:"Ny delsträcka",m:0}); renderAll(); scheduleSave();
   } else if (t.id==="copy"){
     const {rows}=calc();
     const kr=num(state.schablon.utdebitering)>0;
@@ -815,7 +842,7 @@ async function makePdf(){
     para("Förslaget är räknat med Lantmäteriets tonkilometermetod och schablonvärden enligt PM 2025 (LM2025/006319), på samma sätt som vid en förrättning."+(state.props.some(p=>String(p.andelNu??"").trim()!=="")?" Nuvarande andelar visas som jämförelse.":""));
     para("Stämmer inte uppgifterna om din fastighet? Hör av dig till styrelsen.");
     head("Hur andelstalen räknas");
-    para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till "+utfartOf()+". Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(num(S.minKm)*1000)+" meter.");
+    para("Andelen bygger på hur mycket trafik fastigheten ger och hur långt den kör på vägen ut till "+utfartOf()+". Trafiken gånger väglängden ger fastighetens belastning, och andelen är dess del av summan för alla fastigheter. Kortaste räknade väglängd är "+fmt(minKmOf()*1000)+" meter.");
     { const anv=new Map(); rows.forEach(r=>r.poster.forEach(x=>{ const k=x.namn.replace(/^(.*?)( \d| ×| \(|$).*/,"$1").trim(); if(!anv.has(k)) anv.set(k,x); }));
       const O=PM.omr[S.prodOmr]||PM.omr.Ss, b=[];
       const finns=t=>rows.some(r=>typOf(r.p)===t);
@@ -971,6 +998,17 @@ document.addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b
   else if (b.id==="fastLas") $("#fastFil").click();
   else if (b.id==="projNytt"){ if(confirm("Börja om med ett tomt projekt? Det du har nu försvinner om du inte sparat det som fil.")){ applyRemote({}); save(); openTab="omrade"; renderTabs(); } }
 });
+/* Samma projekt öppet i en annan flik: visa det, så att den ena inte skriver över den andra utan att man vet om det. */
+window.addEventListener("storage",e=>{
+  if (e.key!==LS||e.newValue===null||document.getElementById("annanFlik")) return;
+  const d=document.createElement("div"); d.id="annanFlik"; d.className="nyversion"; d.setAttribute("role","alert");
+  d.innerHTML=`<span>Projektet ändrades i en annan flik eller ett annat fönster.</span><button type="button" id="flikHamta">Visa ändringarna</button><button type="button" class="ghost" id="flikBehall">Behåll mitt</button>`;
+  document.body.appendChild(d);
+});
+document.addEventListener("click",e=>{ const b=e.target.closest("#flikHamta,#flikBehall"); if(!b) return;
+  if (b.id==="flikHamta"){ try{ applyRemote(JSON.parse(localStorage.getItem(LS)||"{}")); setStatus("Ändringarna från den andra fliken visas nu."); }catch(x){ setStatus("Kunde inte läsa ändringarna.",true); } }
+  else { save(); setStatus("Det du har här är sparat. Ladda om den andra fliken innan du fortsätter där."); }
+  const d=document.getElementById("annanFlik"); if(d) d.remove(); });
 document.addEventListener("change",e=>{ if(e.target.id==="pdfUtkast"){ try{ localStorage.setItem("andelstal_utkast",e.target.checked?"1":"0"); }catch(x){} } });
 (()=>{ const u=document.getElementById("pdfUtkast"); if(u){ try{ u.checked=localStorage.getItem("andelstal_utkast")!=="0"; }catch(e){} } })();
 document.addEventListener("change",e=>{

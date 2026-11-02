@@ -221,7 +221,14 @@ function initKarta(){
   map=L.map(el,{zoomControl:true});
   const osm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap-bidragsgivare</a>'});
   const topo=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",{maxZoom:17,subdomains:"abc",attribution:'Karta: © <a href="https://opentopomap.org" target="_blank" rel="noopener">OpenTopoMap</a> (CC-BY-SA), data © OpenStreetMap-bidragsgivare'});
-  osm.addTo(map); L.control.layers({"Vägkarta":osm,"Terrängkarta":topo},null,{position:"topright"}).addTo(map);
+  /* Flygfoto där husen syns. Kartbilder från Esri med källhänvisning. */
+  const foto=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:'Flygfoto: © Esri, Maxar, Earthstar Geographics'});
+  const fotoNamn=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",{maxZoom:19});
+  const flyg=L.layerGroup([foto,fotoNamn]);
+  let bas=(()=>{ try{ return localStorage.getItem("andelstal_bas")||"Vägkarta"; }catch(e){ return "Vägkarta"; } })();
+  const lager0={"Vägkarta":osm,"Terrängkarta":topo,"Flygfoto":flyg};
+  (lager0[bas]||osm).addTo(map); L.control.layers(lager0,null,{position:"topright"}).addTo(map);
+  map.on("baselayerchange",e=>{ try{ localStorage.setItem("andelstal_bas",e.name); }catch(x){} });
   L.control.scale({imperial:false}).addTo(map);
   lager=L.layerGroup().addTo(map); lagerHl=L.layerGroup().addTo(map);
   new VisaKontroll().addTo(map);

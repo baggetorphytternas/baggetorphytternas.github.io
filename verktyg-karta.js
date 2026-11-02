@@ -306,12 +306,21 @@ function satPunkt(val,ll){
   if (!["utfart","delning","punkt"].includes(val)){ const m=mal(), i=m.findIndex(x=>x.val===val), next=m.slice(i+1).concat(m.slice(0,i)).find(x=>!x.satt); aktivt=next?next.val:""; }
   andrat();
 }
+/* Ruta som täcker sidan medan linjen läggs på vägen, så att man inte trycker runt under tiden. */
+function vantar(pa){
+  let el=document.getElementById("vantaRuta");
+  if (!pa){ if(el) el.hidden=true; clearTimeout(vantar.t); return; }
+  if (!el){ el=document.createElement("div"); el.id="vantaRuta"; el.className="vantaruta"; el.setAttribute("role","alertdialog"); el.setAttribute("aria-modal","true"); el.setAttribute("aria-live","assertive");
+    el.innerHTML=`<div class="vantabox"><span class="snurra" aria-hidden="true"></span><strong>Söker vägen på kartan …</strong><small id="vantaText">Linjen läggs på vägen genom dina punkter. Vänta, det tar några sekunder.</small></div>`; document.body.appendChild(el); }
+  el.hidden=false; const t=el.querySelector("#vantaText"); if(t) t.textContent="Linjen läggs på vägen genom dina punkter. Vänta, det tar några sekunder.";
+  clearTimeout(vantar.t); vantar.t=setTimeout(()=>{ const t2=document.getElementById("vantaText"); if(t2) t2.textContent="Det tar lite längre tid än vanligt. Svarar inte vägvisaren inom en halv minut går linjen genom dina punkter."; },6000);
+}
 async function avslutaLinje(){
   const r=ritar; ritar=null;
   if (r && r.pts.length>=2){
     if (foljVag){
-      soker=true; visaHjalp("Lägger linjen på vägen …");
-      const rutt=await hamtaRutt(r.pts); soker=false;
+      soker=true; visaHjalp("Lägger linjen på vägen …"); vantar(true);
+      let rutt=null; try{ rutt=await hamtaRutt(r.pts); } finally { soker=false; vantar(false); }
       if (rutt && rimligRutt(rutt,r.pts)){
         /* Början och slutet behålls exakt, så att linjen hänger ihop med vägar som redan är ritade. */
         r.pts=[r.pts[0],...rutt.slice(1,-1),r.pts[r.pts.length-1]];

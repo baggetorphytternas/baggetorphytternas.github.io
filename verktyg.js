@@ -499,14 +499,15 @@ function renderCards(){
       <p class="hint">Uppfödning för kött och ägg och odling i växthus beror inte på arealen och läggs till som egna poster (PM 3.7.1.5).</p></fieldset>`;
       f+=hastBlock(p); } }
     if (harSkog){ const prod=num(p.skogHa)+num(p.skogFjallHa);
+      const skogVal=()=>{ const P=window.kartaPunkter?window.kartaPunkter():[]; const v=p.skogEgen?(p.punktSkog||""):"";
+        return `<label for="ss-${p.id}">Skogens transporter går från<select id="ss-${p.id}" data-p="${p.id}" data-f="punktSkog"><option value="" ${!v?"selected":""}>Samma punkt som gården</option>${P.map(x=>`<option value="${x.id}" ${v===x.id?"selected":""}>${esc(x.namn)}</option>`).join("")}</select></label>`; };
       f+=`<fieldset class="fs"><legend>Skog</legend>${t==="kombi"?chk(p,"skogSalu","Skogen avverkas för försäljning (ved för husbehov ingår i bostaden)"):""}
-      <div class="grid2">${fld(p,"skogHa",`Produktiv skogsmark, ha (${skogTal()} ton per ha)`)}${harFjall()?fld(p,"skogFjallHa",`Fjällnära skog, ha (${fjallTal()} ton per ha)`):""}${fld(p,"skogRestrHa","Skog där skogsbruk inte får bedrivas, ha (2 ton per ha)")}</div>
+      <div class="grid2 falt2">${fld(p,"skogHa",`Produktiv skogsmark, ha<small>${skogTal()} ton per ha</small>`)}${harFjall()?fld(p,"skogFjallHa",`Fjällnära skog, ha<small>${fjallTal()} ton per ha</small>`):""}${fld(p,"skogRestrHa",`Skog utan skogsbruk, ha<small>2 ton per ha, t.ex. reservat</small>`)}</div>
       ${t==="skog"&&prod===0&&num(p.skogRestrHa)>0?chk(p,"skogJakt","Hela fastigheten är belagd men jakt får bedrivas (jaktresor 60 ton per påbörjade 100 ha)"):""}
-      <p class="hint">Under 1 ha skog räknas inte. Impediment och mycket lågproduktiv skog (sump- och kärrskog) räknas inte. Jaktresor ingår i schablonen per hektar.</p>
-      <div class="skogvag">${t==="skog"?"":(!state.manuell
-        ? chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården")+(p.skogEgen?punktVal("ps-"+p.id,`data-p="${p.id}" data-f="punktSkog"`,p.punktSkog||"","Skogen ansluter vid"):`<p class="hint">Annars räknas skogens transporter från samma punkt som gården.</p>`)
+      <div class="skogvag">${t==="skog"?"":(!state.manuell ? skogVal()
         : `<label>Skogen kör på delsträckor (tomt = samma som gården)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>`)}
-      ${chk(p,"skogJamn","Skogen ligger utspridd jämnt längs vägen (räkna med medelavståndet)")}</div></fieldset>`; }
+      ${chk(p,"skogJamn","Skogen ligger utspridd längs vägen (räkna med medelavstånd)")}</div>
+      <p class="hint liten">Skog under 1 ha, impediment och sump- och kärrskog räknas inte. Jaktresor ingår i schablonen.</p></fieldset>`; }
     if (t==="teknisk") f+=`<fieldset class="fs"><legend>Teknisk anläggning</legend><div class="grid2">${sel(p,"tekFrek","Hur ofta besöks den",[["manad","En gång per månad (500 ton)"],["varannan","Varannan vecka (600 ton)"],["vecka","En gång per vecka (800 ton)"],["tva","Två gånger per vecka (1 100 ton)"]],"manad")}${fld(p,"antalAnl","Antal anläggningar","numeric")}</div>
       ${num(p.antalAnl)>1?chk(p,"kluster","Anläggningarna sköts samlat som ett kluster, till exempel en vindkraftspark (PM 3.10.2.2)"):""}
       <p class="hint">Större underhåll och förnyelse som kan förutses ska räknas in, fördelat per år. Fyll då i den beräkningen som en egen fastighet av typen Beräknas i det enskilda fallet (PM 3.10.2.1).</p></fieldset>`;
@@ -652,6 +653,7 @@ document.addEventListener("input", e=>{
   if (t.dataset.f && t.dataset.p){
     const p=state.props.find(x=>x.id===t.dataset.p); if(!p) return;
     p[t.dataset.f] = t.type==="checkbox" ? t.checked : t.value;
+    if (t.dataset.f==="punktSkog") p.skogEgen=!!t.value;
   } else if (t.dataset.key){
     const p=state.props.find(x=>x.id===t.dataset.p); if(!p) return;
     const arr=new Set(getR(p,t.dataset.key)); t.checked?arr.add(t.dataset.seg):arr.delete(t.dataset.seg);

@@ -49,6 +49,9 @@ async function loadMem(){
   if(error&&!board) ({data,error}=await window.SB.from("medlemmar").select(MEM_COLS.join(",")));
   if(error&&board) ({data,error}=await window.SB.from("medlemmar").select(MEM_COLS.join(",")));
   if(error||!data) return;
+  /* Saknas dold i svaret (äldre databas eller en hämtning utan kolumnen) behålls det värde appen redan har. */
+  const tidigare=new Map((site.medlemmar||[]).map(m=>[m.id,!!m.dold]));
+  data.forEach(r=>{ if(r.dold===undefined) r.dold=tidigare.get(r.id)||false; });
   memSnap=new Map(data.map(r=>[r.id,JSON.stringify(memRow(r))]));
   const lokala=(site.medlemmar||[]).filter(m=>editing.has(m.id)), lk=new Map(lokala.map(m=>[m.id,m]));
   site.medlemmar=data.map(r=>lk.get(r.id)||r).concat(lokala.filter(m=>!data.some(r=>r.id===m.id)));
@@ -841,7 +844,7 @@ async function kontaktDialog(){
                : await window.SB.rpc("lagg_till_min_kontakt",{p_fastighet:g("#kuF").value,p_namn:namn,p_telefon:tel,p_adress:adr});
     if(r.error){ g("#kuOk").disabled=false; msg.textContent="Det gick inte att spara. Försök igen."; return; }
     const dold=g("#kuD").checked;
-    if(dold!==!!(m&&m.dold)){ const rd=await window.SB.rpc("dolj_mina_uppgifter",{p_dold:dold}); if(rd.error){ g("#kuOk").disabled=false; msg.textContent="Uppgifterna är sparade, men det gick inte att ändra om de ska döljas. Försök igen."; return; } }
+    if(dold!==!!(m&&m.dold)){ const rd=await window.SB.rpc("dolj_mina_uppgifter",{p_dold:dold}); if(!rd.error) minaKontakter().forEach(x=>x.dold=dold); if(rd.error){ g("#kuOk").disabled=false; msg.textContent="Uppgifterna är sparade, men det gick inte att ändra om de ska döljas. Försök igen."; return; } }
     await loadMem();
     renderLists(); d.close(); setMsg("Dina uppgifter är sparade.");
     const kt=q("#kKontTxt"); if(kt) kt.textContent=[namn,tel].filter(Boolean).join(" · ");

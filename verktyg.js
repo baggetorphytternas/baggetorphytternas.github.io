@@ -469,6 +469,7 @@ function fallKort(){
 }
 document.addEventListener("click",e=>{ const lg=e.target.closest("#cards fieldset.fall>legend"); if(!lg) return;
   const fs=lg.parentElement, oppen=fs.classList.toggle("stangd")===false; FALL[lg.textContent.trim()]=oppen; lg.setAttribute("aria-expanded",String(oppen));
+  if (oppen&&fs.querySelector(".minikarta")&&window.kartaMini) window.kartaMini();
   try{ localStorage.setItem("andelstal_fall",JSON.stringify(FALL)); }catch(x){} });
 document.addEventListener("keydown",e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("#cards fieldset.fall>legend")){ e.preventDefault(); e.target.click(); } });
 function renderCards(){
@@ -520,7 +521,10 @@ function renderCards(){
       ${kartlage?`${punktVal("pr-"+p.id,`data-p="${p.id}" data-f="punktRoute"`,p.punktRoute||"",t==="jord"&&p.gardUtanfor?"Gårdens trafik kör in på vägen vid":"Ansluter till vägen vid")}
         <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.${(p.extraRoute||[]).length?` Med tillagda delsträckor räknas ${fmt(segKm(p.route),3)} km.`:""}`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
         ${state.segments.length?(()=>{ const auto=new Set(p.autoRoute||[]), extra=new Set(p.extraRoute||[]);
-          return `<label>Använder delsträckor</label><div class="segs">${state.segments.map(g=>auto.has(g.id)
+          return `<div class="minikarta" data-p="${p.id}" role="img" aria-label="Karta med delsträckorna"></div>
+          <p class="hint miniforklaring"><span><span class="mf auto"></span>Följer av anslutningspunkten</span><span><span class="mf extra"></span>Tillagd</span><span><span class="mf ovrig"></span>Används inte</span></p>
+          <p class="hint">Tryck på en grå eller orange sträcka för att lägga till eller ta bort den.</p>
+          <label>Använder delsträckor</label><div class="segs">${state.segments.map(g=>auto.has(g.id)
             ? `<span class="seg on auto" title="Följer av anslutningspunkten">${esc(g.id)}</span>`
             : `<label class="seg ${extra.has(g.id)?"on":""}" for="ex-${p.id}-${g.id}" title="${esc(g.namn||"")}"><input type="checkbox" id="ex-${p.id}-${g.id}" data-p="${p.id}" data-key="extraRoute" data-seg="${esc(g.id)}" ${extra.has(g.id)?"checked":""}>${esc(g.id)}</label>`).join("")}</div>
           <p class="hint">Fyllda bokstäver följer av anslutningspunkten. Kryssa i fler om fastighetens trafik även kör där.</p>`; })():""}
@@ -549,6 +553,7 @@ function renderCards(){
     <div class="calc" id="calc-${p.id}"></div>
   </div>`; }).join("");
   fallKort();
+  if (window.kartaMini) window.kartaMini();
 }
 document.addEventListener("change", e=>{
   const id=e.target.dataset&&e.target.dataset.typ; if(!id) return;

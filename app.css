@@ -982,3 +982,12 @@ details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
 .hint.liten{font-size:.8rem;margin:0}
 .skogvag .check{margin:0}
 .seg.auto{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default}
+.minikarta{height:240px;border-radius:10px;border:1px solid var(--line);z-index:0}
+@media (min-width:700px){ .minikarta{height:300px} }
+.miniforklaring{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;font-size:.8rem;margin:0}
+.miniforklaring>span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.mf{display:inline-block;width:18px;height:5px;border-radius:3px}
+.mf.auto{background:#1f5c41}.mf.extra{background:#d97706}.mf.ovrig{background:#94a3b8}
+.ksegm .kseg.auto{background:#1f5c41;color:#fff;border-color:#1f5c41}
+.ksegm .kseg.extra{background:#d97706;color:#fff;border-color:#d97706}
+.ksegm .kseg.ovrig{color:#64748b;border-color:#94a3b8}

@@ -575,6 +575,28 @@ window.renderAll=function(){ orig(); if(map) rita(); renderLista(); };
 (()=>{ let F={}; try{ F=JSON.parse(localStorage.getItem("andelstal_paneler")||"{}"); }catch(e){}
   document.querySelectorAll("details[data-fallpanel]").forEach(d=>{ if(F[d.dataset.fallpanel]) d.open=true;
     d.addEventListener("toggle",()=>{ F[d.dataset.fallpanel]=d.open; try{ localStorage.setItem("andelstal_paneler",JSON.stringify(F)); }catch(e){} }); }); })();
+/* Liten karta på fastighetskortet: fastighetens delsträckor gröna, tillagda orange, övriga grå.
+   Ett tryck på en grå eller orange sträcka lägger till eller tar bort den. */
+let mini=null;
+window.kartaMini=function(){
+  if (mini){ mini.remove(); mini=null; }
+  const el=document.querySelector("#cards .minikarta"); if(!el||!window.L) return;
+  const p=state.props.find(x=>x.id===el.dataset.p), geo=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1);
+  if (!p||!geo.length){ el.hidden=true; return; }
+  if (el.offsetParent===null) return;
+  mini=L.map(el,{scrollWheelZoom:false,zoomControl:true});
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(mini);
+  const auto=new Set(p.autoRoute||[]), extra=new Set(p.extraRoute||[]), b=L.latLngBounds([]), F={auto:"#1f5c41",extra:"#d97706",ovrig:"#94a3b8"};
+  geo.forEach(g=>{ g.geo.forEach(q=>b.extend(q)); const typ=auto.has(g.id)?"auto":extra.has(g.id)?"extra":"ovrig";
+    L.polyline(g.geo,{color:"#fff",weight:typ==="ovrig"?8:11,opacity:.9,interactive:false}).addTo(mini);
+    const l=L.polyline(g.geo,{color:F[typ],weight:typ==="ovrig"?5:7,opacity:1}).addTo(mini);
+    if (typ!=="auto"&&!state.manuell){ l.on("click",()=>{ const s=new Set(p.extraRoute||[]); s.has(g.id)?s.delete(g.id):s.add(g.id); p.extraRoute=[...s]; andrat(); }); l.getElement&&l.getElement()&&(l.getElement().style.cursor="pointer"); }
+    L.marker(mittpunkt(g.geo),{icon:L.divIcon({className:"ksegm",html:`<span class="kseg ${typ}">${esc(g.id)}</span>`,iconSize:null}),interactive:false,keyboard:false}).addTo(mini); });
+  const pt=punktFor(p,"route"); if(pt) L.marker(pt.ll,{icon:ikon("ansl",p.namn||""),title:p.namn||"",interactive:false}).addTo(mini);
+  const pass=()=>{ if(!mini) return; mini.invalidateSize(); if(b.isValid()) mini.fitBounds(b.pad(0.06)); };
+  pass(); setTimeout(pass,60);
+};
 window.kartaTest={natverk,forslag,tillampa,dijkstra,lasKoordinat,GK,satPunkt,avslutaLinje,mal,get map(){return map;}};
 if (typeof openTab!=="undefined") window.kartaSteg(openTab);
+if (typeof openTab!=="undefined"&&openTab==="fast") window.kartaMini();
 })();

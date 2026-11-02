@@ -995,3 +995,6 @@ details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
 .pdfklar span{font-weight:700;color:var(--accent);margin-right:4px}
 a.button{display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;border-radius:10px;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;border:1px solid var(--accent)}
 a.button.ghost{background:var(--surface);color:var(--accent);border-color:var(--line-strong)}
+.vkver{font-size:.75rem;opacity:.75;margin-left:auto;white-space:nowrap}
+.nyversion{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1500;background:#1f2a24;color:#fff;border-radius:12px;padding:10px 12px 10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:calc(100% - 24px)}
+.nyversion button{background:#fff;color:#1f2a24;border:0;min-height:0;padding:6px 12px}

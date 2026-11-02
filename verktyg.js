@@ -770,7 +770,7 @@ async function kartbild(){
   const pts=geo.flatMap(g=>g.geo), lat=pts.map(p=>p[0]), lng=pts.map(p=>p[1]);
   const S=Math.min(...lat), N=Math.max(...lat), W=Math.min(...lng), E=Math.max(...lng);
   const px=(la,lo,z)=>{ const s=256*2**z, r=la*Math.PI/180; return [(lo+180)/360*s, (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*s]; };
-  let z=17; for(;z>8;z--){ const a=px(N,W,z), b=px(S,E,z); if(b[0]-a[0]<=1200&&b[1]-a[1]<=900) break; }
+  let z=17; for(;z>8;z--){ const a=px(N,W,z), b=px(S,E,z); if(b[0]-a[0]<=1300&&b[1]-a[1]<=1700) break; }
   const a=px(N,W,z), b=px(S,E,z), pad=60, x0=Math.floor(a[0]-pad), y0=Math.floor(a[1]-pad), w=Math.ceil(b[0]-a[0]+2*pad), h=Math.ceil(b[1]-a[1]+2*pad);
   const cv=document.createElement("canvas"); cv.width=w; cv.height=h; const c=cv.getContext("2d"); c.fillStyle="#eeeeea"; c.fillRect(0,0,w,h);
   const t0=Math.floor(x0/256), t1=Math.floor((x0+w)/256), u0=Math.floor(y0/256), u1=Math.floor((y0+h)/256), jobb=[];
@@ -840,9 +840,9 @@ async function makePdf(){
     para("En gård med bostad räknas med både bostaden och sin mark."+(num(S.minAndel)>0?" Lägsta andel är "+fmt(num(S.minAndel),1)+" %.":""),9.5,muted);
     // map
     doc.addPage(); y=M;
-    head("Vägen och delsträckorna");
-    /* Kartan och tabellen ska rymmas på en sida: kartans höjd anpassas efter antalet delsträckor. */
-    const radH=5.6, tabH=8+(state.segments.length+1)*radH, ledigH=Math.max(60,Math.min(150,282-y-tabH-16));
+    head("Karta över vägen");
+    /* Kartan har en egen sida och får all plats som finns. */
+    const ledigH=282-y-10;
     const bild=await kartbild();
     if (bild){ const bw2=Math.min(CW,ledigH*bild.w/bild.h), bh=bw2*bild.h/bild.w;
       doc.addImage(bild.data,"JPEG",M+(CW-bw2)/2,y,bw2,bh); y+=bh+4;
@@ -864,6 +864,7 @@ async function makePdf(){
           doc.text(pdfText(u?"Utfart":pdfName(p?p.namn:"")),X(q)+2,Y(q)-1.5); });
         y=y0+(maxN-minN)*sc+8; doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Norr är uppåt. Skiss ur vägnätet i verktyget."),M,y); y+=5;
       } }
+    doc.addPage(); y=M; head("Delsträckorna");
     const segTot=state.segments.reduce((s,g)=>s+num(g.m),0);
     table(["Delsträcka","Sträcka","Längd"],state.segments.map(g=>[g.id,g.namn,fmt(num(g.m))+" m"]).concat([["","Totalt",fmt(segTot)+" m"]]),{styles:{font:"helvetica",fontSize:8.5,cellPadding:1.3,textColor:ink,lineColor:[214,220,212],lineWidth:0.2},columnStyles:{0:{cellWidth:22},2:{cellWidth:26,halign:"right"}},rowPageBreak:"avoid",didParseCell:d=>{ if(d.section==="body"&&d.row.index===state.segments.length) d.cell.styles.fontStyle="bold"; }});
     if (!bild) para("Längderna är uppmätta på karta.",8.5,muted);
@@ -900,6 +901,14 @@ async function makePdf(){
     else setStatus("Kunde inte skapa PDF. Ladda om sidan och försök igen.",true);
   }finally{ btn.disabled=false; btn.innerHTML=old; }
 }
+/* Versionen visas i sidhuvudet. Finns en nyare version publicerad visas en uppmaning att ladda om sidan. */
+const VER=(()=>{ try{ return new URL(document.currentScript.src).searchParams.get("v")||""; }catch(e){ return ""; } })();
+(()=>{ const top=document.querySelector(".vk-top-in"); if(top&&VER){ const v=document.createElement("small"); v.className="vkver"; v.textContent="Version "+VER; top.appendChild(v); }
+  const kolla=async()=>{ try{ const t=await (await fetch("verktyg.html?k="+Date.now(),{cache:"no-store"})).text(); const m=t.match(/verktyg\.js\?v=([\d.]+)/);
+      if (m&&VER&&m[1]!==VER&&!document.getElementById("nyVersion")){ const d=document.createElement("div"); d.id="nyVersion"; d.className="nyversion";
+        d.innerHTML=`<span>En nyare version av verktyget finns (${m[1]}).</span><button type="button" id="laddaOm">Ladda om</button>`; document.body.appendChild(d); } }catch(e){} };
+  setTimeout(kolla,3000); setInterval(kolla,10*60*1000);
+  document.addEventListener("click",e=>{ if(e.target.closest("#laddaOm")){ save(); location.reload(); } }); })();
 /* Höjder för det som stannar kvar överst: sidhuvudet, stegen och kartverktygen. */
 function stickyHojder(){
   const top=document.querySelector(".vk-top"), sw=document.querySelector("#page-verktyg>.subwrap");

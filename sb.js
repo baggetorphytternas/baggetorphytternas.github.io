@@ -248,11 +248,13 @@ function kontoDialog(s,fraga){
       <div class="krow"><div class="ktxt"><strong class="khead">Notiser <button type="button" class="hjalpbtn" id="kNotHjalp" aria-label="Hjälp med notiser" title="Hur gör jag?">?</button></strong><small id="kNotTxt">Kontrollerar…</small></div><div class="kbtns" id="kNotBtns"></div></div>
       <div class="krow"><div class="ktxt"><strong>Lösenord</strong><small>${har?"Du loggar in med mejl och lösenord.":"Du har inget lösenord än och loggar in med mejllänk."}</small></div><div class="kbtns"><button type="button" class="ghost small" id="kPwBtn">${har?"Byt lösenord":"Välj lösenord"}</button></div></div>
       ${pwForm}
+      ${window.VAG_VY&&window.VAG_VY.superadmin?`<div class="krow"><div class="ktxt"><strong>Visa appen som</strong><small>Se appen precis som en annan roll ser den, för att hitta problem. Gäller i högst två timmar.</small></div><div class="kbtns"><select id="kVy" aria-label="Visa appen som"><option value="">Superadmin (du)</option>${Object.entries(VY_NAMN).map(([k,v])=>`<option value="${k}" ${window.VAG_VY.visa_som===k?"selected":""}>${v}</option>`).join("")}</select></div></div>`:""}
     </div>
     <div class="bdlg-btns"><button value="close" class="ghost">Stäng</button></div>
     <button type="button" class="linkbtn" id="kOut">Logga ut</button></form>`;
   document.body.appendChild(d); d.addEventListener("close",()=>{ if(fraga) LS.set("vag_losen_fraga","nej"); d.remove(); });
   const g=id=>d.querySelector(id);
+  if(g("#kVy")) g("#kVy").onchange=e=>{ e.target.disabled=true; bytVy(e.target.value); };
   if(g("#kPwBtn")) g("#kPwBtn").onclick=()=>{ const box=g("#kPwBox"); box.hidden=!box.hidden; g("#kPwBtn").textContent=box.hidden?(har?"Byt lösenord":"Välj lösenord"):"Avbryt"; if(!box.hidden) g("#kPw1").focus(); };
   g("#kSave").onclick=async()=>{ const a=g("#kPw1").value, b=g("#kPw2").value, m=g("#kMsg");
     if(a.length<8){ m.textContent="Lösenordet måste ha minst 8 tecken."; return; }
@@ -280,11 +282,23 @@ function kontoDialog(s,fraga){
   if(!fraga&&window.kontoBind) window.kontoBind(d);
   d.showModal();
 }
+const VY_NAMN={medlem:"Medlem",styrelse:"Styrelse",admin:"Admin"};
+async function bytVy(r){ try{ const {error}=await sb.rpc("visa_som",{p_roll:r||null}); if(error) throw error; location.reload(); }catch(e){ alert("Det gick inte att byta vy."); } }
+function visaSomRad(v){
+  let b=document.getElementById("vyRad"); if(!b){ b=document.createElement("div"); b.id="vyRad"; b.setAttribute("role","status"); document.body.prepend(b); }
+  const till=v.till?new Date(v.till).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"}):"";
+  b.innerHTML=`<span>Du ser appen som <strong>${VY_NAMN[v.visa_som]||v.visa_som}</strong>${till?` till ${till}`:""}. Allt du gör sker med den rollens behörighet.</span><button type="button" id="vyTillbaka">Tillbaka till superadmin</button>`;
+  document.body.classList.add("har-vyrad");
+  b.querySelector("#vyTillbaka").onclick=()=>bytVy(null);
+}
 async function start(s){
   if (document.readyState==="loading") await new Promise(r=>document.addEventListener("DOMContentLoaded",r,{once:true}));
   session=s;
   if(!s){ loginForm(); return; }
   const {data}=await sb.rpc("min_roll"); roll=data||null;
+  /* Superadmin kan se appen som en annan roll (databasen gäller då den rollens regler). */
+  try{ const v=await sb.rpc("min_vy"); window.VAG_VY=(v&&v.data)||null; }catch(e){ window.VAG_VY=null; }
+  if(window.VAG_VY&&window.VAG_VY.visa_som) visaSomRad(window.VAG_VY);
   if(roll==="admin"){ try{ const r=await sb.rpc("ar_superadmin"); window.VAG_SUPER=r.data===true; }catch(e){} }
   document.body.classList.toggle("is-super",!!window.VAG_SUPER);
   if(!roll){ requestAccess(s); return; }

@@ -78,7 +78,10 @@ function natverk(){
     let best=null; E.forEach(e=>{ const r=proj(pt.ll,e.a.ll,e.b.ll); if(!best||r.d<best.r.d) best={e,r}; });
     if (!best) return;
     const {e,r}=best, da=r.t*e.len, db=(1-r.t)*e.len; let n;
-    if (da<1) n=e.a; else if (db<1) n=e.b;
+    /* Ligger punkten inom 12 m från en korsning, vägände eller annan punkt används den, så att inga meterkorta delsträckor uppstår. */
+    const deg=new Map(); E.forEach(x=>{ deg.set(x.a,(deg.get(x.a)||0)+1); deg.set(x.b,(deg.get(x.b)||0)+1); });
+    let nara=null, nd=12; N.forEach(x=>{ if(!(x.tags.length||deg.get(x)!==2)) return; const d=hav(x.ll,r.pt); if(d<nd){ nd=d; nara=x; } });
+    if (nara) n=nara; else if (da<1) n=e.a; else if (db<1) n=e.b;
     else { n={id:N.length,ll:r.pt,tags:[]}; N.push(n); E=E.filter(x=>x!==e); E.push({a:e.a,b:n,len:hav(e.a.ll,n.ll)},{a:n,b:e.b,len:hav(n.ll,e.b.ll)}); }
     n.tags.push(pt); pnod.set(pt.id,n); avst.set(pt.id,r.d);
   });
@@ -106,13 +109,16 @@ function kedjor(G){
 /* Gemensamma anslutningspunkter (typ "punkt") som fastigheter kan välja i stället för en egen punkt.
    Fältet för valet: gården p.punktRoute, skogen p.punktSkog, skiftet s.punkt och slutet på ett utspritt skifte s.punktSlut. */
 const namnPunkter=()=>KS().punkter.filter(x=>x.typ==="punkt");
+/* Punkter som fastigheter kan välja: anslutningspunkterna och utfarterna (för trafik som kommer in utifrån). */
+const utfNamn=x=>{ const U=KS().punkter.filter(y=>y.typ==="utfart"); return x.namn||("Utfart"+(U.length>1?" "+(U.indexOf(x)+1):"")+" (allmän väg)"); };
+const valbara=()=>[...KS().punkter.filter(x=>x.typ==="utfart").map(x=>({id:x.id,namn:utfNamn(x)})), ...namnPunkter().map(x=>({id:x.id,namn:x.namn||"Anslutningspunkt"}))];
 function valFalt(p,g){
   if (g==="route") return [p,"punktRoute"]; if (g==="skog") return [p,"punktSkog"];
   const sid=g.slice(3).replace(/:slut$/,""), s=skiften(p).find(x=>x.id===sid); if(!s) return [null,""];
   return [s, g.endsWith(":slut")?"punktSlut":"punkt"];
 }
 function punktFor(p,g){
-  const [o,f]=valFalt(p,g), id=o&&o[f], np=id&&KS().punkter.find(x=>x.id===id&&x.typ==="punkt");
+  const [o,f]=valFalt(p,g), id=o&&o[f], np=id&&KS().punkter.find(x=>x.id===id&&(x.typ==="punkt"||x.typ==="utfart"));
   return np || KS().punkter.find(x=>x.typ==="anslutning"&&x.prop===p.id&&(x.galler||"route")===g) || null;
 }
 /* Vilka punkter en fastighet behöver: gården, skogen (om den nås från annat ställe) och skiften som nås via vägen. */
@@ -123,7 +129,7 @@ function galler(p){
   if (t==="jord") skiften(p).filter(s=>p.gardUtanfor||(s.plats&&s.plats!=="bc")).forEach(s=>{ ut.push("sk:"+s.id); if(s.plats==="jamn") ut.push("sk:"+s.id+":slut"); });
   return ut;
 }
-window.kartaPunkter=()=>namnPunkter().map(x=>({id:x.id,namn:x.namn||"Anslutningspunkt"}));
+window.kartaPunkter=valbara;
 const BOKST="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const kedjeId=i=>i<26 ? BOKST[i] : BOKST[i%26]+(Math.floor(i/26)+1);
 /* Förslag på delsträckor och vägval utifrån kartan. Ändrar inget förrän det tillämpas. */
@@ -133,8 +139,8 @@ function forslag(){
   const G=natverk(), utf=k.punkter.filter(p=>p.typ==="utfart").map(p=>G.pnod.get(p.id)).filter(Boolean);
   if (!utf.length) return {fel:"Sätt ut minst en utfart till allmän väg."};
   const D=dijkstra(G,utf), slut=n=>n.e.length===1&&!n.tags.length;
-  /* Korta stumpar efter sista punkten (under 10 m) är ritfel och tas inte med. */
-  const K=kedjor(G).filter(c=>!(c.len<10&&(slut(c.from)||slut(c.to))));
+  /* Korta stumpar efter sista punkten (under 30 m) är ritfel och tas inte med. */
+  const K=kedjor(G).filter(c=>!(c.len<30&&(slut(c.from)||slut(c.to))));
   const dn=n=>D.dist.get(n);
   K.forEach(c=>{ c.d=Math.min(dn(c.from),dn(c.to)); });
   K.sort((a,b)=>(a.d-b.d)||(b.len-a.len));
@@ -273,11 +279,7 @@ function klick(e){
   if (mode==="utfart"){ satPunkt("utfart",ll); return; }
   if (mode==="punkt"){ if(!KS().vagar.length){ visaHjalp("Rita vägen först."); return; } satPunkt("punkt",ll); return; }
   if (mode==="dela"){ if(!KS().vagar.length){ visaHjalp("Rita vägen först."); return; } satPunkt("delning",ll); return; }
-  if (mode==="ansl"){
-    if (!KS().vagar.length){ visaHjalp("Rita vägen i steg 3 först."); return; }
-    if (!aktivt){ visaHjalp("Välj först en fastighet i listan under kartan."); return; }
-    satPunkt(aktivt,ll); return;
-  }
+  if (mode==="ansl") return; /* I steg 4 ändras inget på kartan; punkter sätts ut i steg 3. */
 }
 function satPunkt(val,ll){
   const k=KS(); let pt;
@@ -369,7 +371,7 @@ function rita(){
     const del=pt.typ==="delning", np=pt.typ==="punkt", ut=pt.typ==="utfart"||del||np, g=pt.galler||"route", val=ut?"":pt.prop+"|"+g;
     const cls=(np?"punkt":del?"delning":ut?"utfart":g==="skog"?"skog":g.startsWith("sk:")?"skifte":"ansl")+(val&&val===aktivt?" aktiv":"");
     const txt=del?"✂":np?(pt.namn||"Anslutningspunkt"):pt.typ==="utfart"?"Utfart":gallerText(pt);
-    const m=L.marker(pt.ll,{icon:ikon(cls,txt),title:txt,draggable:mode==="flytta"||(steg==="ansl"&&!ut),zIndexOffset:ut?1000:500}).addTo(lager);
+    const m=L.marker(pt.ll,{icon:ikon(cls,txt),title:txt,draggable:mode==="flytta",zIndexOffset:ut?1000:500}).addTo(lager);
     if (mode==="visa") m.bindPopup(()=>`<b>${esc(gallerText(pt))}</b><br>${esc(swText(pt.ll))} (SWEREF 99 TM)${avstText(pt)}`,{autoPan:false});
     m.on("dragend",()=>{ const q=m.getLatLng(); pt.ll=[r6(q.lat),r6(q.lng)]; andrat(); });
     if (mode==="radera") m.on("click",()=>{ KS().punkter=KS().punkter.filter(x=>x!==pt); andrat(); });
@@ -390,7 +392,7 @@ function mal(){
     else if (g==="skog") del="skogen";
     else { const s=skiften(p).find(x=>x.id===g.slice(3).replace(/:slut$/,"")); del=(s&&s.namn||"skifte")+(s&&s.plats==="jamn"?(g.endsWith(":slut")?", slutet":", början"):""); }
     const pt=punktFor(p,g);
-    ut.push({val:p.id+"|"+g, p, namn:p.namn||"Namnlös", del, pt, via:pt&&pt.typ==="punkt"?(pt.namn||"anslutningspunkt"):""}); }));
+    ut.push({val:p.id+"|"+g, p, namn:p.namn||"Namnlös", del, pt, via:pt&&pt.typ==="punkt"?(pt.namn||"anslutningspunkt"):pt&&pt.typ==="utfart"?utfNamn(pt):""}); }));
   ut.forEach(m=>m.satt=!!m.pt); return ut;
 }
 window.kartaHarPunkt=(prop,g)=>{ const p=state.props.find(x=>x.id===prop); return !!(p&&punktFor(p,g)); };
@@ -423,17 +425,17 @@ function renderLista(){
   renderPunktLista();
   const el=document.getElementById("anslLista");
   if (el){
-    const m=mal(), {G,D}=avstand(), klara=m.filter(x=>x.satt).length, P=namnPunkter();
+    const m=mal(), {G,D}=avstand(), klara=m.filter(x=>x.satt).length, P=valbara();
     const egen=x=>{ const [prop,g]=x.val.split("|"); return KS().punkter.some(q=>q.typ==="anslutning"&&q.prop===prop&&(q.galler||"route")===g); };
     if (!aktivt || !m.some(x=>x.val===aktivt)) aktivt=(m.find(x=>!x.satt)||{}).val||"";
     el.innerHTML = !KS().vagar.length ? `<p class="notice">Rita vägen och sätt ut utfarten i steg 3 först.</p>`
       : !m.length ? `<p class="empty">Inga fastigheter ännu. Lägg in dem i steg 2.</p>`
-      : `<p class="hint">${klara} av ${m.length} utsatta.</p><div class="anslrader">${m.map(x=>{ const n=x.pt&&G.pnod.get(x.pt.id), d=n&&D?D.dist.get(n):NaN;
-        return `<div class="anslrad${x.val===aktivt?" on":""}${x.satt?" klar":""}"><button type="button" class="anslval" data-mal="${esc(x.val)}"><strong>${esc(x.namn)}${x.del?` – ${esc(x.del)}`:""}</strong><small>${x.satt?(x.via?`Ansluter vid ${esc(x.via)}`:"Utsatt")+(isFinite(d)?` · ${fmt(d/1000,3)} km till ${esc(utfartOf())}`:" · hittar ingen väg till utfarten"):(x.val===aktivt?"Tryck på kartan nu":"Inte utsatt")}</small></button>
-          <span class="anslval2">${P.length?`<select aria-label="Anslutningspunkt för ${esc(x.namn)}" data-malval="${esc(x.val)}"><option value="">${egen(x)?"Egen punkt på kartan":"Välj punkt …"}</option>${P.map(q=>`<option value="${q.id}" ${x.via&&x.pt&&x.pt.id===q.id?"selected":""}>${esc(q.namn||"Anslutningspunkt")}</option>`).join("")}</select>`:""}
+      : `<p class="hint">${klara} av ${m.length} har en anslutningspunkt.</p><div class="anslrader">${m.map(x=>{ const n=x.pt&&G.pnod.get(x.pt.id), d=n&&D?D.dist.get(n):NaN;
+        return `<div class="anslrad${x.val===aktivt?" on":""}${x.satt?" klar":""}"><button type="button" class="anslval" data-mal="${esc(x.val)}"><strong>${esc(x.namn)}${x.del?` – ${esc(x.del)}`:""}</strong><small>${x.satt?(x.via?`Ansluter vid ${esc(x.via)}`:"Utsatt")+(isFinite(d)?` · ${fmt(d/1000,3)} km till ${esc(utfartOf())}`:" · hittar ingen väg till utfarten"):"Ingen anslutningspunkt vald"}</small></button>
+          <span class="anslval2">${P.length?`<select aria-label="Anslutningspunkt för ${esc(x.namn)}" data-malval="${esc(x.val)}"><option value="">${egen(x)?"Egen punkt på kartan":"Välj anslutningspunkt …"}</option>${P.map(q=>`<option value="${q.id}" ${x.via&&x.pt&&x.pt.id===q.id?"selected":""}>${esc(q.namn)}</option>`).join("")}</select>`:""}
           ${x.satt&&!x.via?`<button type="button" class="ghost small" data-maldel="${esc(x.val)}">Ta bort</button>`:""}</span></div>`; }).join("")}</div>`;
     const a=document.getElementById("anslAktiv");
-    if (a && steg==="ansl"){ const x=m.find(y=>y.val===aktivt); a.hidden=!x; a.textContent=x?`Tryck på kartan där ${x.namn}${x.del?` (${x.del})`:""} ansluter till vägen.`:""; if(!x&&m.length&&klara===m.length){ a.hidden=false; a.textContent="Alla är utsatta. Gå vidare till Resultat."; } }
+    if (a && steg==="ansl"){ const x=m.find(y=>y.val===aktivt); a.hidden=!x; a.textContent=x?`Välj anslutningspunkt för ${x.namn}${x.del?` (${x.del})`:""} i listan.`:""; if(!valbara().length){ a.hidden=false; a.textContent="Sätt först ut anslutningspunkter längs vägen i steg 3, Vägen."; } else if(!x&&m.length&&klara===m.length){ a.hidden=false; a.textContent="Alla har en anslutningspunkt. Gå vidare till Resultat."; } }
   }
   const si=document.getElementById("segInfo"), k=KS();
   if (si){
@@ -479,7 +481,7 @@ document.addEventListener("click",e=>{
   if (b.dataset.maldel){ const [prop,g]=b.dataset.maldel.split("|"); KS().punkter=KS().punkter.filter(x=>!(x.prop===prop&&(x.galler||"route")===g)); aktivt=b.dataset.maldel; andrat(); return; }
   if (b.id==="kartExport"){ exportera(); return; }
   if (b.id==="kartMinPos"){ if(!navigator.geolocation){ setStatus("Enheten kan inte visa position.",true); return; }
-    navigator.geolocation.getCurrentPosition(p=>{ const ll=[r6(p.coords.latitude),r6(p.coords.longitude)]; if(map) map.setView(ll,17); if(aktivt) satPunkt(aktivt,ll); },()=>setStatus("Kunde inte hämta position.",true),{enableHighAccuracy:true,timeout:15000}); return; }
+    navigator.geolocation.getCurrentPosition(p=>{ const ll=[r6(p.coords.latitude),r6(p.coords.longitude)]; if(map) map.setView(ll,17); if(mode==="punkt") satPunkt("punkt",ll); else if(mode==="utfart") satPunkt("utfart",ll); },()=>setStatus("Kunde inte hämta position.",true),{enableHighAccuracy:true,timeout:15000}); return; }
   if (b.id==="kartKoordBtn"){ const ll=lasKoordinat($("#kartKoord").value); if(!ll){ setStatus("Kunde inte läsa koordinaten. Skriv till exempel 6555123 598765 eller 59,1234 16,5678.",true); return; } if(map) map.setView(ll,16); return; }
 });
 document.addEventListener("change",e=>{
@@ -492,7 +494,7 @@ window.kartaSteg=function(s){
   steg=s; const plats=document.querySelector(`[data-kartplats="${s}"]`), el=document.getElementById("karta");
   if (!plats||!el){ if(mode==="vag") avslutaLinje(); return; }
   plats.appendChild(el);
-  mode = s==="ansl" ? "ansl" : "visa";
+  mode = "visa";
   document.querySelectorAll("[data-km]").forEach(b=>b.classList.toggle("on",false));
   const kl=document.getElementById("kartKlar"); if(kl) kl.hidden=true;
   /* Räkna om från kartan när man byter steg, så att vägval alltid stämmer med kartan. */

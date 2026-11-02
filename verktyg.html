@@ -84,6 +84,7 @@
       <ol class="steglista">
         <li><b>Rita väg:</b> tryck där vägen börjar och sedan längs vägen, gärna i kurvorna. Tryck <i>Klar med linjen</i>, så läggs linjen på vägen. Rita varje gren som en egen linje och börja den på vägen den tar av från.</li>
         <li><b>Sätt utfart:</b> tryck där vägen ansluter till allmän väg. Har vägen flera anslutningar sätter du ut alla.</li>
+        <li><b>Anslutningspunkt:</b> tryck där en eller flera fastigheter ansluter till vägen och ge punkten ett namn under kartan. I steg 4 väljer du sedan punkt för varje fastighet.</li>
       </ol>
       <p class="hint">Delsträckor och längder räknas fram automatiskt. Vägen delas vid korsningar och där fastigheter ansluter. Vill du dela på fler ställen trycker du <i>Dela</i> och sedan på vägen. Var fastigheterna ansluter sätter du ut i nästa steg.</p>
       <div class="row kartverktyg">
@@ -94,6 +95,7 @@
         <button type="button" class="chipbtn" data-km="flytta">Flytta</button>
         <button type="button" class="chipbtn" data-km="radera">Ta bort</button>
       </div>
+      <div class="row"><button type="button" class="ghost small" id="kartMinPos">Sätt utfart eller anslutningspunkt där jag står</button></div>
       <div id="kartKlar" hidden>
         <div class="row"><button type="button" class="small" id="kartKlarBtn">Klar med linjen</button><button type="button" class="ghost small" id="kartAngra">Ångra senaste</button></div>
         <label class="check" for="foljVag"><input type="checkbox" id="foljVag" checked>Lägg linjen på vägen när den är klar (annars raka linjer mellan punkterna)</label>
@@ -123,12 +125,12 @@
 
   <section class="steg" id="steg-ansl" hidden>
     <div class="panel kartinfo">
-      <p>Tryck på en fastighet i listan och sedan på kartan där fastighetens utfart möter vägen. Punkten läggs på vägen och nästa fastighet väljs automatiskt.</p>
-      <p class="hint">Skog eller skiften som nås från ett annat ställe på vägen visas i listan om du har angett det under Fastigheter.</p>
+      <p>Välj för varje fastighet vid vilken anslutningspunkt den ansluter till vägen. Punkterna sätter du ut i steg 3, där all redigering av kartan görs.</p>
+      <p class="hint">Skog och skiften som nås från ett annat ställe på vägen får egna rader. Utfarten kan väljas för trafik som kommer in utifrån, till exempel till ett skifte.</p>
       <p class="notice" id="anslAktiv" hidden></p>
     </div>
     <div class="kartplats" data-kartplats="ansl"></div>
-    <div class="row" style="margin-top:8px"><button type="button" class="ghost small" id="kartMinPos">Sätt punkten där jag står</button></div>
+
     <div class="panel" style="margin-top:12px"><div id="anslLista"></div></div>
   </section>
 
@@ -162,8 +164,8 @@
   </div>
 </main>
 <span class="status" id="status" role="status" aria-live="polite"></span>
-<script src="verktyg.js?v=2.78"></script>
+<script src="verktyg.js?v=2.80"></script>
 <script src="leaflet/leaflet.js"></script>
-<script src="verktyg-karta.js?v=2.79"></script>
+<script src="verktyg-karta.js?v=2.80"></script>
 </body>
 </html>

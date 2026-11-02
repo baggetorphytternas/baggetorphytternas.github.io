@@ -244,7 +244,7 @@ function renderSummary(){
 function varningar(p,r){
   const t=typOf(p), ha=markHa(p), v=[];
   if (t==="annan") return v;
-  if (r && r.poster.length && r.tkm===0) v.push("Ingen delsträcka vald: fastigheten får andelen 0. Välj delsträckor eller markera direktutfart.");
+  if (r && r.poster.length && r.tkm===0) v.push(state.manuell?"Ingen delsträcka vald: fastigheten får andelen 0. Välj delsträckor eller markera direktutfart.":"Ingen anslutningspunkt vald: fastigheten får andelen 0. Välj punkt under Vägen eller markera direktutfart.");
   if (t==="kombi"&&ha>=10) v.push(`Fastigheten har ${fmt(ha)} ha mark. Från 10 ha räknas den som jordbruks- eller skogsbruksfastighet (PM tabell 6).`);
   { const hast=num(p.hastEgna)+num(p.hastInack)>0;
     if (t==="kombi"&&ha>0&&ha<=2&&!p.markNaring&&!hast&&(num(p.akerHa)||num(p.beteHa)||num(p.skogHa))) v.push("Med 1–2 ha räknas marken inte, bara bostaden (2 500 ton, PM tabell 1). Hästar och annan verksamhet räknas alltid.");
@@ -252,10 +252,10 @@ function varningar(p,r){
   if (t==="kombi"&&num(p.skogHa)>0&&!p.skogSalu) v.push("Skogen räknas inte: ved för husbehov ingår i bostadens schablon (PM 3.5.4).");
   if ((t==="kombi")&&num(p.hastEgna)+num(p.hastInack)>10) v.push("Fler än 10 hästar räknas som jordbruksfastighet (PM 3.5.7).");
   if (t==="jord"&&!p.gardUtanfor&&ha>0&&ha<10&&(num(p.perm)||num(p.frit))) v.push("Under 10 ha med bostad räknas fastigheten normalt som kombinerad bostadsfastighet (PM tabell 6).");
-  if (t==="jord"&&!state.manuell) skiften(p).forEach(s=>{ if(s.plats==="jamn"&&(num(s.aker)||num(s.bete))&&!(num(s.jamnKm)>0)) v.push(`${s.namn||"Skiftet"} är utspritt längs vägen, men sträckans början och slut är inte utsatta på kartan. Tills dess räknas transporterna dit inte.`); });
+  if (t==="jord"&&!state.manuell) skiften(p).forEach(s=>{ if(s.plats==="jamn"&&(num(s.aker)||num(s.bete))&&!(num(s.jamnKm)>0)) v.push(`${s.namn||"Skiftet"} är utspritt längs vägen, men sträckans början och slut är inte valda. Tills dess räknas transporterna dit inte.`); });
   if (t==="jord") skiften(p).forEach(s=>{ if(s.plats!=="jamn"&&(s.plats!=="bc"||p.gardUtanfor)&&(num(s.aker)||num(s.bete))&&!(s.route||[]).length) v.push(state.manuell
     ? `${s.namn||"Skiftet"}: välj vilka delsträckor transporterna mellan gården och skiftet kör på. Tills dess räknas de inte.`
-    : `${s.namn||"Skiftet"} ligger inte vid gården, men det är inte utsatt var det ansluter till vägen. Tills dess räknas transporterna dit inte. Tryck Visa på kartan vid skiftet under Fastigheter, eller välj Vid gården om skiftet inte nås via föreningens väg.`); });
+    : `${s.namn||"Skiftet"} ligger inte vid gården, men ingen anslutningspunkt är vald. Tills dess räknas transporterna dit inte. Välj punkt vid skiftet, eller välj Vid gården om skiftet inte nås via föreningens väg.`); });
   if ((t==="jord"||t==="kombi")&&num(p.boxar)>0&&num(p.boxar)!==num(p.hastEgna)+num(p.hastInack)&&(p.hastJamk||"faktiska")==="faktiska"&&num(p.hastEgna)+num(p.hastInack)>0) v.push("Antalet boxar skiljer sig från antalet hästar. PM 3.5.7.1 föreslår att man jämkar mellan dem.");
   if (["kombi","jord","skog"].includes(t)){ const s=num(p.skogHa)+(harFjall()?num(p.skogFjallHa):0); if(s>0&&s<1) v.push("Skog under 1 ha räknas inte (PM 3.8.2)."); }
   if (t==="skog"&&num(p.skogRestrHa)>0&&num(p.skogHa)+num(p.skogFjallHa)===0&&!p.skogJakt) v.push("Får jakt bedrivas på marken? Då räknas jaktresor, 60 ton per påbörjade 100 ha, i stället för 2 ton per ha (PM 3.8.2.3).");
@@ -414,8 +414,8 @@ function hastBlock(p){
 }
 /* Val av gemensam anslutningspunkt (från kartan i steg 3). */
 function punktVal(id,attr,varde,label){
-  const P=window.kartaPunkter?window.kartaPunkter():[]; if(!P.length) return "";
-  return `<label for="${id}">${label}<select id="${id}" ${attr}><option value="">Egen punkt (sätts ut i steg 4)</option>${P.map(x=>`<option value="${x.id}" ${varde===x.id?"selected":""}>${esc(x.namn)}</option>`).join("")}</select></label>`;
+  const P=window.kartaPunkter?window.kartaPunkter():[]; if(!P.length) return `<p class="hint">Sätt ut anslutningspunkter längs vägen i steg 3, så kan du välja här.</p>`;
+  return `<label for="${id}">${label}<select id="${id}" ${attr}><option value="">Välj anslutningspunkt …</option>${P.map(x=>`<option value="${x.id}" ${varde===x.id?"selected":""}>${esc(x.namn)}</option>`).join("")}</select></label>`;
 }
 function skiftenBlock(p){
   const O=omrOf(), sk=skiften(p), id=p.id;
@@ -430,14 +430,12 @@ function skiftenBlock(p){
     if (s.plats==="jamn"){
       const b1=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id), b2=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id+":slut"), km=num(s.jamnKm);
       const v1=punktVal("skp-"+s.id,`data-sk="${id}|${s.id}" data-skf="punkt"`,s.punkt||"","Sträckan börjar vid"), v2=punktVal("sks-"+s.id,`data-sk="${id}|${s.id}" data-skf="punktSlut"`,s.punktSlut||"","Sträckan slutar vid");
-      return (v1?`<div class="grid2">${v1}${v2}</div>`:"")+`<div class="skstatus${b1&&b2&&km>0?" ok":""}"><span>${b1&&b2?(km>0?`Sträckan är utsatt. Medelavstånd från ${ute?"infarten":"gården"}: ${fmt(km,2)} km.`:`Sträckan är utsatt. Sätt också ut ${ute?"infarten":"gården"}, så räknas avståndet.`)
-        :"Marken räknas som jämnt utspridd längs en sträcka. Visa var sträckan börjar och slutar på kartan."}</span>
-        <span class="row"><button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}">${b1?"Ändra början":"Visa början"}</button><button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}:slut">${b2?"Ändra slutet":"Visa slutet"}</button></span></div>`;
+      return `<div class="grid2">${v1}${v2}</div><div class="skstatus${b1&&b2&&km>0?" ok":""}"><span>${b1&&b2?(km>0?`Medelavstånd från ${ute?"infarten":"gården"}: ${fmt(km,2)} km.`:`Välj också var ${ute?"gårdens trafik kör in":"gården ansluter"}, så räknas avståndet.`)
+        :"Marken räknas som jämnt utspridd mellan två anslutningspunkter. Välj var sträckan börjar och slutar."}</span></div>`;
     }
     const satt=window.kartaHarPunkt&&window.kartaHarPunkt(p.id,"sk:"+s.id), km=segKm(s.route);
-    return punktVal("skp-"+s.id,`data-sk="${id}|${s.id}" data-skf="punkt"`,s.punkt||"","Skiftet ansluter vid")+`<div class="skstatus${satt?" ok":""}"><span>${satt?(km>0?`Utsatt på kartan: ${fmt(km,2)} km på föreningens väg mellan ${ute?"infarten":"gården"} och skiftet.`:`Utsatt på kartan. Sätt också ut ${ute?"infarten":"gården"}, så räknas sträckan.`)
-      :`Inte utsatt på kartan. Visa var skiftet ansluter till vägen, så räknas sträckan från ${ute?"infarten":"gården"}.`}</span>
-      <button type="button" class="ghost small" data-kartmal="${id}|sk:${s.id}">${satt?"Ändra på kartan":"Visa på kartan"}</button></div>`;
+    return punktVal("skp-"+s.id,`data-sk="${id}|${s.id}" data-skf="punkt"`,s.punkt||"","Skiftet ansluter vid")+`<div class="skstatus${satt&&km>0?" ok":""}"><span>${satt?(km>0?`${fmt(km,2)} km på föreningens väg mellan ${ute?"infarten":"gården"} och skiftet.`:`Välj också var ${ute?"gårdens trafik kör in":"gården ansluter"}, så räknas sträckan.`)
+      :`Välj vid vilken anslutningspunkt skiftet ansluter, så räknas sträckan från ${ute?"infarten":"gården"}.`}</span></div>`;
   };
   return `<fieldset class="fs"><legend>Åker och bete</legend>
     <p class="hint">${ute?"Lägg in varje skifte längs föreningens väg. Transporterna räknas från infarten till varje skifte (PM 3.7.1.2).":"Dela upp marken i skiften om den ligger på olika ställen. Ligger allt vid gården räcker ett skifte. För skiften som nås via föreningens väg räknas också transporterna mellan gården och skiftet (PM 3.7.1.2)."}</p>
@@ -515,7 +513,7 @@ function renderCards(){
     const kartlage=!state.manuell, ks=window.kartaStatus?window.kartaStatus(p):null;
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
       ${kartlage?`${punktVal("pr-"+p.id,`data-p="${p.id}" data-f="punktRoute"`,p.punktRoute||"",t==="jord"&&p.gardUtanfor?"Gårdens trafik kör in på vägen vid":"Ansluter till vägen vid")}
-        <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj en anslutningspunkt ovan eller sätt ut en egen punkt i steg 4.`}</p>
+        <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
         ${harSkog?chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården"):""}
         ${harSkog&&p.skogEgen?punktVal("ps-"+p.id,`data-p="${p.id}" data-f="punktSkog"`,p.punktSkog||"","Skogen ansluter vid"):""}`
       :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
@@ -752,6 +750,44 @@ async function imgData(src){
   const r=await fetch(src); const b=await r.blob();
   return await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(b); });
 }
+/* Kartbild till PDF:en: OpenStreetMaps kartrutor med delsträckor och punkter inritade. Går det inte att hämta kartan returneras null. */
+async function kartbild(){
+  const geo=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1); if(!geo.length) return null;
+  const pts=geo.flatMap(g=>g.geo), lat=pts.map(p=>p[0]), lng=pts.map(p=>p[1]);
+  const S=Math.min(...lat), N=Math.max(...lat), W=Math.min(...lng), E=Math.max(...lng);
+  const px=(la,lo,z)=>{ const s=256*2**z, r=la*Math.PI/180; return [(lo+180)/360*s, (1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*s]; };
+  let z=17; for(;z>8;z--){ const a=px(N,W,z), b=px(S,E,z); if(b[0]-a[0]<=1200&&b[1]-a[1]<=900) break; }
+  const a=px(N,W,z), b=px(S,E,z), pad=60, x0=Math.floor(a[0]-pad), y0=Math.floor(a[1]-pad), w=Math.ceil(b[0]-a[0]+2*pad), h=Math.ceil(b[1]-a[1]+2*pad);
+  const cv=document.createElement("canvas"); cv.width=w; cv.height=h; const c=cv.getContext("2d"); c.fillStyle="#eeeeea"; c.fillRect(0,0,w,h);
+  const t0=Math.floor(x0/256), t1=Math.floor((x0+w)/256), u0=Math.floor(y0/256), u1=Math.floor((y0+h)/256), jobb=[];
+  let fel=0;
+  for(let tx=t0;tx<=t1;tx++) for(let ty=u0;ty<=u1;ty++) jobb.push(new Promise(res=>{ const im=new Image(); im.crossOrigin="anonymous";
+    const t=setTimeout(()=>{ fel++; res(); },10000);
+    im.onload=()=>{ clearTimeout(t); c.drawImage(im,tx*256-x0,ty*256-y0); res(); }; im.onerror=()=>{ clearTimeout(t); fel++; res(); };
+    im.src=`https://tile.openstreetmap.org/${z}/${tx}/${ty}.png`; }));
+  await Promise.all(jobb);
+  if (fel===jobb.length) return null;
+  const P=p=>{ const q=px(p[0],p[1],z); return [q[0]-x0,q[1]-y0]; };
+  const F=["#1f5c41","#b45309","#2563eb","#9333ea","#be123c","#0f766e","#4d7c0f","#c2410c","#4338ca","#a16207"];
+  c.lineCap="round"; c.lineJoin="round";
+  geo.forEach((g,i)=>{ const q=g.geo.map(P); c.beginPath(); q.forEach((p,k)=>k?c.lineTo(...p):c.moveTo(...p)); c.strokeStyle="#fff"; c.lineWidth=14; c.stroke(); c.strokeStyle=F[i%F.length]; c.lineWidth=9; c.stroke(); });
+  const etikett=(txt,x,yy,fet,fyll,rand)=>{ c.font=(fet?"bold ":"")+"22px Helvetica, Arial, sans-serif"; const tw=c.measureText(txt).width+16;
+    c.fillStyle=fyll; c.strokeStyle=rand; c.lineWidth=1.5; c.beginPath(); if(c.roundRect) c.roundRect(x,yy-16,tw,32,7); else c.rect(x,yy-16,tw,32); c.fill(); c.stroke(); c.fillStyle="#1f2a24"; c.fillText(txt,x+8,yy+8); return tw; };
+  const upptagna=[], ledig=(x,yy,bw)=>!upptagna.some(r=>x<r[0]+r[2]&&x+bw>r[0]&&Math.abs(yy-r[1])<32);
+  geo.forEach(g=>{ const L0=g.geo.reduce((s,p,i)=>i?s+hav2(g.geo[i-1],p):0,0); if(L0<40) return;
+    let s=0, m=g.geo[0]; for(let i=1;i<g.geo.length;i++){ const d=hav2(g.geo[i-1],g.geo[i]); if(s+d>=L0/2){ const t=d?(L0/2-s)/d:0; m=[g.geo[i-1][0]+t*(g.geo[i][0]-g.geo[i-1][0]),g.geo[i-1][1]+t*(g.geo[i][1]-g.geo[i-1][1])]; break; } s+=d; }
+    const [x,yy]=P(m); c.font="bold 22px Helvetica, Arial, sans-serif"; const bw=c.measureText(g.id).width+16; if(!ledig(x-bw/2,yy,bw)) return;
+    etikett(g.id,x-bw/2,yy,true,"#fff","#1f2a24"); upptagna.push([x-bw/2,yy,bw]); });
+  ((state.karta&&state.karta.punkter)||[]).forEach(pt=>{ if(pt.typ==="delning") return; const [x,yy]=P(pt.ll);
+    c.beginPath(); c.arc(x,yy,pt.typ==="utfart"?11:8,0,7); c.fillStyle=pt.typ==="utfart"?"#7c3aed":pt.typ==="punkt"?"#0f766e":"#1f5c41"; c.fill(); c.lineWidth=2.5; c.strokeStyle="#fff"; c.stroke();
+    const p=state.props.find(x2=>x2.id===pt.prop), txt=pt.typ==="utfart"?(pt.namn||"Utfart"):pt.typ==="punkt"?(pt.namn||""):pdfName(p?p.namn:"");
+    if (!txt) return; c.font="22px Helvetica, Arial, sans-serif"; const bw=c.measureText(txt).width+16;
+    const lx=x+12+bw>w-4?x-12-bw:x+12;
+    if (ledig(lx,yy,bw)){ etikett(txt,lx,yy,false,"rgba(255,255,255,.92)","rgba(0,0,0,.25)"); upptagna.push([lx,yy,bw]); } });
+  c.font="12px Helvetica, Arial, sans-serif"; c.fillStyle="rgba(255,255,255,.85)"; c.fillRect(w-230,h-20,230,20); c.fillStyle="#333"; c.fillText("© OpenStreetMap-bidragsgivare",w-222,h-6);
+  try{ return {data:cv.toDataURL("image/jpeg",0.88),w,h}; }catch(e){ return null; }
+}
+const hav2=(a,b)=>{ const R=6371008.8,r=x=>x*Math.PI/180,s=Math.sin(r(b[0]-a[0])/2)**2+Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(r(b[1]-a[1])/2)**2; return 2*R*Math.asin(Math.min(1,Math.sqrt(s))); };
 async function makePdf(){
   const btn=$("#pdf"); const old=btn.innerHTML; btn.disabled=true; btn.innerHTML="<strong>Skapar PDF…</strong>";
   try{
@@ -791,8 +827,12 @@ async function makePdf(){
     // map
     doc.addPage(); y=M;
     head("Vägen och delsträckorna");
+    const bild=await kartbild();
+    if (bild){ const bw=CW, bh=Math.min(170,CW*bild.h/bild.w), bw2=bh*bild.w/bild.h;
+      doc.addImage(bild.data,"JPEG",M+(CW-bw2)/2,y,bw2,bh); y+=bh+4;
+      doc.setFontSize(8); doc.setTextColor(...muted); doc.text(pdfText("Karta: © OpenStreetMap-bidragsgivare. Delsträckorna är inritade med bokstav."),M,y); y+=6; }
     { const geo=state.segments.filter(g=>Array.isArray(g.geo)&&g.geo.length>1);
-      if (geo.length && window.SWEREF){
+      if (!bild && geo.length && window.SWEREF){
         const P=ll=>window.SWEREF.till(ll), all=geo.flatMap(g=>g.geo.map(P));
         const minN=Math.min(...all.map(p=>p[0])), maxN=Math.max(...all.map(p=>p[0])), minE=Math.min(...all.map(p=>p[1])), maxE=Math.max(...all.map(p=>p[1]));
         const H=130, sc=Math.min(CW/Math.max(1,maxE-minE), H/Math.max(1,maxN-minN)), ox=M+(CW-(maxE-minE)*sc)/2, y0=y;

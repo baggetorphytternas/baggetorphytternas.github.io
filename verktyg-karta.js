@@ -66,23 +66,27 @@ function gallerText(pt){
 }
 function natverk(){
   const k=KS(), N=[]; let E=[];
-  const nod=ll=>{ for(const n of N) if(hav(n.ll,ll)<2) return n; const n={id:N.length,ll,tags:[]}; N.push(n); return n; };
+  /* Noder inom 2 m slås ihop. Ett rutnät med cirka 10 m stora rutor gör att bara närliggande noder jämförs. */
+  const rut=new Map(), rk=(a,b)=>a+","+b, ri=ll=>[Math.floor(ll[0]/1e-4),Math.floor(ll[1]/2e-4)];
+  const nod=ll=>{ const [a,b]=ri(ll);
+    for(let i=-1;i<=1;i++) for(let j=-1;j<=1;j++){ const L=rut.get(rk(a+i,b+j)); if(L) for(const n of L) if(hav(n.ll,ll)<2) return n; }
+    const n={id:N.length,ll,tags:[]}; N.push(n); const k=rk(a,b); (rut.get(k)||rut.set(k,[]).get(k)).push(n); return n; };
   /* En linje som börjar eller slutar mitt på en annan linje kopplas ihop med den där (T-korsning). */
   const linjer=k.vagar.map(v=>(v.pts||[]).slice());
   linjer.forEach((v,vi)=>[v[0],v[v.length-1]].forEach(e=>{ if(!e) return;
     linjer.forEach((w,wi)=>{ if(wi===vi) return; for(let i=0;i+1<w.length;i++){ const r=proj(e,w[i],w[i+1]);
       if (r.d<3 && hav(w[i],e)>2 && hav(w[i+1],e)>2 && r.t>0 && r.t<1){ w.splice(i+1,0,e); break; } } }); }));
   linjer.forEach(p=>{ for(let i=0;i+1<p.length;i++){ const a=nod(p[i]), b=nod(p[i+1]); if(a!==b) E.push({a,b,len:hav(a.ll,b.ll)}); } });
-  const pnod=new Map(), avst=new Map();
+  const pnod=new Map(), avst=new Map(), deg=new Map();
+  E.forEach(x=>{ deg.set(x.a,(deg.get(x.a)||0)+1); deg.set(x.b,(deg.get(x.b)||0)+1); });
   k.punkter.filter(iBruk).forEach(pt=>{
     let best=null; E.forEach(e=>{ const r=proj(pt.ll,e.a.ll,e.b.ll); if(!best||r.d<best.r.d) best={e,r}; });
     if (!best) return;
     const {e,r}=best, da=r.t*e.len, db=(1-r.t)*e.len; let n;
     /* Ligger punkten inom 12 m från en korsning, vägände eller annan punkt används den, så att inga meterkorta delsträckor uppstår. */
-    const deg=new Map(); E.forEach(x=>{ deg.set(x.a,(deg.get(x.a)||0)+1); deg.set(x.b,(deg.get(x.b)||0)+1); });
     let nara=null, nd=12; N.forEach(x=>{ if(!(x.tags.length||deg.get(x)!==2)) return; const d=hav(x.ll,r.pt); if(d<nd){ nd=d; nara=x; } });
     if (nara) n=nara; else if (da<1) n=e.a; else if (db<1) n=e.b;
-    else { n={id:N.length,ll:r.pt,tags:[]}; N.push(n); E=E.filter(x=>x!==e); E.push({a:e.a,b:n,len:hav(e.a.ll,n.ll)},{a:n,b:e.b,len:hav(n.ll,e.b.ll)}); }
+    else { n={id:N.length,ll:r.pt,tags:[]}; N.push(n); deg.set(n,2); E=E.filter(x=>x!==e); E.push({a:e.a,b:n,len:hav(e.a.ll,n.ll)},{a:n,b:e.b,len:hav(n.ll,e.b.ll)}); }
     n.tags.push(pt); pnod.set(pt.id,n); avst.set(pt.id,r.d);
   });
   N.forEach(n=>n.e=[]); E.forEach(e=>{ e.a.e.push(e); e.b.e.push(e); });
@@ -96,11 +100,14 @@ function iBruk(pt){
   return !!p && galler(p).includes(g) && punktFor(p,g)===pt;
 }
 function dijkstra(G,starts){
-  const dist=new Map(), prev=new Map(), Q=new Set(G.N);
-  G.N.forEach(n=>dist.set(n,Infinity)); starts.forEach(s=>dist.set(s,0));
-  while(Q.size){ let u=null; for(const n of Q) if(u===null||dist.get(n)<dist.get(u)) u=n;
-    if (dist.get(u)===Infinity) break; Q.delete(u);
-    u.e.forEach(e=>{ const v=e.a===u?e.b:e.a, nd=dist.get(u)+e.len; if(nd<dist.get(v)-1e-9){ dist.set(v,nd); prev.set(v,e); } }); }
+  /* Kortaste vägen från utfarterna, med en binär hög som kö. */
+  const dist=new Map(), prev=new Map(), klar=new Set(), H=[];
+  const upp=i=>{ while(i){ const p=(i-1)>>1; if(H[p][0]<=H[i][0]) break; [H[p],H[i]]=[H[i],H[p]]; i=p; } };
+  const ned=i=>{ for(;;){ const l=2*i+1, r=l+1; let m=i; if(l<H.length&&H[l][0]<H[m][0]) m=l; if(r<H.length&&H[r][0]<H[m][0]) m=r; if(m===i) break; [H[m],H[i]]=[H[i],H[m]]; i=m; } };
+  const pop=()=>{ const t=H[0], x=H.pop(); if(H.length){ H[0]=x; ned(0); } return t; };
+  G.N.forEach(n=>dist.set(n,Infinity)); starts.forEach(s=>{ dist.set(s,0); H.push([0,s]); upp(H.length-1); });
+  while(H.length){ const [d,u]=pop(); if(klar.has(u)||d>dist.get(u)) continue; klar.add(u);
+    u.e.forEach(e=>{ const v=e.a===u?e.b:e.a, nd=d+e.len; if(nd<dist.get(v)-1e-9){ dist.set(v,nd); prev.set(v,e); H.push([nd,v]); upp(H.length-1); } }); }
   return {dist,prev};
 }
 function vagTill(D,n){ const es=[]; let x=n, g=0; while(D.prev.has(x)&&g++<100000){ const e=D.prev.get(x); es.push(e); x=e.a===x?e.b:e.a; } return es; }

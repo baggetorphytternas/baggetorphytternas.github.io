@@ -502,7 +502,11 @@ function renderCards(){
       f+=`<fieldset class="fs"><legend>Skog</legend>${t==="kombi"?chk(p,"skogSalu","Skogen avverkas för försäljning (ved för husbehov ingår i bostaden)"):""}
       <div class="grid2">${fld(p,"skogHa",`Produktiv skogsmark, ha (${skogTal()} ton per ha)`)}${harFjall()?fld(p,"skogFjallHa",`Fjällnära skog, ha (${fjallTal()} ton per ha)`):""}${fld(p,"skogRestrHa","Skog där skogsbruk inte får bedrivas, ha (2 ton per ha)")}</div>
       ${t==="skog"&&prod===0&&num(p.skogRestrHa)>0?chk(p,"skogJakt","Hela fastigheten är belagd men jakt får bedrivas (jaktresor 60 ton per påbörjade 100 ha)"):""}
-      <p class="hint">Under 1 ha skog räknas inte. Impediment och mycket lågproduktiv skog (sump- och kärrskog) räknas inte. Jaktresor ingår i schablonen per hektar.</p></fieldset>`; }
+      <p class="hint">Under 1 ha skog räknas inte. Impediment och mycket lågproduktiv skog (sump- och kärrskog) räknas inte. Jaktresor ingår i schablonen per hektar.</p>
+      <div class="skogvag">${t==="skog"?"":(!state.manuell
+        ? chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården")+(p.skogEgen?punktVal("ps-"+p.id,`data-p="${p.id}" data-f="punktSkog"`,p.punktSkog||"","Skogen ansluter vid"):`<p class="hint">Annars räknas skogens transporter från samma punkt som gården.</p>`)
+        : `<label>Skogen kör på delsträckor (tomt = samma som gården)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>`)}
+      ${chk(p,"skogJamn","Skogen ligger utspridd jämnt längs vägen (räkna med medelavståndet)")}</div></fieldset>`; }
     if (t==="teknisk") f+=`<fieldset class="fs"><legend>Teknisk anläggning</legend><div class="grid2">${sel(p,"tekFrek","Hur ofta besöks den",[["manad","En gång per månad (500 ton)"],["varannan","Varannan vecka (600 ton)"],["vecka","En gång per vecka (800 ton)"],["tva","Två gånger per vecka (1 100 ton)"]],"manad")}${fld(p,"antalAnl","Antal anläggningar","numeric")}</div>
       ${num(p.antalAnl)>1?chk(p,"kluster","Anläggningarna sköts samlat som ett kluster, till exempel en vindkraftspark (PM 3.10.2.2)"):""}
       <p class="hint">Större underhåll och förnyelse som kan förutses ska räknas in, fördelat per år. Fyll då i den beräkningen som en egen fastighet av typen Beräknas i det enskilda fallet (PM 3.10.2.1).</p></fieldset>`;
@@ -514,11 +518,8 @@ function renderCards(){
     const vag = t==="annan" ? "" : `<fieldset class="fs"><legend>Vägen</legend>
       ${kartlage?`${punktVal("pr-"+p.id,`data-p="${p.id}" data-f="punktRoute"`,p.punktRoute||"",t==="jord"&&p.gardUtanfor?"Gårdens trafik kör in på vägen vid":"Ansluter till vägen vid")}
         <p class="${ks&&ks.satt?"hint":"notice"}">${ks&&ks.satt?`Ansluter till vägen enligt kartan, ${fmt(ks.km,3)} km till ${esc(utfartOf())}.`:`Välj vid vilken anslutningspunkt fastigheten ansluter.`}</p>
-        ${harSkog?chk(p,"skogEgen","Skogen nås från ett annat ställe på vägen än gården"):""}
-        ${harSkog&&p.skogEgen?punktVal("ps-"+p.id,`data-p="${p.id}" data-f="punktSkog"`,p.punktSkog||"","Skogen ansluter vid"):""}`
-      :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>
-        ${harSkog?`<label>Skogen kör på delsträckor (tomt = samma som ovan)</label><div class="segs">${segBoxes(p,"skogRoute")}</div>`:""}`}
-      ${harSkog?chk(p,"skogJamn","Skogen ligger utspridd jämnt längs vägen (räkna med medelavståndet)"):""}
+`
+      :`<label>${t==="jord"?"Bostad och företagsutfart kör":"Kör"} på delsträckor ut till ${esc(utfartOf())}</label><div class="segs">${segBoxes(p,"route")}</div>`}
       ${chk(p,"direkt","Direktutfart till allmän väg (minsta väglängd och reduktionsfaktor, PM 3.1.4)")}
       ${p.direkt?sel(p,"direktFaktor","Reduktionsfaktor",[["0.5","0,5 – gemensamma nyttigheter i normal omfattning"],["0.3","0,3 – gemensamma nyttigheter i mindre omfattning"]],"0.5"):""}
     </fieldset>`;

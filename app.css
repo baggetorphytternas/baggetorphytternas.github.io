@@ -976,3 +976,4 @@ details.fallpanel .antal{font-size:.85rem;font-weight:600;color:var(--muted)}
 .kartverktyg .chipbtn.rensa{color:var(--danger,#b42318);border-color:currentColor}
 .vantabox .row .danger{background:var(--danger,#b42318);color:#fff;border-color:var(--danger,#b42318)}
 #kartHjalp .ghost.small{margin-left:8px}
+.skogvag{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}

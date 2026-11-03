@@ -208,7 +208,7 @@ function memCard(k,ps){
 }
 function memDlg(){ let d=q("#memDlg"); if(!d){ d=document.createElement("dialog"); d.id="memDlg"; d.className="bdlg mdlg"; q("#page-medlemmar").appendChild(d);
   d.addEventListener("click",e=>{ if(e.target===d||e.target.closest("[data-mclose]")) d.close(); }); } return d; }
-function showMemGroup(k){ const d=memDlg(); d.dataset.k=k; refreshMemDlg(true); if(!d.open) d.showModal(); }
+function showMemGroup(k){ const d=memDlg(); d.dataset.k=k; refreshMemDlg(true); if(!d.open) d.showModal(); if(board) laddaKonton(); }
 function refreshMemDlg(force){ const d=q("#memDlg"); if(!d||(!d.open&&!force)) return; const ps=memGroups.get(d.dataset.k);
   if(!ps){ d.close(); return; }
   d.innerHTML=`<div class="mdlg-in"><button type="button" class="mdlg-x" data-mclose aria-label="Stäng">✕</button>${memGroup(ps)}</div>`; }
@@ -221,8 +221,35 @@ function memGroup(ps){
     return `<div class="item sub${board?" harandra":""}" data-kind="medlemmar" data-id="${E(it.id)}"><div class="person"><span class="avatar" aria-hidden="true">${initials(it.namn)}</span><div><h3>${E(it.namn||"Namn ej ifyllt")}</h3>${it.adress&&it.adress!==adr?`<span class="addr">${E(it.adress)}</span>`:""}${it.dold&&board?`<span class="badge typ">Dolda för medlemmar</span>`:""}</div></div>${board?`<button type="button" class="ghost small kortandra" data-act="edit">Ändra</button>`:""}${(it.telefon||it.epost)?`<div class="contacts">${contact(it)}</div>`:it.dold&&!board?`<p class="empty">Kontaktuppgifterna är dolda. Styrelsen kan nå personen.</p>`:""}</div>`;
   }).join("");
   return `<div class="item mgroup"><div class="mhead"><div><h3>${E(f||"Fastighet saknas")}</h3>${bet?`<span class="meta mbet">Fastighetsbeteckning: ${E(bet)}</span>`:""}${adr?`<span class="meta">${E(adr)}</span>`:""}</div></div>${rows}
-    ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>`:""}</div>`;
+    ${board&&f?`<button type="button" class="ghost small addcontact" data-addcontact="${E(f)}">+ Lägg till kontaktperson</button>${kopplaVal(f)}`:""}</div>`;
 }
+/* Inloggade som inte är kopplade till någon fastighet (har inloggning men ingen rad med sin e-post i registret).
+   Styrelsen kan koppla dem till fastigheten här. Listan hämtas från behörighetslistan när dialogen öppnas. */
+let konton=null, kontonLaddas=false;
+async function laddaKonton(){
+  if(!board||!window.SB||kontonLaddas) return; kontonLaddas=true;
+  try{ const {data,error}=await window.SB.from("roller").select("email,namn,roll"); if(!error){ konton=data||[]; refreshMemDlg(); if(q("#st-reg")&&!q("#st-reg").hidden) renderReg(); } }catch(e){}
+  kontonLaddas=false;
+}
+const okopplade=()=>{ const har=new Set((site.medlemmar||[]).map(m=>String(m.epost||"").trim().toLowerCase()).filter(Boolean));
+  return (konton||[]).filter(r=>r.email&&!har.has(r.email.toLowerCase())).sort((a,b)=>String(a.namn||a.email).localeCompare(String(b.namn||b.email),"sv")); };
+function kopplaVal(f){
+  if(konton===null) return `<p class="hint kopplahint">Hämtar inloggade medlemmar…</p>`;
+  const l=okopplade(); if(!l.length) return "";
+  return `<label class="kopplaval">Koppla en inloggad medlem till ${E(f)}<select data-koppla="${E(f)}"><option value="">Välj medlem …</option>${l.map(r=>`<option value="${E(r.email)}">${E(r.namn?r.namn+" ("+r.email+")":r.email)}</option>`).join("")}</select></label>`;
+}
+document.addEventListener("change",e=>{
+  const s=e.target.closest&&e.target.closest("[data-koppla]"); if(!s||!board||!s.value) return;
+  const f=s.dataset.koppla, r=(konton||[]).find(x=>x.email===s.value); if(!r) return;
+  const ps=(site.medlemmar||[]).filter(m=>m.fastighet===f), forst=ps[0]||{}, nyckel=x=>String(x||"").trim().toLowerCase().replace(/\s+/g," ");
+  /* Finns redan en kontaktrad med samma namn men utan e-post fylls den i, annars läggs en ny kontaktperson till. */
+  const tom=ps.find(m=>!String(m.epost||"").trim()&&r.namn&&nyckel(m.namn)===nyckel(r.namn)) || ps.find(m=>!String(m.epost||"").trim()&&!String(m.namn||"").trim());
+  if(tom){ tom.epost=r.email.toLowerCase(); if(!tom.namn) tom.namn=r.namn||""; }
+  else { const ny={id:nid(),fastighet:f,beteckning:forst.beteckning||"",namn:r.namn||"",telefon:"",epost:r.email.toLowerCase(),adress:forst.adress||""};
+    site.medlemmar=[...(site.medlemmar||[]),ny]; if(!ny.namn) editing.add(ny.id); }
+  saveSite(); renderLists(); refreshMemDlg(); if(q("#st-reg")&&!q("#st-reg").hidden) renderReg();
+  setMsg(`${r.namn||r.email} är kopplad till ${f}.`);
+});
 const newsView=it=>`<span class="meta">${dfmt(it.datum)}</span><h3>${E(it.rubrik||"Utan rubrik")}</h3>${it.text?`<p>${E(it.text)}</p>`:""}`;
 const MON=["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
 const dateblk=d=>{ const t=new Date((d||"")+"T12:00:00"); if(!d||isNaN(t)) return `<span class="dateblk"><span>Datum</span><b>?</b><small>&nbsp;</small></span>`; return `<span class="dateblk${d<today()?" past":""}"><span>${MON[t.getMonth()]}</span><b>${t.getDate()}</b><small>${t.getFullYear()}</small></span>`; };
@@ -1038,7 +1065,10 @@ function renderReg(){
   const utanKontakt=[...new Set(m.map(x=>x.fastighet))].filter(fa=>fa&&!m.some(x=>x.fastighet===fa&&x.namn)).length;
   const utanBet=[...new Set(m.map(x=>x.fastighet))].filter(fa=>fa&&!m.some(x=>x.fastighet===fa&&x.beteckning)).length;
   const box=(n,t,warn)=>`<div class="rs${warn&&n?" warn":""}"><b>${n}</b><span>${t}</span></div>`;
-  el.innerHTML=box(f,"fastigheter")+box(k.length,"kontaktpersoner")+box(utanKontakt,"utan kontakt",1)+box(utanMejl,"saknar mejl",1)+box(utanBet,"saknar beteckning",1);
+  const ok=konton?okopplade():[];
+  el.innerHTML=box(f,"fastigheter")+box(k.length,"kontaktpersoner")+box(utanKontakt,"utan kontakt",1)+box(utanMejl,"saknar mejl",1)+box(utanBet,"saknar beteckning",1)+(konton?box(ok.length,"inloggade utan fastighet",1):"")
+    +(ok.length?`<p class="hint regokopplade">Inte kopplade till någon fastighet: ${ok.map(r=>E(r.namn||r.email)).join(", ")}. Öppna fastigheten under Medlemmar och välj personen i listan.</p>`:"");
+  if(konton===null) laddaKonton();
 }
 /* ---------- Kommentarer på inlägg i Aktuellt (tabellen kommentarer) ----------
    Alla medlemmar läser och skriver; man tar bort sina egna, styrelsen kan ta bort alla. Namnet sätts av databasen. */

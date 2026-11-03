@@ -980,3 +980,7 @@ a.lank{color:var(--accent);font-weight:600;text-decoration:underline;text-underl
 .amnatt{margin-top:-2px}
 .amnatt .filebtn{padding:4px 10px;font-size:.85rem}
 .amntips{margin:0;font-size:.85rem}
+/* Koppla inloggad medlem till fastighet */
+.kopplaval{display:flex;flex-direction:column;gap:4px;font-size:.85rem;margin-top:4px}
+.kopplahint{margin:4px 0 0;font-size:.85rem}
+.regokopplade{flex-basis:100%;margin:4px 0 0}
